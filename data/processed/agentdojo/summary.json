@@ -1,0 +1,43 @@
+{
+ "user_tasks": {
+  "workspace": 40,
+  "banking": 16
+ },
+ "injection_tasks": {
+  "workspace": 14,
+  "banking": 9
+ },
+ "user_tasks_static_ground_truth": {
+  "workspace": 32,
+  "banking": 16
+ },
+ "tools": {
+  "workspace": 24,
+  "banking": 11
+ },
+ "injection_vectors": {
+  "workspace": 16,
+  "banking": 4
+ },
+ "user_split_counts": {
+  "train": 28,
+  "dev": 6,
+  "test": 22
+ },
+ "scenarios": {
+  "banking_benign_test": 6,
+  "banking_benign_train": 10,
+  "banking_injection_excluded": 70,
+  "banking_injection_test": 24,
+  "banking_injection_train": 50,
+  "workspace_benign_test": 16,
+  "workspace_benign_train": 24,
+  "workspace_injection_excluded": 272,
+  "workspace_injection_test": 96,
+  "workspace_injection_train": 192
+ },
+ "proposals_banking": 19056,
+ "proposals_workspace": 42096,
+ "traces_banking": 6962,
+ "traces_workspace": 16640
+}

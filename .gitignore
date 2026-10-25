@@ -1,0 +1,14 @@
+# Track only the dataset and its documentation on this branch.
+/*
+!/.gitignore
+!/README.md
+
+!/data/
+/data/*
+!/data/processed/
+
+# Local-only: raw downloads, papers, reference code, build scripts, proposal PDF, envs
+# (data/raw/, papers/, related_code/, scripts/, Autobots.pdf, .venv/ are ignored by the rules above)
+__pycache__/
+*.pyc
+.venv/
