@@ -1,0 +1,6 @@
+name: b5_no_prov
+gate: {kind: llm, adapter: adapters/b5_no_prov}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: none, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

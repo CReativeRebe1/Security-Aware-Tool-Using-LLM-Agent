@@ -1,0 +1,6 @@
+name: b2_prompt_binary
+gate: {kind: llm, adapter: null}
+decision_space: [ALLOW, BLOCK]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: false}
