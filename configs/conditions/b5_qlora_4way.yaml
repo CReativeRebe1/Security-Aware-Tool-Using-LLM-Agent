@@ -1,0 +1,6 @@
+name: b5_qlora_4way
+gate: {kind: llm, adapter: adapters/b5_qlora_4way}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

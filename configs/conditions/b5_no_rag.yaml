@@ -1,0 +1,6 @@
+name: b5_no_rag
+gate: {kind: llm, adapter: adapters/b5_no_rag}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: false}
+supervision: {intermediate: true}
+resolution: {enabled: true}

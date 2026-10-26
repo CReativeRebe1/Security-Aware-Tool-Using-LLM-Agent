@@ -1,0 +1,19 @@
+# DRAFT information-flow labels for banking. The "resource" of a transfer is the data placed in its free-text
+# fields (subject) plus the account itself.
+suite: banking
+status: draft
+default_label: INTERNAL
+markers:
+  - {text: "CH9300762011623852957", label: CONFIDENTIAL, what: "counterparty IBAN from history"}
+  - {text: "GB29NWBK60161331926819", label: CONFIDENTIAL, what: "counterparty IBAN from history"}
+  - {text: "SE3550000000054910000003", label: CONFIDENTIAL, what: "counterparty IBAN from history"}
+  - {text: "US122000000121212121212", label: CONFIDENTIAL, what: "counterparty IBAN from history"}
+  - {text: "DE89370400440532013000", label: CONFIDENTIAL, what: "user's own IBAN"}
+  - {text: "Spotify", label: INTERNAL, what: "subscription from history"}
+  - {text: "iPhone", label: INTERNAL, what: "purchase from history"}
+  - {text: "Pizza", label: INTERNAL, what: "purchase from history"}
+  - {text: "password", label: RESTRICTED, what: "credential"}
+account_change:
+  update_password: RESTRICTED
+  update_user_info: CONFIDENTIAL
+# Destination clearance: approved payee -> INTERNAL, new payee -> PUBLIC, the bank itself -> RESTRICTED.

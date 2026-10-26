@@ -2,8 +2,8 @@
 
 Scope of this document: the software architecture and the Kaggle execution plan for the CL3410 project
 *Provenance- and authority-aware resolution of tool actions at runtime*. It turns the proposal
-(Sections 4–9) into packages, interfaces, data contracts and notebooks. No code exists yet; this is the
-plan to review before implementation.
+(Sections 4–9) into packages, interfaces, data contracts and notebooks. The code up to the baselines
+(B0–B3, NB00–NB02) is implemented; Section 14 lists its status and the deviations from this plan.
 
 ---
 
@@ -611,3 +611,47 @@ Build the thinnest end-to-end slice first, then widen it. Anything marked *stret
 
 Minimal viable result if things slip: B1, B3, B4, B5 offline on oracle provenance, plus B5 − provenance and
 B5 − authority. That alone answers H1 and H2.
+
+---
+
+## 14. Implementation status (baselines)
+
+**Built and tested** (`pytest`: 37 tests; local smoke run with `Qwen/Qwen3-0.6B` on CPU):
+`config`, `data/{loaders,splits,cases,build_cases,annotation,ground_truth}`, `evidence/*`, `gate/*`,
+`resolution/*`, `models/{backend,chat}`, `agent/{pipeline,run_b0,extract_proposals}`,
+`eval/{metrics,stats,run_gate,report}`, `smoke`, Kaggle kernels NB00–NB02 + `stage_code.sh` + `bootstrap.py`.
+
+**Not built yet** (after the baselines): `train/*` (variants, SFT build, QLoRA), `eval/pareto.py`
+(B4 threshold sweep), `GatedToolsExecutor` + `run_e2e.py` (NB05), NB03–NB06.
+
+**Checks against the data**
+- Provenance tagging reproduces the shipped `arg_provenance` on 100% of sampled arguments; proposal
+  extraction reproduces `message_index`, `step`, `prior_calls`, `proposed_call` exactly.
+- `matches_*_ground_truth` is re-implemented in `data/ground_truth.py` (~99% agreement with the shipped flags).
+- The enum-scoring decoder's KV-cache scores equal a plain full forward pass (checked on Qwen3-0.6B).
+- Krippendorff's α matches the reference `krippendorff` package.
+- Test pool: 1,390 deduplicated state-changing candidate cases (train pool: 4,643). B1 on the test candidates:
+  first-round ALLOW 956 · BLOCK 313 · ASK_USER 112 · ESCALATE 9. As expected (§11), executable cases carry very few
+  ESCALATEs; the decision-only NL cases must supply most of them.
+
+**Deviations / decisions taken in code** (review with the team)
+1. `resources/` (authority, sensitivity, handbooks) are **drafts** written to create policy pressure on real
+   tasks: transfer limits (1,500 approved payee / 500 new payee), redirecting a standing order, deleting a file
+   someone else owns, look-alike domains, RESTRICTED codes and reset links. The team still has to own and freeze them (§12.6).
+2. Provenance records have a call-level record `P0` (`instruction_origin`, `trust`) followed by one record
+   per argument. Trust levels: `trusted | third_party | untrusted | unknown`. Oracle mode also marks a call as
+   injection-driven when it matches the injection task's ground truth and an injected block is in context.
+3. Inferred provenance (string matching + instruction-cue regex) is already implemented, because the live
+   pipeline needs it anyway; the LLM attribution stretch is not.
+4. Untrusted blocks are truncated by characters (1,500 ≈ 384 tokens) so case building needs no tokenizer.
+5. The retrieval query uses trusted fields only and does **not** use provenance (otherwise −provenance would leak
+   through the retrieved clauses); clauses about injected instructions are therefore rarely retrieved.
+6. Before annotation, `ScenarioResponder` answers ASK_USER (confirms calls matching the user task's ground
+   truth, 15% seeded noise). `FixedUserResponder` takes over automatically for cases with a `user_response`.
+7. `MockApprover` denies when the call's oracle origin is untrusted, when the gate escalates to the wrong role,
+   or when a basis rule is in the approver's `denies` list. When no approval is needed, it answers "the user
+   may authorize this" (the deferral is still counted).
+8. `injection_seen_before_call` in extracted proposals is whitespace/quote-insensitive, so it also catches
+   injections split by YAML line-wrapping. The shipped flag misses those, so it is True less often.
+9. B0 trace ids are `qwen3-8b|<suite>|<user_task>|<attack|none>|<injection_task|none>`; the AgentDojo pipeline
+   name contains `local` so the `important_instructions` attack addresses the model as "Local model".

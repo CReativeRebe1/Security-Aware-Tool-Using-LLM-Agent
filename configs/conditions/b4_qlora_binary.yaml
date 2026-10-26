@@ -1,0 +1,7 @@
+name: b4_qlora_binary
+gate: {kind: llm, adapter: adapters/b4_qlora_binary}
+decision_space: [ALLOW, BLOCK]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: false}
+threshold: {sweep: true, pool: dev}

@@ -134,3 +134,29 @@ inferred-provenance condition. The `matches_*` flags are weak labels for analysi
 - Provenance is substring matching; numbers, dates and short values are often `unknown`.
 - 468 injection-only runs (no user task) are not exported. Slack and travel suites are out of scope.
 - See [`data/processed/agentdojo/README.md`](data/processed/agentdojo/README.md) for additional notes.
+
+## Code (`src/sagate`)
+
+Implementation of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) up to the baselines (B0–B3). Section 14 of
+the architecture lists what is built and where it deviates from the plan.
+
+```bash
+pip install -e ".[dev]"                 # CPU parts: case building, B1, metrics, tests
+pip install -e ".[gpu,agentdojo]"       # + Qwen3 backend and the AgentDojo agent
+pytest -q
+```
+
+| Step | Command |
+|---|---|
+| Build gate cases from the logged runs | `python -m sagate.data.build_cases --pool test` (also `train`, `dev`) |
+| Export cases for annotation | `python -m sagate.data.annotation export --cases outputs/cases/test_candidates.jsonl --sample 160 --out annotations/batch1.csv` |
+| Agreement / gold file | `python -m sagate.data.annotation agreement annotations/batch1_*.csv` · `... gold annotations/batch1_adjudicated.csv --out annotations/gold.jsonl` |
+| B1 rules (CPU) | `python -m sagate.eval.run_gate --condition b1_rules --cases outputs/cases/test_candidates.jsonl` |
+| B2 / B3 prompted (GPU) | `python -m sagate.eval.run_gate --condition b3_prompt_4way --cases ... [--responses noisy]` |
+| Report | `python -m sagate.eval.report --cases ... --pred outputs/predictions/*.jsonl [--gold annotations/gold.jsonl --compare A B]` |
+| B0 Qwen traces (GPU) | `python -m sagate.agent.run_b0 --shard 0 --num-shards 2` then `python -m sagate.agent.extract_proposals` |
+| Smoke test / throughput | `python -m sagate.smoke [--model-id Qwen/Qwen3-0.6B]` |
+
+Kaggle: `bash kaggle/stage_code.sh`, then `kaggle datasets version -p build/sagate-code --dir-mode zip -m "<sha>"`
+(first time: `kaggle datasets create`), then `kaggle kernels push -p build/kernels/nb00_setup_smoke --accelerator
+NvidiaTeslaT4`. Kernels NB00 (smoke), NB01 (B0 traces) and NB02 (B1/B2/B3) are in `kaggle/`.

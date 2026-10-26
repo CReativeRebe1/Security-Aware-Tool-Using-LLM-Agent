@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagate"
+version = "0.1.0"
+description = "Provenance- and authority-aware security gate for tool-using LLM agents (CL3410 project)"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# GPU stack: agent, prompted gates, learned gates (one HF backend, see docs/ARCHITECTURE.md 5.8)
+gpu = [
+    "torch>=2.3",
+    "transformers>=4.51,<5",
+    "accelerate>=0.33",
+    "bitsandbytes>=0.43",
+    "peft>=0.13",
+]
+train = [
+    "sagate[gpu]",
+    "trl>=0.12",
+    "datasets>=2.20",
+]
+agentdojo = ["agentdojo==0.1.35"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
