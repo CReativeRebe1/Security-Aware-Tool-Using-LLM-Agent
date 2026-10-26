@@ -624,9 +624,14 @@ B5 − authority. That alone answers H1 and H2.
 it before annotation: **replaying old-log executable cases** in the pinned AgentDojo env and dropping those whose
 prior calls do not reproduce. Until it exists, executable cases from pre-v1.2.2 logs are unverified.
 
-**Baseline run status.** NB00–NB02 are staged but have not produced outputs yet (no B0 traces, no B2/B3
-predictions). Offline B1–B3 metrics need the frozen gold file: before annotation NB02 is a dry run that reports the
-decision mix only. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (adds Qwen proposals) → annotate →
+**Baseline run status.** NB00 and NB01 ran on Kaggle (T4). NB00 measured on one T4: prefill ~850 tok/s, decode
+~12 tok/s, gate call ~3.5 s (1.5 s with a cached prompt), 7.1 GB. NB01 (test pool only, 142 scenarios, 0 errors,
+~70 s/scenario): **B0 utility 49/142 (34.5%)** — benign 8/22, under attack 41/120 — and **ASR 10/120 (8.3%)**
+(banking 8/24, workspace 2/96); 483 proposals, 97 state-changing. Two T4 fixes were needed: the pre-quantised
+checkpoint's bf16 compute dtype is reset to fp16 after loading (~5x prefill), and long agent prompts are prefilled
+in 1,024-token chunks (SDPA on a T4 materialises the full attention matrix; 33 workspace traces hit OOM before).
+NB02 is not run: offline B1–B3 metrics need the frozen gold file, and before annotation it only reports the
+decision mix. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (adds Qwen proposals) → annotate →
 `annotation gold` → `annotation freeze` → `annotations/<pool>_cases.jsonl` in the staged code → NB02.
 
 **Checks against the data**
