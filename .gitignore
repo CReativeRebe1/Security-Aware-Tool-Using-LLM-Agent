@@ -1,14 +1,29 @@
-# Track only the dataset and its documentation on this branch.
+# Tracked: dataset + code, configs, policy resources, docs, notebooks, tests.
 /*
 !/.gitignore
 !/README.md
+!/pyproject.toml
 
 !/data/
 /data/*
 !/data/processed/
 
-# Local-only: raw downloads, papers, reference code, build scripts, proposal PDF, envs
-# (data/raw/, papers/, related_code/, scripts/, Autobots.pdf, .venv/ are ignored by the rules above)
+!/src/
+!/configs/
+!/resources/
+!/docs/
+!/annotations/
+!/notebooks/
+!/scripts/
+!/tests/
+
+# Local-only
 __pycache__/
 *.pyc
+.pytest_cache/
 .venv/
+outputs/
+build/
+
+Autobots.pdf
+RULES.md

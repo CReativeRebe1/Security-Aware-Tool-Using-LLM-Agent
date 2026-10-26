@@ -1,0 +1,33 @@
+# Shared settings. Relative paths resolve against the repository root.
+seed: 42
+
+paths:
+  data_dir: data/processed/agentdojo
+  resources_dir: resources
+  annotations_dir: annotations
+  outputs_dir: outputs
+  hf_cache: null                    # null = Hugging Face default cache
+
+model:
+  base_id: unsloth/Qwen3-8B-bnb-4bit  # pre-quantised nf4 checkpoint (~6 GB)
+  smoke_id: Qwen/Qwen3-0.6B           # small model for local / SMOKE runs
+  compute_dtype: float16              # T4 has no bf16
+  enable_thinking: false
+  max_input_tokens: 2048
+
+agent:
+  benchmark_version: v1.2.2
+  attack: important_instructions
+  max_iters: 15
+  max_new_tokens: 512
+  max_parse_retries: 2
+
+context:
+  max_tool_outputs: 3       # most recent tool outputs shown to the gate
+  tool_output_chars: 1500   # per output (~380 tokens)
+  rag_k: 3
+  rag_k_eval: 5             # retrieved ids kept for Recall@5
+
+resolution:
+  max_rounds: 2
+  user_noise: 0.15

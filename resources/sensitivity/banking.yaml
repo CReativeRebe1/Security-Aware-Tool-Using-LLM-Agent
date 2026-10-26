@@ -1,0 +1,9 @@
+default: INTERNAL
+files:
+  bill-december-2023.txt: INTERNAL
+  landlord-notices.txt: INTERNAL
+  address-change.txt: INTERNAL
+markers:
+  "password123": RESTRICTED
+  "DE89370400440532013000": CONFIDENTIAL   # the holder's own IBAN
+# Content sent in a transaction subject goes to the payee's bank statement (an external destination).

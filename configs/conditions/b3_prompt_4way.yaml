@@ -1,0 +1,6 @@
+name: b3_prompt_4way
+gate: {kind: llm}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secgate"
+version = "0.1.0"
+description = "Provenance- and authority-aware runtime security gate for tool-using LLM agents"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# One model stack for the task agent, the prompted gates and (later) the learned gates.
+gpu = [
+    "torch>=2.3",
+    "transformers>=4.51,<4.58",
+    "accelerate>=0.33",
+    "bitsandbytes>=0.43",
+    "peft>=0.13",
+]
+agentdojo = ["agentdojo==0.1.35"]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,11 +1,57 @@
-# Security-Aware Tool-Using LLM Agent — Dataset
+# Security-Aware Tool-Using LLM Agent
 
-Data for the CL3410 (Language Models and Agents, IIIT Hyderabad, Monsoon 2026) group project
+CL3410 (Language Models and Agents, IIIT Hyderabad, Monsoon 2026) group project
 *Provenance- and authority-aware resolution of tool actions at runtime*.
 
-This branch holds the base data the project builds on: AgentDojo's **workspace** and **banking** suites,
-exported to flat JSON/JSONL, plus the logged AgentDojo agent runs we use as cached B0 traces. The
-human-annotated test set and the generated training variants will be added later.
+A runtime security gate sits between a Qwen3-8B tool agent and its tools. For every state-changing call it
+assembles provenance, authority, sensitivity and policy (RAG) evidence and decides ALLOW / BLOCK / ASK_USER /
+ESCALATE; ASK_USER and ESCALATE collect one more piece of evidence and re-run the same gate (at most two rounds,
+then BLOCK).
+
+## Code (`secgate`)
+
+| Path | Contents |
+|---|---|
+| `src/secgate/data/` | dataset loaders, frozen split + leakage guard, case builder, ground-truth matching |
+| `src/secgate/evidence/` | tool registry, provenance (oracle / inferred), authority registry, sensitivity labels, BM25 policy retrieval, evidence masks, context builder |
+| `src/secgate/gate/` | schema, prompt renderer, B1 rules, enum-scoring constrained decoder, LLM gate (B2–B5) |
+| `src/secgate/resolution/` | resolution loop, fixed / scenario user responders, mock approver |
+| `src/secgate/models/` | Hugging Face backend (nf4 + PEFT, KV-cache reuse), Qwen3 chat and tool-call parsing |
+| `src/secgate/agent/` | AgentDojo pipeline with a local Qwen3 agent, B0 trace runner, proposal extraction |
+| `src/secgate/eval/` | gate runner, metrics, report |
+| `configs/` | base settings, Kaggle overrides, one YAML per experimental condition |
+| `resources/` | synthetic authority state, sensitivity labels, the two clause-tagged policy handbooks |
+| `docs/ANNOTATION_GUIDE.md` | label definitions and decision procedure for the human test set |
+| `notebooks/kaggle_pipeline.ipynb` | the single Kaggle notebook that runs every stage |
+
+Baselines implemented so far: **B0** (Qwen3-8B agent, no gate), **B1** (deterministic rules), **B2** (prompted
+binary gate), **B3** (prompted four-way gate).
+
+### Run locally (CPU parts and small-model smoke tests)
+
+```bash
+pip install -e ".[dev]"                       # + ".[gpu,agentdojo]" for the model and agent parts
+pytest
+python -m secgate.data.build_cases --pool test
+python -m secgate.eval.run_gate --condition b1_rules --cases outputs/cases/test_candidates.jsonl --pool test
+python -m secgate.eval.report --cases outputs/cases/test_candidates.jsonl --pred outputs/predictions/test/*.jsonl
+python -m secgate.smoke --model-id Qwen/Qwen3-0.6B    # needs torch + transformers (+ agentdojo for the agent task)
+```
+
+### Run on Kaggle
+
+Full step-by-step guide: [docs/KAGGLE.md](docs/KAGGLE.md). In short:
+
+1. `python scripts/stage_kaggle_code.py --owner <kaggle-user>`, then
+   `kaggle datasets create -p build/kaggle-code --dir-mode zip` (later: `kaggle datasets version ...`).
+2. Open `notebooks/kaggle_pipeline.ipynb` on Kaggle (GPU T4 x2, internet on), attach the `secgate-code`
+   dataset, choose `STAGES`, and run with `SMOKE = True` first, then `SMOKE = False`.
+
+## Dataset
+
+The base data is AgentDojo's **workspace** and **banking** suites, exported to flat JSON/JSONL, plus logged
+AgentDojo agent runs used as a pool of tool-call proposals. The human-annotated test set and the generated
+training variants are added under `annotations/` later.
 
 ## Where the data comes from
 

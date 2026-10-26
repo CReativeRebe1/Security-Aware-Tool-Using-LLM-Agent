@@ -1,0 +1,4 @@
+# Applied on top of base.yaml when running on Kaggle.
+paths:
+  outputs_dir: /kaggle/working/outputs
+  hf_cache: /kaggle/tmp/hf
