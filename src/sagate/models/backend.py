@@ -18,6 +18,25 @@ def _lcp(a: Sequence[int], b: Sequence[int]) -> int:
     return i
 
 
+def _set_4bit_compute_dtype(model, dtype) -> int:
+    """Pre-quantised checkpoints (unsloth/*-bnb-4bit) save bnb_4bit_compute_dtype=bfloat16, and transformers keeps the
+    saved config even when another is passed. T4s have no bf16, so every 4-bit matmul ran emulated (~10x slower
+    prefill, NB00). Set the layers' compute dtype and dequantisation dtype directly. Returns #layers changed."""
+    try:
+        from bitsandbytes.nn import Linear4bit
+    except ImportError:
+        return 0
+    n = 0
+    for m in model.modules():
+        if isinstance(m, Linear4bit) and m.compute_dtype != dtype:
+            m.compute_dtype = dtype
+            qs = getattr(m.weight, "quant_state", None)
+            if qs is not None:
+                qs.dtype = dtype
+            n += 1
+    return n
+
+
 class HFBackend:
     def __init__(
         self,
@@ -45,10 +64,8 @@ class HFBackend:
         if torch.cuda.is_available():
             kw["device_map"] = device_map
             if load_in_4bit is None:
-                # pre-quantised bnb checkpoints too: their saved config says bnb_4bit_compute_dtype=bfloat16, which
-                # T4s run on a slow non-native path; passing the config overrides the compute dtype (fp16)
-                load_in_4bit = "awq" not in model_id.lower() and (
-                    "bnb-4bit" in model_id.lower() or any(s in model_id.lower() for s in ("8b", "14b", "32b")))
+                load_in_4bit = "bnb-4bit" not in model_id.lower() and "awq" not in model_id.lower() and \
+                    any(s in model_id.lower() for s in ("8b", "14b", "32b"))
             if load_in_4bit:
                 from transformers import BitsAndBytesConfig
                 kw["quantization_config"] = BitsAndBytesConfig(
@@ -57,6 +74,8 @@ class HFBackend:
         else:
             kw["torch_dtype"] = torch.float32       # CPU smoke tests with small models
         self.model = AutoModelForCausalLM.from_pretrained(model_id, **kw)
+        if torch.cuda.is_available():
+            self.n_recast = _set_4bit_compute_dtype(self.model, dtype)
         self.model.eval()
         self.device = next(self.model.parameters()).device
         self.peft = False

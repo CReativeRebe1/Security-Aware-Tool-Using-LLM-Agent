@@ -99,7 +99,8 @@ def main(argv=None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
     backend = backend_from_config(cfg, model_id=a.model_id)
-    res = {"model_id": backend.model_id, "load_s": time.time() - t0}
+    res = {"model_id": backend.model_id, "load_s": time.time() - t0,
+           "recast_4bit_layers": getattr(backend, "n_recast", 0)}
     res["throughput"] = throughput(backend)
     print(json.dumps(res, indent=1), flush=True)
     res["gate_call"] = gate_call(backend, cfg, data)
