@@ -22,6 +22,9 @@ from ..data.ground_truth import matches_ground_truth
 from ..gate.schema import GateInput, GateOutput
 
 
+DEFAULT_APPROVER_ROLE = "manager"
+
+
 def _unit(*parts) -> float:
     """Deterministic pseudo-random number in [0, 1) from the parts."""
     h = hashlib.sha1("|".join(map(str, parts)).encode()).hexdigest()
@@ -91,7 +94,11 @@ class MockApprover:
         full = case.input                      # true world state, independent of any evidence mask
         auth = full.authority or {}
         actual = auth.get("required_role", "current_user")
-        asked = out.required_authority if out.required_authority not in (None, "none", "current_user") else actual
+        # The approver is the one the gate names. A gate that names none (no intermediate supervision, or "none"/
+        # "current_user") is routed to the same fixed default for every condition, so the true role never leaks
+        # into conditions that cannot predict it.
+        asked = out.required_authority if out.required_authority not in (None, "none", "current_user") \
+            else DEFAULT_APPROVER_ROLE
         approver = auth.get("approver") or asked
 
         def reply(ok: bool, text: str) -> dict:
@@ -108,6 +115,6 @@ class MockApprover:
         basis = auth.get("basis", [])
         if any(b in policy.get("denies", []) for b in basis):
             return reply(False, "Denied.")
-        if basis and all(b in policy.get("approves", []) or b == "transfer_over_manager_max" for b in basis):
+        if basis and all(b in policy.get("approves", []) for b in basis):
             return reply(True, "Approved.")
         return reply(False, "Denied.")

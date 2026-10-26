@@ -1,6 +1,7 @@
 """Scenario split lookup and the leakage guard (ARCHITECTURE.md P5, §10).
 
-Pools: "train" = strict_split train (includes dev), "dev" = strict train with user_task_split dev,
+Pools: "train" = strict_split train (includes dev), "train_only" = train without dev (use for SFT data, so the
+B4 threshold is never selected on seen scenarios), "dev" = strict train with user_task_split dev,
 "test" = strict_split test. "excluded" scenarios are never used.
 """
 
@@ -35,6 +36,8 @@ class Splits:
         p = self.pool_of(sid)
         if pool == "train":
             return p in ("train", "dev")
+        if pool == "train_only":      # SFT data: train-source minus the dev pool used for threshold selection
+            return p == "train"
         return p == pool
 
     def scenarios_in(self, pool: str) -> list[str]:
@@ -46,7 +49,7 @@ class Splits:
         if sid is None:
             # decision-only NL cases carry an explicit pool tag instead of a scenario
             tag = case.get("pool") if isinstance(case, dict) else getattr(case, "pool", None)
-            ok = tag == pool or (pool == "train" and tag == "dev")
+            ok = tag == pool or (pool == "train" and tag == "dev") or (pool == "train_only" and tag == "train")
             if not ok:
                 raise LeakageError(f"case without scenario has pool {tag!r}, expected {pool!r}")
             return
