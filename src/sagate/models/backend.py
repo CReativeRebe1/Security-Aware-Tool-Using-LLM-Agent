@@ -45,8 +45,10 @@ class HFBackend:
         if torch.cuda.is_available():
             kw["device_map"] = device_map
             if load_in_4bit is None:
-                load_in_4bit = "bnb-4bit" not in model_id.lower() and "awq" not in model_id.lower() and \
-                    any(s in model_id.lower() for s in ("8b", "14b", "32b"))
+                # pre-quantised bnb checkpoints too: their saved config says bnb_4bit_compute_dtype=bfloat16, which
+                # T4s run on a slow non-native path; passing the config overrides the compute dtype (fp16)
+                load_in_4bit = "awq" not in model_id.lower() and (
+                    "bnb-4bit" in model_id.lower() or any(s in model_id.lower() for s in ("8b", "14b", "32b")))
             if load_in_4bit:
                 from transformers import BitsAndBytesConfig
                 kw["quantization_config"] = BitsAndBytesConfig(
