@@ -232,11 +232,11 @@ authority and sensitivity modules use.
 ### 5.2 Provenance (`evidence/provenance.py`)
 - **Oracle**: reuse the dataset's `arg_provenance` logic — substring match of each argument value against
   the user prompt, the known injected strings, and other tool outputs. Upper bound.
-- **Inferred** (runtime-realistic, no knowledge of which text is injected): (1) match values against the
+- **Inferred** (runtime-realistic, no knowledge of which text is injected): match values against the
   user prompt vs. each tool output in the conversation, tagging tool outputs from third-party content
-  (emails, files, calendar descriptions, bill files) as `untrusted`; (2) for values with no match, or for the
-  *instruction origin* ("which content made the agent do this?"), ask Qwen3-8B a constrained multiple-choice
-  attribution question over `{user, T1..Tn}`. Attribution accuracy is scored against oracle.
+  (emails, files, calendar descriptions, bill files) as `untrusted`. Pure string matching, CPU only.
+  *Stretch (only if time):* for unmatched values / instruction origin, a constrained multiple-choice
+  attribution question to Qwen3-8B over `{user, T1..Tn}`. Attribution accuracy is scored against oracle.
 
 ### 5.3 Authority registry (`evidence/authority.py`)
 Plain dictionary lookup over `resources/authority/<suite>.yaml`:
@@ -258,9 +258,10 @@ Rule: authority is only ever read from this registry and from `MockApprover` res
 untrusted content (this is what the authority-spoofing category tests).
 
 ### 5.4 Policy RAG (`evidence/policy_rag.py`)
-Handbook clauses written as `### [BANK-3.2] Title` → one chunk per clause. Hybrid retriever: BM25
-(`rank_bm25`) + `BAAI/bge-small-en-v1.5` embeddings on CPU, reciprocal-rank fusion, top-k=3 (k=5 for
-Recall@5). The query is built from **trusted fields only** (tool name, action class, resource/destination
+Handbook clauses written as `### [BANK-3.2] Title` → one chunk per clause (~80 clauses in total, so this
+is tiny). Retriever: BM25 (`rank_bm25`), top-k=3 (k=5 for Recall@5). A dense retriever
+(`BAAI/bge-small-en-v1.5`, CPU) is added only if BM25 Recall@3 on the pilot cases is poor. Retrieval is
+precomputed once per case on CPU and stored in the case file, so no GPU session ever runs retrieval. The query is built from **trusted fields only** (tool name, action class, resource/destination
 labels, user prompt) so injected text cannot steer retrieval.
 
 ### 5.5 Gate (`gate/`)
@@ -272,7 +273,8 @@ labels, user prompt) so injected text cannot steer retrieval.
   allowed value's token sequence (one batched forward pass with the shared prefix in KV cache) and takes the
   argmax. Gives (a) always-parseable output, (b) exact class probabilities — `p_allow` for the B4 threshold
   sweep and for Pareto curves, (c) no extra dependencies. `evidence_cited` is generated greedily and filtered
-  to valid IDs.
+  to valid IDs **only for B5 on the test set** (error analysis); everywhere else generation stops after
+  `decision`, so a gate call is ~one prefill + a few short scoring passes (~1 s on a T4).
 - **B1 rules** (`rules.py`): ordered deterministic rules over the same `GateInput` (e.g. untrusted
   instruction origin + state-changing → BLOCK; user lacks authority + approver exists → ESCALATE; recipient
   not identified and user may authorize → ASK_USER; high_to_low flow without approval → BLOCK/ESCALATE per
@@ -299,11 +301,22 @@ final = out.decision if out.decision in {ALLOW, BLOCK} else BLOCK
 ### 5.7 Agent + sandbox (`agent/pipeline.py`)
 AgentDojo (pip `agentdojo`, pinned to the v1.2.2-compatible release) provides environments, tools and
 scoring. We add two pipeline elements:
-- `QwenLLM` — calls the model backend (vLLM OpenAI-compatible server with Hermes tool-call parsing, or the
-  HF backend), thinking off, greedy.
+- `QwenLLM` — calls the HF backend, thinking off, greedy; Qwen3's native `<tool_call>` JSON is parsed by a
+  small custom parser (malformed calls are returned to the agent as an error, max 2 retries).
 - `GatedToolsExecutor` — replaces AgentDojo's `ToolsExecutor`: for each tool call, build `GateInput` from the
   live conversation (inferred provenance), run the resolution loop, execute only on `ALLOW`, otherwise
-  return a minimal tool message (`"Action not permitted."`) that leaks no policy detail. Writes an audit log.
+  return a minimal tool message (`"Action not permitted."`) that leaks no policy detail. After 3 refused
+  calls in one task the run is ended (prevents the agent looping on retries). Writes an audit log.
+
+**One model in memory.** Agent and gate share the same nf4 base model in one process; the gate call wraps
+the B5 LoRA adapter (`model.set_adapter("b5")`), the agent call runs with adapters disabled
+(`with model.disable_adapter():`). One GPU per run, no server, no inter-process plumbing.
+
+**Live responders.** Live e2e runs produce calls that are not in the annotated test set, so there is no
+hand-written `user_response` for them. `ScenarioResponder` answers from the scenario instead: the user
+confirms a call that matches the user task's ground truth and declines anything else (with the same 15%
+noise); the approver answers from the authority YAML. This is weaker than the offline protocol and is
+reported as such.
 
 B0 = the same pipeline with the gate disabled.
 
@@ -311,10 +324,13 @@ B0 = the same pipeline with the gate disabled.
 
 | Use | Backend | Quantisation |
 |---|---|---|
-| Gate inference (B2–B5), training, inferred provenance | HF `transformers` + `bitsandbytes` nf4 + PEFT adapter | 4-bit nf4, fp16 compute |
-| Task agent for B0 trace generation / e2e (throughput) | vLLM server (`Qwen/Qwen3-8B-AWQ`) — **fallback** HF backend | AWQ 4-bit |
+| Everything: agent, gate (B2–B5), training | HF `transformers` + `bitsandbytes` + PEFT | pre-quantised nf4 checkpoint (`unsloth/Qwen3-8B-bnb-4bit`, ~6 GB), fp16 compute |
+| Optional speed-up for B0 traces only | vLLM (`Qwen/Qwen3-8B-AWQ`) — only if NB00 shows it runs on T4 | AWQ 4-bit |
 
-Gate conditions all use the *same* HF nf4 path, so prompted vs learned gates differ only by the adapter.
+Why one backend: agent, prompted gates and learned gates are the same weights, so prompted vs learned
+gates differ only by the adapter, and there is one stack to debug. Why a pre-quantised checkpoint: the
+fp16 checkpoint is 16 GB, which nearly fills the 20 GB `/kaggle/working` disk and spikes CPU RAM when two
+processes quantise on load at the same time (Kaggle has ~29 GB RAM).
 
 ---
 
@@ -331,12 +347,19 @@ Gate conditions all use the *same* HF nf4 path, so prompted vs learned gates dif
 - **Per-condition SFT build**: `build_sft.py --condition b4_qlora_binary` applies the same `EvidenceMask` as
   evaluation, collapses labels (`B4`: `gold_final_action`; `b5_no_ask`/`b5_no_esc`: remove the class, map to
   `gold_final_action`), and drops intermediate fields for `b5_no_inter`. B4 and B5 see the *same examples*.
-- **QLoRA**: PEFT LoRA r=16, α=32, dropout 0.05 on all linear projections; nf4 + double quant; fp16 compute
-  (T4/P100 have no bf16); loss on the assistant JSON only; max length 3,072; batch 1 × grad-accum 16;
-  lr 2e-4 cosine; 2 epochs; gradient checkpointing; checkpoint every 100 steps to `/kaggle/working` for
-  resume. Optional Unsloth backend if speed is the bottleneck.
-- **B4 operating point**: sweep the threshold on `p_allow` over the dev user tasks (part of train-source),
-  pick the threshold matching B5's unauthorized-action rate on dev; never touch test.
+- **QLoRA**: LoRA r=16, α=32, dropout 0.05 on all linear projections; nf4; fp16 compute (T4/P100 have no
+  bf16); loss on the assistant JSON only; max length 2,048 (median gate input ≈ 1.2k tokens, untrusted
+  blocks truncated); batch 1 × grad-accum 16; lr 2e-4 cosine; 2 epochs; gradient checkpointing; checkpoint
+  every 100 steps for resume. **Unsloth is the primary trainer on T4** (≈2× faster, and handles Qwen3 fp16
+  stability); plain PEFT/TRL is the fallback with the identical config. The adapter is saved as a standard
+  PEFT adapter so inference never depends on Unsloth.
+- **Cost per run**: ~1,200 examples × ~1.2k tokens × 2 epochs ≈ 3M tokens → **~35–90 min on one T4**.
+  8 runs, 2 in parallel (one per GPU) → ~3–5 h wall-clock in total.
+- **B4 operating point**: sweep the threshold on `p_allow` over the dev pool (48 scenarios from the 6 dev
+  user tasks, part of train-source), pick the threshold matching B5's unauthorized-action rate on dev;
+  never touch test. Dev cases are generated, not human-labelled, so the dev-selected point may not
+  transfer; the full threshold curve on test is also reported as a Pareto frontier (reporting a curve
+  is not selecting on test).
 
 ---
 
@@ -392,10 +415,11 @@ unauthorized-action vs final-resolution-success frontier with the success region
 
 | Item | Choice |
 |---|---|
-| Accelerator | **GPU T4 ×2** (16 GB each). One 8B nf4 model (~6 GB) per GPU → two independent jobs in parallel per notebook (`CUDA_VISIBLE_DEVICES=0` / `1`). |
+| Accelerator | **GPU T4 ×2** (16 GB each). One 8B nf4 model (~6 GB) per GPU → two independent jobs in parallel per notebook, launched as two subprocesses with `CUDA_VISIBLE_DEVICES=0` / `1` (not one process spanning both GPUs). |
 | Code | Notebook cell clones this repo (internet on) and `pip install -e .[train]`; or the repo is attached as a Kaggle Dataset for offline runs. |
 | Data | Comes with the repo (`data/processed/agentdojo`, 27 MB). |
-| Model | `Qwen/Qwen3-8B` from Hugging Face (or the Kaggle Models copy attached under `/kaggle/input`), quantised on load; `Qwen/Qwen3-8B-AWQ` for vLLM. HF cache under `/kaggle/working/hf` or `/kaggle/tmp`. |
+| Model | `unsloth/Qwen3-8B-bnb-4bit` (~6 GB) downloaded once into `/kaggle/tmp/hf` (not persisted, does not count against the 20 GB output disk); or attached as a Kaggle Model/Dataset to skip the download. |
+| Long jobs | Run as **"Save & Run All (Commit)"** background versions, not interactive sessions — interactive output is lost when the session ends. |
 | Secrets | `HF_TOKEN` via Kaggle Secrets (only if needed). No external LLM APIs. |
 | Outputs | `/kaggle/working/outputs/<stage>/…`; "Save Version" turns them into a Kaggle Dataset (`sagate-outputs-<stage>`) that the next notebook attaches as input. |
 | Limits | 12 h per session, ~30 GPU-h/week per account → work is split across the four team accounts; all jobs resumable. |
@@ -406,17 +430,25 @@ unauthorized-action vs final-resolution-success frontier with the success region
 
 | NB | Purpose | Accelerator | Inputs → outputs | Est. GPU-h |
 |---|---|---|---|---|
-| NB00 `setup_smoke` | install, load Qwen3-8B nf4, one gate call, one AgentDojo task, unit tests | T4 | → env check | 0.5 |
-| NB01 `b0_traces` | Qwen3-8B agent over all strict train/test scenarios (benign + injection, `important_instructions` attack) → traces + proposals in dataset schema; ground-truth replay fallback | T4×2 (vLLM, parallel scenarios) | dataset → `b0_traces/` | 3–5 |
-| NB02 `baselines_prompted` | B1 (CPU), B2, B3 on test + dev, with resolution loop; inferred-provenance attribution | T4×2 (GPU0 = B2, GPU1 = B3) | cases → `predictions/` | 2–4 |
-| NB03 `train_qlora` | one condition per GPU per run; 8 conditions → 4 sessions | T4×2 | `sft/` → `adapters/<cond>/` | 6–12 |
-| NB04 `eval_learned` | B4 (incl. dev threshold sweep), B5, ablations, inferred-prov swap; clean vs noisy | T4×2 | adapters + cases → `predictions/` | 3–5 |
-| NB05 `e2e_agentdojo` | B0 vs B5 (B3 if time) end-to-end on test-source executable scenarios | T4×2 (agent on GPU0 via vLLM, gate on GPU1 via HF) | adapters → `e2e/` | 4–7 |
+| NB | Purpose | Accelerator | Inputs → outputs | Est. session-h |
+|---|---|---|---|---|
+| NB00 `setup_smoke` | install, load Qwen3-8B nf4, one gate call, one AgentDojo task, **measure prefill/decode tok/s and one 50-step training run** (replaces the estimates below with measured numbers) | T4 | → env check + `throughput.json` | 0.5 |
+| NB01 `b0_traces` | Qwen3-8B agent over the 418 strict train/test scenarios (benign + `important_instructions`) → traces + proposals in dataset schema | T4×2 (scenarios sharded across GPUs) | dataset → `b0_traces/` | 2–4 |
+| NB02 `baselines_prompted` | B2, B3 on test + dev with resolution loop (B1 runs on CPU) | T4×2 (GPU0 = B2, GPU1 = B3) | cases → `predictions/` | 0.5–1 |
+| NB03 `train_qlora` | 8 conditions, two per session (one per GPU) | T4×2 | `sft/` → `adapters/<cond>/` | 3–5 |
+| NB04 `eval_learned` | B4 (incl. dev threshold sweep), B5, ablations, inferred-prov swap; clean vs noisy | T4×2 | adapters + cases → `predictions/` | 1–2 |
+| NB05 `e2e_agentdojo` | B0 vs B5 (B3 if time) end-to-end on the 142 test scenarios | T4×2 (scenarios sharded) | adapters → `e2e/` | 2–4 |
 | NB06 `stats_report` | metrics, CIs, McNemar, Holm, Pareto, qualitative example picker | CPU | `predictions/`, `e2e/` → `report/` | 0 |
 
-CPU-only steps (case building, variant generation, SFT build, B1, stats) also run locally; their outputs are
-committed or uploaded as datasets so GPU sessions are spent only on model work. Total ≈ 19–34 GPU-h, inside
-the proposal's 22–39 h estimate.
+How the numbers were derived: the sampled traces have a median of ~1.1k tokens and 3 agent turns (p90:
+~7.9k tokens, 6 turns), plus ~3k tokens of tool schemas per agent turn. Assumed T4 speed for 8B nf4:
+prefill ~1.5–3k tok/s, decode ~8–12 tok/s, training ~0.5–1.5k tok/s. Offline evaluation is ~12 conditions ×
+~240 cases × ~1.3 gate calls ≈ 3,700 calls at ~1 s each.
+
+CPU-only steps (case building, retrieval, variant generation, SFT build, B1, stats) run locally; their
+outputs are committed or uploaded as datasets so GPU sessions are spent only on model work.
+**Total ≈ 10–17 session-hours** (+~30% contingency), well under the proposal's 22–39 h. Most of it is agent
+runs (NB01, NB05), not fine-tuning. All estimates are replaced by NB00's measurements in week 1.
 
 ### 9.3 Resumability
 Every GPU loop writes `{"key": sha1(condition, case_id, round, prompt), …}` lines with `flush()` after each
@@ -441,11 +473,15 @@ library versions).
 
 | Risk | Mitigation |
 |---|---|
-| vLLM no longer supports T4 (sm 7.5) in the pinned version / AWQ kernels fail | Verify in NB00 week 1; fallback = HF backend with batched parallel scenarios (slower, still within budget for ~420 runs). |
-| fp16 overflow during QLoRA on T4 | Keep LoRA in fp32, gradient clipping 0.3; fall back to P100 or smaller lr. |
-| Qwen3 tool-calling format mismatch with AgentDojo | Use Hermes tool parser (vLLM) or a custom prompt-based tool-call parser element; fallback = ground-truth replay as proposals (proposal §13). |
+| Qwen B0 traces late → blocks the Week-2 checkpoint (annotation needs cases) | **Annotation does not wait for NB01.** The existing logs already hold 2,373 state-changing proposals in test-source scenarios (550 of them match the attacker goal); executable test cases are drawn from these first, and Qwen proposals are added when NB01 finishes. Fallback = ground-truth replay (proposal §13). |
+| AgentDojo-derived cases are almost all ALLOW (user task) or BLOCK (injection) — AgentDojo has no notion of authority, so ASK_USER/ESCALATE barely occur | The authority YAML must add real policy pressure (transfer limits, unapproved recipients, confidential files, external shares) **before** annotation, and the decision-only NL cases carry most ASK/ESCALATE examples. Check the class mix on the pilot; if executable ESCALATE < ~15 cases, report ESCALATE metrics on the decision-only subset only. |
+| Small test classes (ESCALATE ≈ 36 cases; unauthorized-action denominator ≈ 155) → CIs of ±3–4 points | Accepted; raw counts always reported. Do not add conditions beyond Section 7 — each one adds a comparison to the Holm family. |
+| vLLM does not run on T4 (sm 7.5) | Not needed — HF is the default backend; vLLM is an optional speed-up only. |
+| fp16 overflow / NaN loss during QLoRA on T4 | Unsloth's Qwen3 path; LoRA weights in fp32, gradient clipping 0.3; fall back to a smaller lr or P100. |
+| Qwen3 tool-call output malformed | Custom parser with error-and-retry (Section 5.7); fallback = ground-truth replay as proposals. |
 | Session timeouts | All jobs resumable (Section 9.3); jobs sized to ≤ 9 h. |
-| Gate prompt + untrusted content exceeds context | Truncate each untrusted block to 512 tokens, keep only the most recent 3 tool outputs, max input 3,072 tokens. |
+| Gate prompt + untrusted content exceeds context | Truncate each untrusted block to 384 tokens, keep only the 3 most recent tool outputs, max input 2,048 tokens; log the truncation rate. |
+| Kaggle disk / RAM limits | Pre-quantised 4-bit checkpoint in `/kaggle/tmp`; only adapters (~80 MB each) and JSONL go to `/kaggle/working`. |
 
 ---
 
@@ -459,4 +495,23 @@ library versions).
 4. **Inferred provenance in training** — train with oracle and swap at test time (current plan) vs. retrain.
 5. **Attack type for Qwen B0 traces** — `important_instructions` only (current plan) or add `direct` /
    `ignore_previous`.
-6. **Authority YAML and handbooks** — owner(s) and freeze date (needed before variant generation).
+6. **Authority YAML and handbooks** — owner(s) and freeze date. This is the real Week-1 blocker: the
+   context builder, B1, annotation and variant generation all depend on it.
+
+---
+
+## 13. Build order (critical path)
+
+Build the thinnest end-to-end slice first, then widen it. Anything marked *stretch* is cut first if late.
+
+| Week | Code deliverable | Unblocks |
+|---|---|---|
+| 1 | `schema`, `loaders`, `splits` + leakage tests, `tools_registry`, oracle provenance, authority/sensitivity lookups (on a draft YAML), BM25 retrieval, `context_builder` + `EvidenceMask`, prompt renderer, B1 rules; NB00 smoke + throughput | annotators can view rendered cases; real GPU numbers |
+| 2 | `decoder`, `LLMGate` (B2/B3), resolution loop + responders, NB01 B0 traces, case export for annotation | Week-2 checkpoint |
+| 3 | `variants`, `build_sft`, `train_qlora`; B2/B3 predictions; inferred provenance (string matching) | training |
+| 4 | NB03 training (8 adapters), NB04 eval, B4 threshold sweep | primary results |
+| 5 | `metrics`, `stats`, `pareto`, `report` | write-up |
+| 6 | `GatedToolsExecutor`, NB05 end-to-end B0/B5; *stretch:* B3 e2e, LLM provenance attribution, dense retrieval, extra seeds | end-to-end claims |
+
+Minimal viable result if things slip: B1, B3, B4, B5 offline on oracle provenance, plus B5 − provenance and
+B5 − authority. That alone answers H1 and H2.
