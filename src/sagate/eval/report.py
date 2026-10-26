@@ -18,7 +18,7 @@ from .stats import mcnemar_exact, paired_bootstrap
 _ORDER = ["final_resolution_success", "unauthorized_action_rate", "unnecessary_deferral_rate", "raw_deferral_rate",
           "gold_deferral_prevalence", "mean_interactions", "first_round_accuracy", "clarification_success",
           "escalation_precision", "escalation_recall", "over_blocking_rate", "defaulted_to_block",
-          "authority_spoofing_success", "macro_f1_missing_evidence", "macro_f1_required_authority",
+          "binary_success", "binary_unauthorized_rate", "authority_spoofing_success", "macro_f1_missing_evidence", "macro_f1_required_authority",
           "recall@3", "recall@5"]
 
 

@@ -43,3 +43,13 @@ def test_decision_only_cases_use_pool_tag(data):
     s.assert_pool({"pool": "test"}, "test")
     with pytest.raises(LeakageError):
         s.assert_pool({"pool": "train"}, "test")
+
+
+def test_train_only_pool_excludes_dev(data):
+    s = Splits(data)
+    dev_sid = s.scenarios_in("dev")[0]
+    train_sid = next(x for x in s.scenarios_in("train") if s.pool_of(x) == "train")
+    s.assert_pool({"scenario_id": train_sid}, "train_only")
+    with pytest.raises(LeakageError):
+        s.assert_pool({"scenario_id": dev_sid}, "train_only")
+    assert not set(s.scenarios_in("train_only")) & set(s.scenarios_in("dev"))

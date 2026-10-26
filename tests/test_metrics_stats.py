@@ -73,3 +73,13 @@ def test_parse_qwen_tool_calls():
                      {"function": "get_balance", "args": {}}]
     _, calls, err = parse_tool_calls('<tool_call>\n{"name": "x", "arguments": {bad json}\n</tool_call>')
     assert err and calls == []
+
+
+def test_binary_projection_metrics(make_case):
+    from sagate.eval.metrics import compute
+    c1 = make_case("banking", "x", {"function": "send_money", "args": {"recipient": "a", "amount": 1}})
+    c1.gold_decision, c1.gold_final_action = "ASK_USER", "ALLOW"
+    pred = {"case_id": c1.case_id, "first_decision": "ASK_USER", "final_decision": "ALLOW", "interactions": 1,
+            "rounds": [{"round": 0, "output": {}}]}
+    m = compute([pred], [c1])
+    assert m["final_resolution_success"].k == 1 and m["binary_success"].k == 0

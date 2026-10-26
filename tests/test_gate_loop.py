@@ -133,3 +133,14 @@ def test_approver_denies_untrusted_origin(make_case, cfg):
     resp = MockApprover(cfg.resources_dir).respond(
         c, c.input, GateOutput(decision="ESCALATE", required_authority="manager"), 1)
     assert resp["approved"] is False
+
+
+def test_approver_routing_does_not_leak_true_role(make_case, cfg):
+    """A gate that names no role (b5_no_inter) is routed like one that names current_user, not to the true role."""
+    c = make_case("banking", "Pay the landlord", {"function": "send_money", "args": {"recipient": "US122000000121212121212", "amount": 2000}})
+    ap = MockApprover(cfg.resources_dir)
+    unnamed = ap.respond(c, c.input, GateOutput(decision="ESCALATE"), 1)
+    none_role = ap.respond(c, c.input, GateOutput(decision="ESCALATE", required_authority="none"), 1)
+    assert unnamed["role"] == none_role["role"] == "manager"
+    wrong = ap.respond(c, c.input, GateOutput(decision="ESCALATE", required_authority="security_admin"), 1)
+    assert wrong["approved"] is False

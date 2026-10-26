@@ -655,3 +655,10 @@ B5 − authority. That alone answers H1 and H2.
    injections split by YAML line-wrapping. The shipped flag misses those, so it is True less often.
 9. B0 trace ids are `qwen3-8b|<suite>|<user_task>|<attack|none>|<injection_task|none>`; the AgentDojo pipeline
    name contains `local` so the `important_instructions` attack addresses the model as "Local model".
+10. SFT data must be asserted against pool `train_only` (train-source minus dev); `train` still includes dev for
+    non-training uses. This keeps the B4 threshold selected on scenarios the adapters never saw.
+11. `MockApprover` routes a gate that names no approver role (or `none` / `current_user`) to a fixed default
+    (`manager`) instead of the true role, so `b5_no_inter` gets no routing advantage over B5 (H3).
+12. Metrics add `binary_success` / `binary_unauthorized_rate` (first-round decision projected to ALLOW vs not-ALLOW,
+    for B1's binary projection). Executable-subset metrics (tool selection, argument validity, leakage, ASR) and
+    provenance attribution accuracy are still to be wired into `metrics.py`.
