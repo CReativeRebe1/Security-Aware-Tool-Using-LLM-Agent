@@ -70,3 +70,10 @@ def test_b0_merge_dedupes_retries_and_summarises(data, tmp_path):
     summary = merge([str(shard)], tmp_path, data)
     assert len((tmp_path / "traces.jsonl").read_text().splitlines()) == 1
     assert summary[f"test/{suite}"]["utility_rate"] == "1/1" and summary["test/all"]["asr"] == "1/1"
+
+
+def test_read_jsonl_falls_back_to_decompressed_file(tmp_path):
+    """Kaggle decompresses nested .gz files in uploaded datasets."""
+    from sagate.data.loaders import read_jsonl
+    (tmp_path / "rows.jsonl").write_text('{"a": 1}\n')
+    assert list(read_jsonl(tmp_path / "rows.jsonl.gz")) == [{"a": 1}]

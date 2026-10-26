@@ -30,7 +30,7 @@ def throughput(backend, n_prefill: int = 1024, n_decode: int = 64) -> dict:
     torch = backend.torch
     ids = torch.randint(100, 20000, (1, n_prefill), device=backend.device)
     with torch.inference_mode():
-        backend.model(input_ids=ids[:, :16])            # warm-up
+        backend.model(input_ids=ids)                    # warm-up at the measured shape (kernel selection)
         _sync(backend)
         t0 = time.time()
         backend.model(input_ids=ids)

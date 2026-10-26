@@ -11,6 +11,8 @@ from typing import Callable, Iterable, Iterator
 
 def read_jsonl(path: str | Path) -> Iterator[dict]:
     path = Path(path)
+    if path.suffix == ".gz" and not path.exists() and path.with_suffix("").exists():
+        path = path.with_suffix("")          # Kaggle datasets decompress nested .gz files on upload
     opener = gzip.open if path.suffix == ".gz" else open
     with opener(path, "rt", encoding="utf-8") as f:
         for line in f:
