@@ -469,7 +469,78 @@ outputs are committed or uploaded as datasets so GPU sessions are spent only on 
 **Total ≈ 10–17 session-hours** (+~30% contingency), well under the proposal's 22–39 h. Most of it is agent
 runs (NB01, NB05), not fine-tuning. All estimates are replaced by NB00's measurements in week 1.
 
-### 9.3 Resumability
+### 9.3 Running from the Kaggle CLI
+
+Verified with Kaggle CLI 2.2.5 (`pip install kaggle`; auth via `~/.kaggle/access_token`). Everything is
+driven from the local machine; nothing is edited in the Kaggle web UI.
+
+**Layout** — one folder per job, each a Kaggle *script* kernel (plain `.py`, easier to diff than `.ipynb`):
+
+```
+kaggle/
+├── stage_code.sh                  # copies src/ configs/ resources/ data/ pyproject.toml → build/sagate-code/
+├── code-dataset/dataset-metadata.json      # id: prabhashpadhan/sagate-code
+├── nb00_setup_smoke/{kernel-metadata.json, run.py}
+├── nb01_b0_traces/{kernel-metadata.json, run.py}
+├── …                                        # nb02 … nb05
+```
+
+**`kernel-metadata.json`** (NB03 example):
+
+```json
+{
+  "id": "prabhashpadhan/sagate-nb03-train-qlora",
+  "title": "sagate-nb03-train-qlora",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": ["prabhashpadhan/sagate-code"],
+  "kernel_sources": ["prabhashpadhan/sagate-nb01-b0-traces"],
+  "competition_sources": [],
+  "model_sources": []
+}
+```
+
+- **Code** goes up as a private dataset (`sagate-code`), mounted at `/kaggle/input/sagate-code`; `run.py`
+  does `pip install -e` from there, then `python -m sagate.<stage> --config configs/kaggle.yaml …`. No git
+  clone or GitHub token is needed on Kaggle.
+- **Stage chaining** uses `kernel_sources`: a previous kernel's `/kaggle/working` output is mounted read-only
+  at `/kaggle/input/<kernel-slug>`. No manual "save output as dataset" step.
+- **Internet on** is needed for `pip install` and the Hugging Face model download.
+- **Parameters** (condition names, GPU split) live in `run.py`/config, not in CLI flags; the CLI passes none.
+
+**Commands**
+
+```bash
+# once
+kaggle datasets create  -p build/sagate-code --dir-mode zip
+# every code change
+bash kaggle/stage_code.sh && kaggle datasets version -p build/sagate-code -m "<git sha>" --dir-mode zip
+
+# run a stage on GPU T4 x2 (background commit run, survives closing the laptop)
+kaggle kernels push -p kaggle/nb03_train_qlora --accelerator NvidiaTeslaT4 -t 32400   # 9 h cap
+
+kaggle kernels status prabhashpadhan/sagate-nb03-train-qlora        # queued / running / complete / error
+kaggle kernels output prabhashpadhan/sagate-nb03-train-qlora -p runs/nb03/   # log + /kaggle/working files
+```
+
+Notes:
+- `--accelerator NvidiaTeslaT4` = GPU T4 ×2. P100 is retired (the CLI warns and substitutes), so the
+  plan assumes T4 only.
+- After a dataset `version`, wait until it finishes processing before `kernels push`; otherwise the kernel
+  can mount the previous code version. `run.py` prints the staged git SHA first so this is visible in the log.
+- `kaggle kernels push` re-runs the whole script from scratch, and a kernel cannot mount its own previous
+  output. To resume a run that timed out: `kaggle kernels output` it, upload that folder as a
+  `sagate-progress-<stage>` dataset, add it to `dataset_sources`, and push again; the job skips keys it
+  finds there (9.4). Simpler still: size every job to finish in ≤ 9 h so this is rarely needed.
+- Each team member pushes the same folders under their own username (`id` and the `*_sources` owners are
+  rewritten by `stage_code.sh --owner <user>`) to use their own weekly GPU quota.
+
+### 9.4 Resumability
 Every GPU loop writes `{"key": sha1(condition, case_id, round, prompt), …}` lines with `flush()` after each
 item and skips keys already present on restart. Training saves PEFT checkpoints every 100 steps and resumes
 from the latest. Each output folder has a `manifest.json` (git commit, config hash, model revision, seeds,
@@ -498,7 +569,7 @@ library versions).
 | vLLM does not run on T4 (sm 7.5) | Not needed — HF is the default backend; vLLM is an optional speed-up only. |
 | fp16 overflow / NaN loss during QLoRA on T4 | Unsloth's Qwen3 path; LoRA weights in fp32, gradient clipping 0.3; fall back to a smaller lr or P100. |
 | Qwen3 tool-call output malformed | Custom parser with error-and-retry (Section 5.7); fallback = ground-truth replay as proposals. |
-| Session timeouts | All jobs resumable (Section 9.3); jobs sized to ≤ 9 h. |
+| Session timeouts | All jobs resumable (Section 9.4); jobs sized to ≤ 9 h. |
 | Gate prompt + untrusted content exceeds context | Truncate each untrusted block to 384 tokens, keep only the 3 most recent tool outputs, max input 2,048 tokens; log the truncation rate. |
 | Kaggle disk / RAM limits | Pre-quantised 4-bit checkpoint in `/kaggle/tmp`; only adapters (~80 MB each) and JSONL go to `/kaggle/working`. |
 
