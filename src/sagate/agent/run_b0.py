@@ -23,8 +23,8 @@ from ..manifest import write_manifest
 PIPELINE_ID = "qwen3-8b"
 
 
-def trace_id(suite: str, user_task: str, attack: str, injection_task: str | None) -> str:
-    return f"{PIPELINE_ID}|{suite}|{user_task}|{attack if injection_task else 'none'}|{injection_task or 'none'}"
+def trace_id(suite: str, user_task: str, attack: str, injection_task: str | None, pipeline_id: str = PIPELINE_ID) -> str:
+    return f"{pipeline_id}|{suite}|{user_task}|{attack if injection_task else 'none'}|{injection_task or 'none'}"
 
 
 def scenario_list(data: AgentDojoData, pools: list[str], suites: list[str] | None) -> list[dict]:
@@ -82,11 +82,8 @@ def main(argv=None) -> None:
         merge(a.merge, out_dir, AgentDojoData(cfg.data_dir))
         return
 
-    from agentdojo.attacks.attack_registry import load_attack
-    from agentdojo.task_suite.load_suites import get_suite
-
     from ..models.backend import backend_from_config
-    from .pipeline import jsonify, make_b0_pipeline
+    from .pipeline import make_b0_pipeline
 
     cfg = load_config(a.config)
     data = AgentDojoData(cfg.data_dir)
@@ -104,10 +101,24 @@ def main(argv=None) -> None:
                           "num_shards": a.num_shards, "scenarios": len(scen), "attack": attack_name,
                           "benchmark_version": version})
     store = JsonlStore(out_dir / f"traces_shard{a.shard}.jsonl")
+    run_scenarios(scen, pipeline, recorder, llm, store, attack_name, version, limit=a.limit)
+    store.close()
+    print(f"shard {a.shard}: {len(store)} traces in {out_dir}")
+
+
+def run_scenarios(scen: list[dict], pipeline, recorder, llm, store: JsonlStore, attack_name: str, version: str,
+                  pipeline_id: str = PIPELINE_ID, executor=None, limit: int | None = None) -> int:
+    """Run each scenario once through `pipeline` and store its trace (dataset trace schema). With a gated
+    `executor`, the trace also carries the gate log (`gate_log`) and whether the gate ended the run."""
+    from agentdojo.attacks.attack_registry import load_attack
+    from agentdojo.task_suite.load_suites import get_suite
+
+    from .pipeline import jsonify
+
     attacks: dict = {}
     done = 0
     for s in scen:
-        tid = trace_id(s["suite"], s["user_task_id"], attack_name, s["injection_task_id"])
+        tid = trace_id(s["suite"], s["user_task_id"], attack_name, s["injection_task_id"], pipeline_id)
         if tid in store and not store.get(tid).get("error"):
             continue
         suite = get_suite(version, s["suite"])
@@ -121,28 +132,34 @@ def main(argv=None) -> None:
         t0, err = time.time(), None
         utility, security = False, None
         recorder.messages = []
+        if executor is not None:
+            executor.start_task(s["suite"], scenario_id(s["suite"], s["user_task_id"], s["injection_task_id"]))
         try:
             utility, security = suite.run_task_with_pipeline(pipeline, user_task, inj_task, injections)
         except Exception as e:                      # keep going; the failure is recorded in the trace
             err = f"{type(e).__name__}: {e}"
             traceback.print_exc()
-        messages = jsonify(recorder.messages)
-        store.put(tid, {
-            "trace_id": tid, "pipeline": PIPELINE_ID, "suite": s["suite"], "user_task_id": s["user_task_id"],
+        ended = executor is not None and executor.aborted is not None
+        messages = jsonify(executor.aborted if ended else recorder.messages)
+        row = {
+            "trace_id": tid, "pipeline": pipeline_id, "suite": s["suite"], "user_task_id": s["user_task_id"],
             "injection_task_id": s["injection_task_id"],
             "attack_type": attack_name if inj_task else "none",
             "injections": injections, "utility": bool(utility),
             "attack_succeeded": (bool(security) if inj_task else None),
             "tool_calls": [tc for m in messages if m.get("role") == "assistant" for tc in (m.get("tool_calls") or [])],
             "messages": messages, "error": err, "duration": time.time() - t0,
-        })
+        }
+        if executor is not None:
+            row.update(gate_log=jsonify(executor.log), ended_by_gate=ended)
+        store.put(tid, row)
         done += 1
+        gated = f", gated={len(executor.log)} refused={executor.refusals}" if executor is not None else ""
         print(f"[{done}] {tid} utility={utility} attack={security if inj_task else '-'} "
-              f"({time.time() - t0:.0f}s, parse_failures={llm.parse_failures})", flush=True)
-        if a.limit and done >= a.limit:
+              f"({time.time() - t0:.0f}s, parse_failures={llm.parse_failures}{gated})", flush=True)
+        if limit and done >= limit:
             break
-    store.close()
-    print(f"shard {a.shard}: {len(store)} traces in {out_dir}")
+    return done
 
 
 if __name__ == "__main__":

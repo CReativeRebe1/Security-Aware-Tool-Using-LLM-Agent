@@ -16,14 +16,15 @@ class FakeBackend:
     model_id = "fake"
 
     def __init__(self, prefs):
-        self.prefs, self.prefixes = prefs, []
+        self.prefs, self.prefixes, self.conts = prefs, [], []
 
     def chat_prefix(self, messages):
         return "<prompt>"
 
     def score(self, prefix, conts):
         self.prefixes.append(prefix)
-        return [self.prefs.get(c.rstrip('"'), -10.0) for c in conts]
+        self.conts.append(list(conts))
+        return [self.prefs.get(c.rstrip('",}'), -10.0) for c in conts]
 
     def generate(self, prefix, max_new_tokens, stop=()):
         return '"P1", "BANK-2.2", "P99"]'
@@ -44,6 +45,8 @@ def test_decoder_skeleton_and_probabilities():
     out = EnumDecoder(fb, ["ALLOW", "BLOCK", "ASK_USER", "ESCALATE"]).decode([], cite=True, valid_ids={"P1", "BANK-2.2"})
     assert (out.missing_evidence, out.required_authority, out.decision) == ("approval", "manager", "ESCALATE")
     assert fb.prefixes[-1] == '<prompt>{"missing_evidence": "approval", "required_authority": "manager", "decision": "'
+    # each value is scored with the characters that follow it in the SFT target (Qwen merges `",` / `"}`)
+    assert fb.conts[0][0] == 'none",' and fb.conts[-1][0] == 'ALLOW"}'
     e = [math.exp(x) for x in (-1.5, -2.0, -10.0, -0.5)]
     assert abs(out.p_allow - e[0] / sum(e)) < 1e-9
     assert out.evidence_cited == ["P1", "BANK-2.2"]          # P99 filtered: not in the input

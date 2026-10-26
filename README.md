@@ -137,12 +137,14 @@ inferred-provenance condition. The `matches_*` flags are weak labels for analysi
 
 ## Code (`src/sagate`)
 
-Implementation of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) up to the baselines (B0–B3). Section 14 of
-the architecture lists what is built and where it deviates from the plan.
+Implementation of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): baselines (B0–B3), training (B4/B5 and the
+ablations), threshold calibration, end-to-end gated runs and the statistics report. Section 14 of the
+architecture lists what is built, what has run, and where it deviates from the plan.
 
 ```bash
-pip install -e ".[dev]"                 # CPU parts: case building, B1, metrics, tests
+pip install -e ".[dev]"                 # CPU parts: case building, B1, variants, SFT data, metrics, tests
 pip install -e ".[gpu,agentdojo]"       # + Qwen3 backend and the AgentDojo agent
+pip install -e ".[train]"               # + QLoRA training
 pytest -q
 ```
 
@@ -157,7 +159,18 @@ pytest -q
 | Report | `python -m sagate.eval.report --cases ... --pred outputs/predictions/*.jsonl [--gold annotations/gold.jsonl --compare A B]` |
 | B0 Qwen traces (GPU) | `python -m sagate.agent.run_b0 --shard 0 --num-shards 2`, then `... run_b0 --merge <shards>` (traces.jsonl + B0 utility/ASR in b0_summary.json), then `python -m sagate.agent.extract_proposals` |
 | Smoke test / throughput | `python -m sagate.smoke [--model-id Qwen/Qwen3-0.6B]` |
+| Replay old-log executable cases in the pinned AgentDojo | `python -m sagate.agent.replay --cases outputs/cases/test_candidates.jsonl --out outputs/cases/test_candidates.replayed.jsonl --report ...` |
+| Training variants / generated dev pool (CPU) | `python -m sagate.train.variants --pool train_only` · `... --pool dev --out outputs/sft/dev_cases.jsonl` |
+| Check NL training examples | `python -m sagate.train.nl_examples check annotations/train_nl.jsonl [--test-cases annotations/test_cases.jsonl]` |
+| SFT data for all 8 trained conditions | `python -m sagate.train.build_sft --cases outputs/sft/train_only_variants.jsonl annotations/train_nl.jsonl` |
+| QLoRA (GPU) | `python -m sagate.train.train_qlora --condition b5_qlora_4way --sft outputs/sft/b5_qlora_4way.jsonl` |
+| Learned gates | `python -m sagate.eval.run_gate --condition b5_qlora_4way --cases annotations/test_cases.jsonl --adapter-dir outputs/adapters` |
+| B4 threshold (dev only) and matched test run | `python -m sagate.eval.pareto select --b4 dev/b4.jsonl --b5 dev/b5.jsonl --cases outputs/sft/dev_cases.jsonl --out t.json` · `... apply --pred test/b4.jsonl --threshold-file t.json --out test/b4_qlora_binary_matched.jsonl` |
+| End-to-end gated runs (GPU) | `python -m sagate.agent.run_e2e --condition b5_qlora_4way --adapter-dir outputs/adapters --shard 0 --num-shards 2`, then `... --merge <shards>` |
+| End-to-end metrics | `python -m sagate.eval.e2e_metrics --traces outputs/b0_traces/traces.jsonl outputs/e2e/b5_qlora_4way/traces.jsonl --json report/e2e.json` |
+| Statistics + report | `python -m sagate.eval.analysis --cases annotations/test_cases.jsonl --pred outputs/predictions/test/*.jsonl --e2e report/e2e.json --out report` |
 
 Kaggle: `bash kaggle/stage_code.sh`, then `kaggle datasets version -p build/sagate-code --dir-mode zip -m "<sha>"`
 (first time: `kaggle datasets create`), then `kaggle kernels push -p build/kernels/nb00_setup_smoke --accelerator
-NvidiaTeslaT4`. Kernels NB00 (smoke), NB01 (B0 traces) and NB02 (B1/B2/B3) are in `kaggle/`.
+NvidiaTeslaT4`. Kernels in `kaggle/`: NB00 (smoke), NB01 (B0 traces), NB02 (B1/B2/B3), NB03 (QLoRA, 8 adapters), NB04 (learned gates +
+B4 threshold), NB05 (end-to-end B0 vs B5), NB06 (statistics + report, CPU).

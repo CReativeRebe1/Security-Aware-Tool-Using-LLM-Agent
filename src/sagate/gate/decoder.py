@@ -6,6 +6,9 @@ always-parseable output, exact class probabilities (p_allow for the B4 threshold
 extra dependencies. Generation stops after `decision` unless citations are requested.
 
 The skeleton is byte-identical to `json.dumps(target)` (see prompts.target_text), which is also the SFT target.
+Each value is scored together with the characters that follow it in that target (`",` before the next field,
+`"}` after the last): Qwen's tokenizer merges the closing quote with them, so scoring a lone `"` would charge every
+value for a token the trained gate never produces.
 """
 
 from __future__ import annotations
@@ -54,7 +57,8 @@ class EnumDecoder:
         for i, f in enumerate(self.fields):
             text += ("" if i == 0 else ", ") + f'"{f}": "'
             values = self.space if f == "decision" else FIELD_VALUES[f]
-            lps = self.backend.score(prefix + text, [v + '"' for v in values])
+            close = '",' if i < len(self.fields) - 1 else '"}'
+            lps = self.backend.score(prefix + text, [v + close for v in values])
             scores[f] = dict(zip(values, lps))
             best = values[max(range(len(values)), key=lambda k: lps[k])]
             if f == "decision" and allow_threshold is not None and "ALLOW" in values:

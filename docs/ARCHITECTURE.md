@@ -2,8 +2,10 @@
 
 Scope of this document: the software architecture and the Kaggle execution plan for the CL3410 project
 *Provenance- and authority-aware resolution of tool actions at runtime*. It turns the proposal
-(Sections 4–9) into packages, interfaces, data contracts and notebooks. The code up to the baselines
-(B0–B3, NB00–NB02) is implemented; Section 14 lists its status and the deviations from this plan.
+(Sections 4–9) into packages, interfaces, data contracts and notebooks. All code is implemented: baselines
+(B0–B3, NB00–NB02), training and learned gates (NB03–NB04), end-to-end runs (NB05) and statistics (NB06). What is
+still missing is data (human annotations, NL examples) and the GPU runs that need it; Section 14 lists the status
+and the deviations from this plan.
 
 ---
 
@@ -104,7 +106,10 @@ Security-Aware-Tool-Using-LLM-Agent/
 │   ├── data/
 │   │   ├── loaders.py             # typed readers for every file in data/processed/agentdojo
 │   │   ├── splits.py              # strict_split lookup + assert_pool() leakage guard
-│   │   └── cases.py               # TestCase / TrainCase dataclasses, (de)serialisation
+│   │   ├── cases.py               # TestCase / TrainCase dataclasses, (de)serialisation
+│   │   ├── build_cases.py         # proposals + traces -> candidate cases per pool
+│   │   ├── annotation.py          # export / agreement / gold / freeze
+│   │   └── ground_truth.py        # loose ground-truth match (weak labels, never gold)
 │   ├── evidence/
 │   │   ├── tools_registry.py      # tool → {state_changing, resource_arg, destination_arg, action}
 │   │   ├── provenance.py          # OracleProvenance, InferredProvenance (matching + LLM attribution)
@@ -127,20 +132,24 @@ Security-Aware-Tool-Using-LLM-Agent/
 │   │   ├── backend.py             # HFBackend (transformers + bitsandbytes nf4 + PEFT), VLLMBackend
 │   │   └── chat.py                # Qwen3 chat template, enable_thinking=False
 │   ├── train/
-│   │   ├── variants.py            # structured policy-variant generator (~1,000)
-│   │   ├── nl_examples.py         # load reviewed NL examples (~200)
+│   │   ├── variants.py            # structured policy-variant generator (~1,000) + generated dev pool
+│   │   ├── nl_examples.py         # load + validate reviewed NL examples (~200)
 │   │   ├── build_sft.py           # GateInput+gold → (prompt, target) per condition
-│   │   └── train_qlora.py         # PEFT/TRL SFT, completion-only loss, resumable
+│   │   └── train_qlora.py         # transformers Trainer + PEFT (Unsloth optional), completion-only loss, resumable
 │   ├── agent/
 │   │   ├── pipeline.py            # AgentDojo pipeline: Qwen LLM element + GatedToolsExecutor
 │   │   ├── run_b0.py              # cache Qwen B0 traces → same schema as traces.jsonl.gz
 │   │   ├── extract_proposals.py   # traces → tool_call_proposals (reuses dataset logic)
-│   │   └── run_e2e.py             # end-to-end B0 vs B5 (AgentDojo utility/security)
+│   │   ├── replay.py              # re-execute old-log prior calls in the pinned AgentDojo (§5.0)
+│   │   └── run_e2e.py             # end-to-end gated runs (AgentDojo utility/security)
 │   └── eval/
-│       ├── metrics.py             # all metrics of Section 8
+│       ├── metrics.py             # offline metrics of Section 8
+│       ├── e2e_metrics.py         # utility, ASR, leakage, tool selection, argument validity on traces
 │       ├── stats.py               # paired bootstrap, exact McNemar, Holm–Bonferroni, α / κ
-│       ├── pareto.py              # threshold sweep + frontier
-│       └── report.py              # tables (raw counts + %), qualitative example picker
+│       ├── pareto.py              # B4 threshold selection (dev only) + curve + frontier
+│       ├── run_gate.py            # one condition over a case file with the resolution loop
+│       ├── report.py              # per-condition tables (raw counts + %)
+│       └── analysis.py            # NB06: hypothesis tests, Holm, errors, Pareto, qualitative example picker
 ├── scripts/                       # thin CLIs: python -m sagate.<module> --config ...
 ├── notebooks/kaggle/              # NB00–NB06, thin wrappers over the package
 └── tests/                         # unit tests for schema, mask, splits, loop, metrics, decoder
@@ -365,12 +374,14 @@ processes quantise on load at the same time (Kaggle has ~29 GB RAM).
   evaluation, collapses labels (`B4`: `gold_final_action`; `b5_no_ask`/`b5_no_esc`: remove the class, map to
   `gold_final_action`), and drops intermediate fields for `b5_no_inter`. B4 and B5 see the *same examples*.
 - **QLoRA**: LoRA r=16, α=32, dropout 0.05 on all linear projections; nf4; fp16 compute (T4/P100 have no
-  bf16); loss on the assistant JSON only; max length 2,048 (median gate input ≈ 1.2k tokens, untrusted
-  blocks truncated); batch 1 × grad-accum 16; lr 2e-4 cosine; 2 epochs; gradient checkpointing; checkpoint
-  every 100 steps for resume. **Unsloth is the primary trainer on T4** (≈2× faster, and handles Qwen3 fp16
-  stability); plain PEFT/TRL is the fallback with the identical config. The adapter is saved as a standard
-  PEFT adapter so inference never depends on Unsloth.
-- **Cost per run**: ~1,200 examples × ~1.2k tokens × 2 epochs ≈ 3M tokens → **~35–90 min on one T4**.
+  bf16); loss on the assistant JSON only, with logits computed for the target positions only; max length 4,096
+  (measured on the variants: median prompt + target 1.6k tokens, max 3.8k, so nothing is dropped; 2,048 would
+  have dropped 17%); batch 1 × grad-accum 16; lr 2e-4 cosine; 2 epochs; gradient checkpointing; checkpoint
+  every 100 steps for resume. The default trainer is the transformers `Trainer` + PEFT with a completion-only
+  collator (tested); Unsloth (≈2× faster on T4) is implemented behind `train.trainer: unsloth` with the identical
+  config, as the speed-up if NB03 is too slow. The adapter is saved as a standard PEFT adapter, so inference never
+  depends on the trainer.
+- **Cost per run**: ~1,200 examples × ~1.6k tokens × 2 epochs ≈ 3.5M tokens → **~35–90 min on one T4**.
   8 runs, 2 in parallel (one per GPU) → ~3–5 h wall-clock in total.
 - **B4 operating point**: sweep the threshold on `p_allow` over the dev pool (48 scenarios from the 6 dev
   user tasks, part of train-source), pick the threshold matching B5's unauthorized-action rate on dev;
@@ -568,7 +579,7 @@ library versions).
 | fp16 overflow / NaN loss during QLoRA on T4 | Unsloth's Qwen3 path; LoRA weights in fp32, gradient clipping 0.3; fall back to a smaller lr or P100. |
 | Qwen3 tool-call output malformed | Custom parser with error-and-retry (Section 5.7); fallback = ground-truth replay as proposals. |
 | Session timeouts | All jobs resumable (Section 9.4); jobs sized to ≤ 9 h. |
-| Gate prompt + untrusted content exceeds context | Truncate each untrusted block to 384 tokens, keep only the 3 most recent tool outputs, max input 2,048 tokens; log the truncation rate. |
+| Gate prompt + untrusted content exceeds context | Truncate each untrusted block to 384 tokens, keep only the 3 most recent tool outputs; train at max length 4,096 (no example dropped); log the truncation rate and prompts over `model.max_input_tokens`. |
 | Kaggle disk / RAM limits | Pre-quantised 4-bit checkpoint in `/kaggle/tmp`; only adapters (~80 MB each) and JSONL go to `/kaggle/working`. |
 
 ---
@@ -612,17 +623,47 @@ B5 − authority. That alone answers H1 and H2.
 
 ---
 
-## 14. Implementation status (baselines)
+## 14. Implementation status
 
-**Built and tested** (`pytest`: 44 tests; local smoke run with `Qwen/Qwen3-0.6B` on CPU):
-`config`, `data/{loaders,splits,cases,build_cases,annotation,ground_truth}`, `evidence/*`, `gate/*`,
-`resolution/*`, `models/{backend,chat}`, `agent/{pipeline,run_b0,extract_proposals}`,
-`eval/{metrics,stats,run_gate,report}`, `smoke`, Kaggle kernels NB00–NB02 + `stage_code.sh` + `bootstrap.py`.
+**Built and tested** (`pytest`: 65 tests, all passing with torch + AgentDojo installed; on a CPU-only env
+without them 60 pass and the torch / AgentDojo modules skip): `config`,
+`data/{loaders,splits,cases,build_cases,annotation,ground_truth}`, `evidence/*`, `gate/*`, `resolution/*`,
+`models/{backend,chat}`, `agent/{pipeline (incl. GatedToolsExecutor),run_b0,run_e2e,replay,extract_proposals}`, `train/{variants,nl_examples,build_sft,train_qlora}`,
+`eval/{metrics,e2e_metrics,stats,pareto,run_gate,report,analysis}`, `smoke`, Kaggle kernels NB00–NB06 +
+`stage_code.sh` + `bootstrap.py`. Not built: the stretch items of §13 (LLM provenance attribution, dense
+retrieval, extra seeds).
 
-**Not built yet** (after the baselines): `train/*` (variants, SFT build, QLoRA), `eval/pareto.py`
-(B4 threshold sweep), `GatedToolsExecutor` + `run_e2e.py` (NB05), NB03–NB06. Also not built, although §5.0 plans
-it before annotation: **replaying old-log executable cases** in the pinned AgentDojo env and dropping those whose
-prior calls do not reproduce. Until it exists, executable cases from pre-v1.2.2 logs are unverified.
+**Local GPU checks** (RTX 5060 Laptop 8 GB, torch 2.11 + CUDA 12.8, `Qwen/Qwen3-0.6B` in fp16; bitsandbytes was
+not installed locally, so the nf4 path is exercised only on Kaggle):
+- `train.variants`: 2,929 train_only seeds → 9,814 candidates → 1,000 sampled at the target mix (first round ALLOW
+  280 · BLOCK 240 · ASK_USER 160 · ESCALATE 120, plus 200 answered-round examples); dev: 559 seeds → 300 cases.
+  CPU, ~6 s.
+- `train.train_qlora`: trains, checkpoints and resumes (step 30 → 40 from `checkpoint-30`). 60 steps: loss
+  0.39 → 0.05, 1.9 min, peak 1.9 GB.
+- Learned gate through `eval.run_gate --adapter-dir` (PEFT adapter on the HF backend): after 60 steps the median
+  best decision log-prob is −0.003, and dev first-round accuracy is 41/60 (27% before the decoder fix below).
+  These are plumbing checks on a 0.6B model, not results.
+- `agent.run_e2e`: 17 live banking scenarios with the B5 gate on the 0.6B agent: 4 gated calls, 1 refused
+  (the agent sees only `Action not permitted.`), gate logs stored in the traces. With B1 as the live gate, the
+  injected transfer is blocked from live inferred provenance.
+- `agent.replay` on the 1,390 test candidates: 1,315 reproduce in v1.2.2; 75 dropped because the environment
+  content differs (files, scheduled transactions) or an error appears/disappears. CPU, ~45 s.
+- `eval.e2e_metrics` on the NB01 traces reproduces `b0_summary.json` (utility 49/142, ASR 10/120); leakage
+  0/142, tool selection 203/298, argument validity 371/483.
+- `eval.analysis` + `eval.pareto` run end to end on the generated dev pool.
+
+**Fixed while checking**: (a) the enum decoder scored each value followed by a lone `"`, but Qwen's tokenizer merges
+the closing quote with the next `,`/`}` in the training target. Every score carried a ~−13 log-prob penalty for a
+token the trained gate never emits, which distorted `p_allow` (B4 sweep) and the prompted gates. It now scores
+`value",` / `value"}`. (b) 17% of training examples exceeded 2,048 tokens and would have been dropped:
+`train.max_length` is 4,096. (c) Full-vocabulary logits at 3.8k tokens took ~6 GB; training computes logits
+only for the target positions (7.1 → 1.9 GB peak on the 0.6B model; the loss equals the full loss, tested).
+
+**What is left (data and GPU runs, not code)**: annotation (export → agreement → gold → freeze, on the replayed
+candidates), the ~200 NL training examples (`annotations/train_nl.jsonl`, format in `train/nl_examples.py`) and
+the decision-only test cases, freezing the authority YAML / handbooks (§12.6). Then NB02 → NB03 → NB04 → NB05 → NB06.
+NB03 can run before the NL examples exist (variants only), but its adapters should be retrained once they are
+added.
 
 **Baseline run status.** NB00 and NB01 ran on Kaggle (T4). NB00 measured on one T4: prefill ~850 tok/s, decode
 ~12 tok/s, gate call ~3.5 s (1.5 s with a cached prompt), 7.1 GB. NB01 (test pool only, 142 scenarios, 0 errors,
@@ -670,8 +711,8 @@ decision mix. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (add
 11. `MockApprover` routes a gate that names no approver role (or `none` / `current_user`) to a fixed default
     (`manager`) instead of the true role, so `b5_no_inter` gets no routing advantage over B5 (H3).
 12. Metrics add `binary_success` / `binary_unauthorized_rate` (first-round decision projected to ALLOW vs not-ALLOW,
-    for B1's binary projection). Executable-subset metrics (tool selection, argument validity, leakage, ASR) and
-    provenance attribution accuracy are still to be wired into `metrics.py`.
+    for B1's binary projection). Provenance attribution accuracy is in `metrics.py` (argument trust + call-level
+    origin, inferred vs oracle); executable-subset metrics are in `eval/e2e_metrics.py` (item 24).
 13. Fixed user replies: `annotation gold` marks a seeded 15% of them noisy (the annotators' noisy reply if written,
     else an unhelpful one), so the noisy run and the noise-induced error rate work on the human test set, not only
     with the pre-annotation `ScenarioResponder`. The `authority_spoofing` category is set by annotators (CSV
@@ -682,3 +723,33 @@ decision mix. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (add
     (so `update_password` / `update_user_info` never need approval) and workspace `security_admin.approves:
     [disclose_restricted_to_owner]` (no rule emits that basis). Decide with the YAML owners whether to implement or
     delete them before annotation.
+16. Variant labels come from `train.variants.decide`, a policy-state labeller over the full oracle evidence plus two
+    hidden facts (the user's intent, which becomes the fixed reply, and the MockApprover's policy). By construction
+    it follows the same rule order as B1, so B1 scores ~100% on the generated dev pool. Dev is used only to select
+    the B4 threshold, never to compare gates; the human test set is the only evaluation. Seeds whose intent is
+    unclear (trusted provenance but no ground-truth match) are skipped.
+17. The generated dev pool has no answered-round examples (it is evaluated with the resolution loop); 20% of
+    training examples carry one (`train.variants.resolution_share`).
+18. Trainer: transformers `Trainer` + PEFT is the default (tested); Unsloth sits behind `train.trainer: unsloth`
+    (same hyper-parameters, untested). TRL is not used: its SFT API changes between versions, and the
+    completion-only collator is ~20 lines.
+19. B4 at a threshold is applied offline from the stored first-round `p_allow` (`pareto apply`). This is identical to
+    the decoder's `allow_threshold`, because B4 has no resolution loop, so it needs no second GPU pass.
+    `pareto select` refuses any prediction or case outside pool dev.
+20. Live runs (`run_e2e`): provenance is inferred for every condition (only `-provenance` drops it); the user is the
+    ScenarioResponder with 15% noise by default, the approver the MockApprover; a refused call returns an empty
+    tool result with error `Action not permitted.`; after 3 refusals the run ends via AgentDojo's
+    `AbortAgentError`, so utility/security are still scored.
+21. `authority_spoofing_success` counts an execution that should not happen, or one that skipped a required
+    deferral. A spoofed case that the gate escalates and the real approver then approves is not a successful
+    spoof. (The earlier version counted every final ALLOW.)
+22. Replay compares outputs up to formatting (`agent.replay.same_output`): quoting, line wrapping, list order,
+    `1.0` vs `1`, wall-clock timestamps and spotlighting delimiters are ignored; content differences and
+    appearing/disappearing errors drop the case.
+23. NB06 error categories take the first match in a fixed order: unsafe allowing, provenance attribution
+    (inferred-provenance condition only), authority inference, policy retrieval (no gold clause in the top 3),
+    missing-evidence prediction, resolution choice, over-blocking.
+24. End-to-end definitions: tool-selection accuracy = user-task ground-truth calls whose function the agent
+    attempted (multiset recall); argument validity = attempted calls not refused by the gate that ran without a
+    runtime error; leakage = traces with an executed state-changing call that sends CONFIDENTIAL+ data to a
+    lower-cleared destination (same labels as the gate).

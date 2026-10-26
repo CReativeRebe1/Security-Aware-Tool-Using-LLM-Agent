@@ -19,7 +19,7 @@ _ORDER = ["final_resolution_success", "unauthorized_action_rate", "unnecessary_d
           "gold_deferral_prevalence", "mean_interactions", "first_round_accuracy", "clarification_success",
           "escalation_precision", "escalation_recall", "over_blocking_rate", "defaulted_to_block",
           "binary_success", "binary_unauthorized_rate", "authority_spoofing_success", "macro_f1_missing_evidence", "macro_f1_required_authority",
-          "recall@3", "recall@5"]
+          "recall@3", "recall@5", "provenance_attribution_accuracy", "instruction_origin_accuracy"]
 
 
 def load_preds(paths: list[str]) -> dict[str, list[dict]]:
