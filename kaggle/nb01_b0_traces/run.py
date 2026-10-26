@@ -2,6 +2,8 @@
 # Output: /kaggle/working/outputs/b0_traces/{traces_shard*.jsonl, traces.jsonl, b0_summary.json, proposals.jsonl,
 #         manifest_*.json}
 import glob
+import os
+import shutil
 import sys
 
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
@@ -12,6 +14,12 @@ POOLS = "test"          # 142 test scenarios (B0 utility/ASR); "train,test" adds
 OUT = "/kaggle/working/outputs/b0_traces"
 
 bootstrap.setup()
+# Resume (ARCHITECTURE.md §9.3): shards from an earlier run, attached as the dataset "sagate-progress-nb01", are
+# copied in first; run_b0 then skips finished traces and retries only the ones that crashed.
+os.makedirs(OUT, exist_ok=True)
+for prev in glob.glob("/kaggle/input/**/sagate-progress-nb01/**/traces_shard*.jsonl", recursive=True):
+    print("resuming from", prev, flush=True)
+    shutil.copy(prev, OUT)
 codes = bootstrap.run_on_gpus([
     [sys.executable, "-m", "sagate.agent.run_b0", "--out", OUT, "--pools", POOLS, "--shard", str(i),
      "--num-shards", str(NUM_SHARDS)]

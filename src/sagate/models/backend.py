@@ -174,14 +174,30 @@ class HFBackend:
         return scores
 
     # --- generation -----------------------------------------------------------------------------------
+    PREFILL_CHUNK = 1024
+
+    def _prefill(self, ids: list[int]):
+        """KV cache for `ids`, built in PREFILL_CHUNK pieces. On a T4, SDPA has no flash kernel and materialises the
+        full heads x L x L attention matrix: one-shot prefill of a 12-16k-token agent conversation needs ~16 GB
+        (NB01 OOM on workspace tasks that read whole files). Chunks keep it at heads x chunk x L."""
+        from transformers import DynamicCache
+
+        cache = DynamicCache()
+        for i in range(0, len(ids), self.PREFILL_CHUNK):
+            t = self.torch.tensor([ids[i:i + self.PREFILL_CHUNK]], device=self.device)
+            self.model(input_ids=t, past_key_values=cache, use_cache=True, logits_to_keep=1)
+        return cache
+
     def generate(self, prefix: str, max_new_tokens: int = 512, stop: Sequence[str] = ()) -> str:
         torch = self.torch
-        ids = torch.tensor([self.encode(prefix)], device=self.device)
+        raw = self.encode(prefix)
+        ids = torch.tensor([raw], device=self.device)
         with torch.inference_mode(), self._adapter_ctx():
+            kw = {"past_key_values": self._prefill(raw[:-1])} if len(raw) > self.PREFILL_CHUNK else {}
             out = self.model.generate(
                 input_ids=ids, attention_mask=torch.ones_like(ids), max_new_tokens=max_new_tokens,
                 do_sample=False, temperature=None, top_p=None, top_k=None,
-                pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id)
+                pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id, **kw)
         text = self.tokenizer.decode(out[0, ids.shape[1]:], skip_special_tokens=False)
         for tok in ("<|im_end|>", "<|endoftext|>"):
             text = text.split(tok)[0]

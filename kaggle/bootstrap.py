@@ -75,7 +75,8 @@ def run_on_gpus(jobs: list, log_dir: str = os.path.join(WORK, "logs")) -> list:
         n_gpu = 1
     procs = []
     for i, cmd in enumerate(jobs):
-        env = dict(os.environ, CUDA_VISIBLE_DEVICES=str(i % max(n_gpu, 1)), PYTHONUNBUFFERED="1")
+        env = dict(os.environ, CUDA_VISIBLE_DEVICES=str(i % max(n_gpu, 1)), PYTHONUNBUFFERED="1",
+                   PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True")   # fragmentation caused NB01 OOMs
         log = open(os.path.join(log_dir, f"job{i}.log"), "w")
         print(f"[gpu {i % max(n_gpu, 1)}] $ {' '.join(cmd)}", flush=True)
         procs.append((subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT), log, i))
