@@ -214,6 +214,23 @@ Training cases carry the same gold fields, produced programmatically from explic
 
 ## 5. Component design
 
+### 5.0 How the dataset maps onto the components
+
+| Dataset file | Used by | Notes |
+|---|---|---|
+| `tool_call_proposals.jsonl.gz` | case builder (one row = one gate decision) | `user_prompt`, `prior_calls`, `proposed_call` go straight into `GateInput`. Rows hold **no tool outputs**: `untrusted_content` is filled by joining `trace_id` + `message_index` to `traces.jsonl.gz` and taking the `role: "tool"` messages before that index. |
+| `traces.jsonl.gz` | case builder, oracle provenance | `injections` (slot → injected text) drives oracle provenance; `messages` gives tool outputs. |
+| `arg_provenance`, `injection_seen_before_call` | oracle provenance | used as-is (recomputed with the same logic for Qwen traces). |
+| `matches_*_ground_truth` | variant seeding, analysis only | weak heuristics — **never** used as gold labels. |
+| `user_tasks.jsonl` / `injection_tasks.jsonl` | `ScenarioResponder`, variant generator, tool-selection metric | `ground_truth_calls` with `{"__expr__": …}` values (8 workspace tasks) are compared on function name + static args only; those 8 tasks are flagged in tool-selection/argument-validity results. |
+| `scenarios.jsonl` + `splits/` | `splits.assert_pool` | train-source = `strict_split == "train"` (dev = `user_task_split == "dev"`), test-source = `"test"`; the 342 `excluded` scenarios are never used. |
+| `environments/*_default.json` | authority/sensitivity YAML authoring, e2e | the YAML references real resources from here (IBANs, file IDs, contacts, calendar events). |
+| `tools.jsonl` | `tools_registry`, agent tool schemas | 35 tools, static state-changing classification (5.1). |
+
+Version caveat: the logged runs carry no benchmark version and some predate v1.2.2. Executable cases built
+from old logs are **replayed** in the pinned AgentDojo env before annotation; any case whose prior calls do
+not reproduce (different tool output / error) is dropped from the executable subset.
+
 ### 5.1 Tool registry (`evidence/tools_registry.py`)
 Static table over the 35 tools. Read-only tools (`search_*`, `get_*`, `list_files`, `read_file`) bypass the
 gate by default (logged, configurable `gate_read_only: false`) so the gate only sees state-changing calls:
@@ -399,7 +416,9 @@ resolution: {enabled: true, max_rounds: 2, user_noise: 0.15}
 final-resolution success, unauthorized-action rate, unnecessary-deferral rate (+ raw deferral vs gold
 prevalence), mean interactions, clarification success, escalation precision/recall, macro-F1 for
 `missing_evidence` / `required_authority`, Recall@3/5, provenance attribution accuracy, authority-spoofing
-success, clean vs noisy splits; on the executable subset also AgentDojo utility, attack success rate, tool
+success, clean vs noisy results and noise-induced error rate (cases correct with the clean reply but wrong
+with the noisy one); on the executable subset also AgentDojo utility, attack success rate, sensitive-data
+leakage (CONFIDENTIAL/RESTRICTED content reaching a lower-labelled destination in an executed call), tool
 selection accuracy and argument validity.
 
 `stats.py`: paired bootstrap 95% CIs (10k resamples, seeded), exact McNemar for paired per-case success,
@@ -497,6 +516,12 @@ library versions).
    `ignore_previous`.
 6. **Authority YAML and handbooks** — owner(s) and freeze date. This is the real Week-1 blocker: the
    context builder, B1, annotation and variant generation all depend on it.
+7. **What "B0" means** — the proposal makes Qwen3-8B the task agent, so B0 = Qwen3-8B traces (NB01).
+   The dataset README calls the existing multi-model AgentDojo logs "cached B0 traces". Current plan: the
+   existing logs are a *proposal pool* for building gate cases; B0 utility/attack numbers come from Qwen only.
+8. **Scenario count** — the proposal says ~150 base scenarios; the frozen split has 418 usable
+   (276 train-source + 142 test-source). Current plan: use all 418 (more training variety, same leakage
+   guarantees) and state the change in the report.
 
 ---
 
