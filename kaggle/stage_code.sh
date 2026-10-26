@@ -21,6 +21,8 @@ SHA="$(git -C "$ROOT" rev-parse --short HEAD)"
 git -C "$ROOT" diff --quiet HEAD -- src configs resources || SHA="$SHA-dirty"
 echo "$SHA" > "$OUT/GIT_SHA"
 
+# macOS tar otherwise adds ._* AppleDouble files, which Kaggle extracts next to the real configs/resources
+export COPYFILE_DISABLE=1
 tar -czf "$OUT/sagate-code.tar.gz" --exclude='__pycache__' --exclude='*.pyc' \
     -C "$ROOT" pyproject.toml configs resources src annotations data/processed \
     -C "$OUT" GIT_SHA
