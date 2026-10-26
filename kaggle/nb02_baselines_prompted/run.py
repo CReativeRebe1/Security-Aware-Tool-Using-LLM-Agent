@@ -28,8 +28,9 @@ for pool in POOLS:
 
 limit = ["--limit", str(LIMIT)] if LIMIT else []
 for pool in POOLS:
-    bootstrap.run([py, "-m", "sagate.eval.run_gate", "--condition", "b1_rules", "--cases", cases[pool],
-                   "--pool", pool, "--out", f"{OUT}/predictions/{pool}"] + limit)
+    for responses in ("clean", "noisy"):          # B1 has the resolution loop too: clean vs noisy for every 4-way gate
+        bootstrap.run([py, "-m", "sagate.eval.run_gate", "--condition", "b1_rules", "--cases", cases[pool],
+                       "--pool", pool, "--responses", responses, "--out", f"{OUT}/predictions/{pool}"] + limit)
 
 
 def job(cond, responses="clean"):

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ..data.cases import attach_gold, load_cases
 from ..data.loaders import read_jsonl
-from .metrics import Rate, compute, decision_mix, per_case_success
+from .metrics import Rate, compute, decision_mix, noise_induced_errors, per_case_success
 from .stats import mcnemar_exact, paired_bootstrap
 
 _ORDER = ["final_resolution_success", "unauthorized_action_rate", "unnecessary_deferral_rate", "raw_deferral_rate",
@@ -52,6 +52,10 @@ def main(argv=None) -> None:
     if a.gold:
         print(f"gold attached to {attach_gold(cases, read_jsonl(a.gold))}/{len(cases)} cases")
     preds = load_preds(a.pred)
+    if a.compare:
+        missing = [x for x in a.compare if x not in preds]
+        if missing:
+            raise SystemExit(f"--compare: no predictions named {missing}; have {sorted(preds)}")
     have_gold = any(c.has_gold for c in cases)
     results = {}
     for name, ps in preds.items():
@@ -67,6 +71,10 @@ def main(argv=None) -> None:
                 print(f"  {k:30s} {_fmt(m[k])}")
         for s, sm in m.get("by_subset", {}).items():
             print(f"  [{s}] success {sm['final_resolution_success']}  unauthorized {sm['unauthorized_action_rate']}")
+        clean = name.replace("_noisy", "", 1)
+        if clean != name and clean in preds:
+            m["noise_induced_error_rate"] = noise_induced_errors(preds[clean], ps, cases)
+            print(f"  {'noise_induced_error_rate':30s} {_fmt(m['noise_induced_error_rate'])}  (vs {clean})")
     if a.compare and have_gold:
         sa, sb = (per_case_success(preds[x], cases) for x in a.compare)
         keys = sorted(set(sa) & set(sb))

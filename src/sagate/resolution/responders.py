@@ -99,7 +99,13 @@ class MockApprover:
         # into conditions that cannot predict it.
         asked = out.required_authority if out.required_authority not in (None, "none", "current_user") \
             else DEFAULT_APPROVER_ROLE
-        approver = auth.get("approver") or asked
+        # The reply comes from whoever holds the asked role, so the responder's name in the resolution history
+        # never reveals the true approver to a gate that asked the wrong one (or cannot see AUTHORITY).
+        if asked == "resource_owner":
+            approver = auth.get("resource_owner") if auth.get("resource_owner") not in (None, "current_user") \
+                else "resource_owner"
+        else:
+            approver = (self.policies[full.suite].get("approvers") or {}).get(asked, asked)
 
         def reply(ok: bool, text: str) -> dict:
             return {"responder": approver, "role": asked, "approved": ok, "text": text}

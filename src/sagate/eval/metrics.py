@@ -50,8 +50,11 @@ def macro_f1(gold: list[str], pred: list[str], labels: Iterable[str] | None = No
 
 
 def join(preds: Iterable[dict], cases: Iterable[Case]) -> list[tuple[dict, Case]]:
+    """One (prediction, gold case) pair per case. A predictions file reused after the cases changed holds stale
+    rows for the same case_id under other keys; the last row wins so no case is counted twice."""
     by_id = {c.case_id: c for c in cases if c.has_gold}
-    return [(p, by_id[p["case_id"]]) for p in preds if p["case_id"] in by_id]
+    latest = {p["case_id"]: p for p in preds if p["case_id"] in by_id}
+    return [(p, by_id[cid]) for cid, p in latest.items()]
 
 
 def first_output(p: dict) -> dict:
@@ -104,7 +107,8 @@ def compute(preds: Iterable[dict], cases: Iterable[Case]) -> dict:
     m["recall@3"] = sum(rec3) / len(rec3) if rec3 else None
     m["recall@5"] = sum(rec5) / len(rec5) if rec5 else None
 
-    m["confusion_first_round"] = dict(Counter((c.gold_decision, p["first_decision"]) for p, c in pairs))
+    # "gold->predicted" string keys so the metrics dict stays JSON-serialisable (report --json)
+    m["confusion_first_round"] = dict(Counter(f"{c.gold_decision}->{p['first_decision']}" for p, c in pairs))
     m["gold_final_mix"] = dict(Counter(gold_final))
     m["by_subset"] = {s: compute_simple([(p, c) for p, c in pairs if c.subset == s])
                       for s in sorted({c.subset for _, c in pairs})}

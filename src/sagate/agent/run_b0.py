@@ -1,18 +1,21 @@
 """B0: run the Qwen3 agent (no gate) over the strict train/test scenarios and cache traces in the dataset's
-trace schema (NB01). Resumable: finished trace_ids are skipped.
+trace schema (NB01). Resumable: finished trace_ids are skipped; traces that crashed (e.g. CUDA OOM) are retried.
 
   python -m sagate.agent.run_b0 --out outputs/b0_traces --shard 0 --num-shards 2
+  python -m sagate.agent.run_b0 --merge outputs/b0_traces/traces_shard*.jsonl --out outputs/b0_traces
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import time
 import traceback
+from collections import defaultdict
 from pathlib import Path
 
 from ..config import load_config
-from ..data.loaders import AgentDojoData
+from ..data.loaders import AgentDojoData, scenario_id, write_jsonl
 from ..data.splits import Splits
 from ..gate.cache import JsonlStore
 from ..manifest import write_manifest
@@ -31,6 +34,34 @@ def scenario_list(data: AgentDojoData, pools: list[str], suites: list[str] | Non
     return out
 
 
+def merge(shards: list[str], out_dir: Path, data: AgentDojoData) -> dict:
+    """Shards -> traces.jsonl (one row per trace_id, latest attempt wins, partial lines skipped) + b0_summary.json:
+    B0 utility and attack success rate per pool and suite, with raw counts."""
+    rows: dict[str, dict] = {}
+    for s in shards:
+        with JsonlStore(s) as st:
+            rows.update((r["key"], r) for r in st.values())
+    write_jsonl(out_dir / "traces.jsonl", rows.values())
+    splits = Splits(data)
+    agg: dict = defaultdict(lambda: {"traces": 0, "errors": 0, "utility": 0, "attacked": 0, "attack_succeeded": 0})
+    for r in rows.values():
+        pool = splits.pool_of(scenario_id(r["suite"], r["user_task_id"], r["injection_task_id"]))
+        for key in ((pool, r["suite"]), (pool, "all")):
+            a = agg[key]
+            a["traces"] += 1
+            a["errors"] += bool(r.get("error"))
+            a["utility"] += bool(r.get("utility"))
+            if r.get("injection_task_id"):
+                a["attacked"] += 1
+                a["attack_succeeded"] += bool(r.get("attack_succeeded"))
+    summary = {f"{p}/{s}": {**a, "utility_rate": f"{a['utility']}/{a['traces']}",
+                            "asr": f"{a['attack_succeeded']}/{a['attacked']}"} for (p, s), a in sorted(agg.items())}
+    (out_dir / "b0_summary.json").write_text(json.dumps(summary, indent=1))
+    for k, v in summary.items():
+        print(f"  {k:22s} utility {v['utility_rate']:>9s}  ASR {v['asr']:>9s}  errors {v['errors']}")
+    return summary
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=None)
@@ -41,7 +72,15 @@ def main(argv=None) -> None:
     ap.add_argument("--num-shards", type=int, default=1)
     ap.add_argument("--limit", type=int, default=None, help="stop after N new traces (smoke tests)")
     ap.add_argument("--model-id", default=None, help="override model.base_id (e.g. a small model for smoke tests)")
+    ap.add_argument("--merge", nargs="+", default=None, metavar="SHARD",
+                    help="CPU only: merge shard files into <out>/traces.jsonl and write <out>/b0_summary.json")
     a = ap.parse_args(argv)
+
+    if a.merge:
+        cfg = load_config(a.config)
+        out_dir = Path(a.out) if a.out else cfg.outputs_dir / "b0_traces"
+        merge(a.merge, out_dir, AgentDojoData(cfg.data_dir))
+        return
 
     from agentdojo.attacks.attack_registry import load_attack
     from agentdojo.task_suite.load_suites import get_suite
@@ -69,7 +108,7 @@ def main(argv=None) -> None:
     done = 0
     for s in scen:
         tid = trace_id(s["suite"], s["user_task_id"], attack_name, s["injection_task_id"])
-        if tid in store:
+        if tid in store and not store.get(tid).get("error"):
             continue
         suite = get_suite(version, s["suite"])
         user_task = suite.get_user_task_by_id(s["user_task_id"])

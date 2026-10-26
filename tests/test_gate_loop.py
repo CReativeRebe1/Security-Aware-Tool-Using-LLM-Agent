@@ -144,3 +144,4 @@ def test_approver_routing_does_not_leak_true_role(make_case, cfg):
     assert unnamed["role"] == none_role["role"] == "manager"
     wrong = ap.respond(c, c.input, GateOutput(decision="ESCALATE", required_authority="security_admin"), 1)
     assert wrong["approved"] is False
+    assert wrong["responder"] == "bank_security"      # the asked role answers; the true approver's name never shows

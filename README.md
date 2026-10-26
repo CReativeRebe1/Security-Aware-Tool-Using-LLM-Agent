@@ -151,10 +151,11 @@ pytest -q
 | Build gate cases from the logged runs | `python -m sagate.data.build_cases --pool test` (also `train`, `dev`) |
 | Export cases for annotation | `python -m sagate.data.annotation export --cases outputs/cases/test_candidates.jsonl --sample 160 --out annotations/batch1.csv` |
 | Agreement / gold file | `python -m sagate.data.annotation agreement annotations/batch1_*.csv` · `... gold annotations/batch1_adjudicated.csv --out annotations/gold.jsonl` |
+| Freeze the labelled case file | `python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.jsonl [annotations/test_nl.jsonl] --gold annotations/gold.jsonl --pool test --out annotations/test_cases.jsonl` |
 | B1 rules (CPU) | `python -m sagate.eval.run_gate --condition b1_rules --cases outputs/cases/test_candidates.jsonl` |
 | B2 / B3 prompted (GPU) | `python -m sagate.eval.run_gate --condition b3_prompt_4way --cases ... [--responses noisy]` |
 | Report | `python -m sagate.eval.report --cases ... --pred outputs/predictions/*.jsonl [--gold annotations/gold.jsonl --compare A B]` |
-| B0 Qwen traces (GPU) | `python -m sagate.agent.run_b0 --shard 0 --num-shards 2` then `python -m sagate.agent.extract_proposals` |
+| B0 Qwen traces (GPU) | `python -m sagate.agent.run_b0 --shard 0 --num-shards 2`, then `... run_b0 --merge <shards>` (traces.jsonl + B0 utility/ASR in b0_summary.json), then `python -m sagate.agent.extract_proposals` |
 | Smoke test / throughput | `python -m sagate.smoke [--model-id Qwen/Qwen3-0.6B]` |
 
 Kaggle: `bash kaggle/stage_code.sh`, then `kaggle datasets version -p build/sagate-code --dir-mode zip -m "<sha>"`

@@ -1,7 +1,8 @@
 """Gate prompt: fixed system prompt + GateInput rendered as sections (ARCHITECTURE.md §5.5).
 
 Untrusted text appears only inside <untrusted id=… source=…> blocks; any `<untrusted` / `</untrusted` sequence
-inside the text is escaped so content cannot close or forge a block (P4). Fields removed by EvidenceMask are
+inside the text — and in the user prompt, call arguments and provenance values, which can copy it — is escaped so
+content cannot close or forge a block (P4). Fields removed by EvidenceMask are
 omitted entirely, so the model never sees an empty placeholder that would leak the ablation.
 """
 
@@ -62,7 +63,8 @@ def escape_untrusted(text: str) -> str:
 
 
 def _j(obj) -> str:
-    return json.dumps(obj, ensure_ascii=False, default=str)
+    # escaped too: call arguments and provenance values can copy injected text verbatim
+    return escape_untrusted(json.dumps(obj, ensure_ascii=False, default=str))
 
 
 def render_input(gi: GateInput) -> str:
@@ -70,7 +72,7 @@ def render_input(gi: GateInput) -> str:
     out = [
         "## USER REQUEST",
         f"principal: {gi.user.get('principal_id')}",
-        f"prompt: {gi.user.get('prompt')}",
+        f"prompt: {escape_untrusted(str(gi.user.get('prompt')))}",
         "",
         "## PROPOSED TOOL CALL",
         f"function: {call['function']}  (action: {call.get('action')}, state_changing: {call.get('state_changing')})",
@@ -87,7 +89,8 @@ def render_input(gi: GateInput) -> str:
                 out.append(f"[{r['id']}] instruction origin: {r['instruction_origin']}{src}; trust: {r['trust']}")
             else:
                 srcs = ", ".join(r["sources"]) or "not found"
-                out.append(f"[{r['id']}] arg {r['arg']} = {r['value']} | sources: {srcs} | trust: {r['trust']}")
+                out.append(f"[{r['id']}] arg {r['arg']} = {escape_untrusted(str(r['value']))} | sources: {srcs} "
+                           f"| trust: {r['trust']}")
     if gi.authority is not None:
         a = gi.authority
         out += ["", "## AUTHORITY"]

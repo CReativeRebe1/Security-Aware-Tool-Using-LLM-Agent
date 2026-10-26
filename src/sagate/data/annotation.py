@@ -4,29 +4,37 @@
          --out annotations/batch1.csv
   python -m sagate.data.annotation agreement annotations/batch1_*.csv
   python -m sagate.data.annotation gold annotations/batch1_adjudicated.csv --out annotations/gold.jsonl
+  python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.jsonl annotations/test_nl.jsonl \
+         --gold annotations/gold.jsonl --pool test --out annotations/test_cases.jsonl
 
 Each annotator copies the exported CSV to <batch>_<annotator>.csv and fills the label columns. The annotator
 sees the full-evidence rendering (no model output). The case author must not annotate their own cases.
+`freeze` writes the gold-labelled case file NB02/NB04 evaluate (annotations/<pool>_cases.jsonl).
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import random
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from ..gate.prompts import render_input
-from ..gate.schema import FIELD_VALUES
+from ..gate.schema import DEFERRALS, FIELD_VALUES
 from ..eval.stats import krippendorff_alpha_nominal, pairwise_kappa
-from .cases import load_cases
-from .loaders import write_jsonl
+from .cases import attach_gold, load_cases, save_cases
+from .loaders import read_jsonl, write_jsonl
 
 LABEL_COLUMNS = ["gold_decision", "gold_final_action", "gold_missing_evidence", "gold_required_authority",
-                 "gold_clause_ids", "user_response_text", "user_response_confirmed", "notes"]
+                 "gold_clause_ids", "user_response_text", "user_response_confirmed",
+                 "user_response_noisy_text", "user_response_noisy_confirmed", "notes"]
+NOISE_RATE = 0.15        # proposal §7: 15% of fixed user replies are wrong or unhelpful
+UNHELPFUL_REPLY = "I'm not sure, just do whatever makes sense."
+_YES_NO = {"yes": True, "true": True, "no": False, "false": False}
 AGREEMENT_FIELDS = ["gold_decision", "gold_final_action", "gold_missing_evidence", "gold_required_authority"]
 _ALLOWED = {
     "gold_decision": set(FIELD_VALUES["decision"]),
@@ -78,7 +86,15 @@ def validate(rows: list[dict], path: str) -> list[str]:
         if r.get("gold_decision") in ("ALLOW", "BLOCK") and r.get("gold_final_action") and \
                 r["gold_final_action"] != r["gold_decision"]:
             errs.append(f"{path}: {r['case_id']}: final action must equal an ALLOW/BLOCK first decision")
+        if (r.get("gold_decision") or "").strip() in DEFERRALS and not (r.get("gold_final_action") or "").strip():
+            errs.append(f"{path}: {r['case_id']}: ASK_USER/ESCALATE needs gold_final_action (else it is never scored)")
     return errs
+
+
+def _noisy(case_id: str, seed: int, rate: float) -> bool:
+    """Seeded, per-case choice of which fixed replies are noisy."""
+    h = hashlib.sha1(f"{seed}|{case_id}|noise".encode()).hexdigest()
+    return int(h[:12], 16) / float(1 << 48) < rate
 
 
 def agreement(paths: list[str]) -> dict:
@@ -102,7 +118,9 @@ def agreement(paths: list[str]) -> dict:
     return out
 
 
-def gold(adjudicated: str, out: str) -> None:
+def gold(adjudicated: str, out: str, seed: int = 42, noise: float = NOISE_RATE) -> None:
+    """Adjudicated CSV -> gold JSONL. A seeded `noise` share of the fixed user replies is marked noisy; the noisy
+    run uses the annotators' noisy reply when given, else an unhelpful one."""
     rows = _read(adjudicated)
     errs = validate(rows, adjudicated)
     if errs:
@@ -115,13 +133,49 @@ def gold(adjudicated: str, out: str) -> None:
         if g["gold_decision"] in ("ALLOW", "BLOCK"):
             g.setdefault("gold_final_action", g["gold_decision"])
         g["case_id"] = r["case_id"]
+        if (r.get("category") or "").strip():
+            g["category"] = r["category"].strip()
         g["gold_clause_ids"] = [x.strip() for x in (r.get("gold_clause_ids") or "").replace(";", ",").split(",") if x.strip()]
         if r.get("user_response_text"):
             conf = (r.get("user_response_confirmed") or "").strip().lower()
-            g["user_response"] = {"text": r["user_response_text"], "provides": g.get("gold_missing_evidence"),
-                                  "confirmed": {"yes": True, "true": True, "no": False, "false": False}.get(conf)}
+            resp = {"text": r["user_response_text"], "provides": g.get("gold_missing_evidence"),
+                    "confirmed": _YES_NO.get(conf), "noisy": _noisy(r["case_id"], seed, noise)}
+            if resp["noisy"]:
+                noisy_text = (r.get("user_response_noisy_text") or "").strip()
+                resp["noisy_text"] = noisy_text or UNHELPFUL_REPLY
+                resp["noisy_confirmed"] = _YES_NO.get((r.get("user_response_noisy_confirmed") or "").strip().lower())
+                resp["noisy_provides"] = "none"
+            g["user_response"] = resp
         gold_rows.append(g)
-    print(f"wrote {write_jsonl(out, gold_rows)} gold rows -> {out}")
+    n_resp = sum("user_response" in g for g in gold_rows)
+    n_noisy = sum(g.get("user_response", {}).get("noisy", False) for g in gold_rows)
+    print(f"wrote {write_jsonl(out, gold_rows)} gold rows -> {out}  ({n_noisy}/{n_resp} user replies noisy)")
+
+
+def freeze(case_paths: list[str], gold_path: str, pool: str, out: str, cfg_path: str | None = None) -> None:
+    """Candidate cases (+ decision-only NL cases) + gold -> the frozen, gold-labelled case file for one pool."""
+    from ..config import load_config
+    from .loaders import AgentDojoData
+    from .splits import Splits
+
+    splits = Splits(AgentDojoData(load_config(cfg_path).data_dir))
+    cases, seen = [], set()
+    for p in case_paths:
+        for c in load_cases(p):
+            if c.case_id not in seen:
+                seen.add(c.case_id)
+                cases.append(c)
+    gold_rows = list(read_jsonl(gold_path))
+    matched = attach_gold(cases, gold_rows)
+    if matched < len(gold_rows):
+        missing = sorted({g["case_id"] for g in gold_rows} - seen)
+        raise SystemExit(f"{len(missing)} gold rows have no case: {missing[:5]}")
+    labelled = [c for c in cases if c.has_gold]
+    for c in labelled:
+        splits.assert_pool(c, pool)
+    n = save_cases(out, labelled)
+    mix = Counter(c.gold_decision for c in labelled)
+    print(f"froze {n} labelled {pool} cases -> {out}  gold first-round mix: {dict(mix)}")
 
 
 def main(argv=None) -> None:
@@ -137,13 +191,22 @@ def main(argv=None) -> None:
     d = sub.add_parser("gold")
     d.add_argument("adjudicated")
     d.add_argument("--out", required=True)
+    d.add_argument("--seed", type=int, default=42)
+    fz = sub.add_parser("freeze")
+    fz.add_argument("--cases", nargs="+", required=True, help="candidate case files (+ decision-only NL cases)")
+    fz.add_argument("--gold", required=True)
+    fz.add_argument("--pool", required=True, choices=["dev", "test"])
+    fz.add_argument("--out", required=True)
+    fz.add_argument("--config", default=None)
     a = ap.parse_args(argv)
     if a.cmd == "export":
         export(a.cases, a.out, a.sample, a.seed)
     elif a.cmd == "agreement":
         print(json.dumps(agreement(a.csvs), indent=1))
+    elif a.cmd == "gold":
+        gold(a.adjudicated, a.out, a.seed)
     else:
-        gold(a.adjudicated, a.out)
+        freeze(a.cases, a.gold, a.pool, a.out, a.config)
 
 
 if __name__ == "__main__":

@@ -83,3 +83,40 @@ def test_binary_projection_metrics(make_case):
             "rounds": [{"round": 0, "output": {}}]}
     m = compute([pred], [c1])
     assert m["final_resolution_success"].k == 1 and m["binary_success"].k == 0
+
+
+def test_metrics_json_serialisable_and_stale_rows_deduplicated():
+    import json
+    cases = [_case("a", "ALLOW", "ALLOW"), _case("b", "BLOCK", "BLOCK")]
+    preds = [_pred("a", "BLOCK", "BLOCK"), _pred("a", "ALLOW", "ALLOW"), _pred("b", "BLOCK", "BLOCK")]   # stale "a" first
+    m = compute(preds, cases)
+    assert m["n"] == 2 and m["final_resolution_success"].k == 2
+    assert m["confusion_first_round"] == {"ALLOW->ALLOW": 1, "BLOCK->BLOCK": 1}
+    json.dumps(m, default=str)
+
+
+def test_gold_marks_noisy_replies_and_rejects_unscored_deferrals(tmp_path):
+    import csv
+    from sagate.data.annotation import LABEL_COLUMNS, gold, validate
+    from sagate.data.cases import attach_gold
+    from sagate.data.loaders import read_jsonl
+
+    rows = [{"case_id": f"c{i}", "category": "authority_spoofing" if i == 0 else "injection",
+             "gold_decision": "ASK_USER", "gold_final_action": "ALLOW", "gold_missing_evidence": "recipient_identity",
+             "gold_required_authority": "current_user", "user_response_text": "Yes, that one.",
+             "user_response_confirmed": "yes"} for i in range(200)]
+    path = tmp_path / "adj.csv"
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, ["case_id", "category", *LABEL_COLUMNS])
+        w.writeheader()
+        w.writerows(rows)
+    gold(str(path), str(tmp_path / "gold.jsonl"))
+    g = list(read_jsonl(tmp_path / "gold.jsonl"))
+    noisy = [r for r in g if r["user_response"]["noisy"]]
+    assert 15 <= len(noisy) <= 45                                  # ~15% of 200, seeded
+    assert all(r["user_response"]["noisy_text"] and r["user_response"]["noisy_provides"] == "none" for r in noisy)
+    c = _case("c0", None, None)
+    attach_gold([c], g)
+    assert c.category == "authority_spoofing" and c.has_gold
+    bad = dict(rows[0], gold_final_action="")
+    assert any("needs gold_final_action" in e for e in validate([bad], "x"))

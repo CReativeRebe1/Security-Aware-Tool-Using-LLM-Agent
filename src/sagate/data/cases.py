@@ -84,5 +84,7 @@ def attach_gold(cases: list[Case], gold_rows: Iterable[dict]) -> int:
                 setattr(c, f, g[f])
         if g.get("user_response"):
             c.user_response = g["user_response"]
+        if g.get("category"):             # annotators may re-tag, e.g. authority_spoofing
+            c.category = g["category"]
         n += 1
     return n

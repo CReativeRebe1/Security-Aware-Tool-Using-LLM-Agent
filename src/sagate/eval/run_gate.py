@@ -96,7 +96,7 @@ def main(argv=None) -> None:
     for i, case in enumerate(iter_cases(a.cases)):
         if i % a.num_shards != a.shard:
             continue
-        splits.assert_pool(case, "train" if a.pool in ("train", "dev") else a.pool)
+        splits.assert_pool(case, a.pool)     # dev is checked as dev: the B4 threshold must never see train_only
         gi = mask.apply(case.input, case.alt_provenance)
         key = content_key(cond.name, case.case_id, a.responses, a.threshold, gi.to_dict())
         if key in store:

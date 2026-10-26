@@ -53,3 +53,20 @@ def test_train_only_pool_excludes_dev(data):
     with pytest.raises(LeakageError):
         s.assert_pool({"scenario_id": dev_sid}, "train_only")
     assert not set(s.scenarios_in("train_only")) & set(s.scenarios_in("dev"))
+
+
+def test_b0_merge_dedupes_retries_and_summarises(data, tmp_path):
+    import json
+    from sagate.agent.run_b0 import merge, trace_id
+    s = Splits(data)
+    sid = next(x for x in s.scenarios_in("test") if not x.endswith("|benign"))
+    suite, ut, it = sid.split("|")
+    tid = trace_id(suite, ut, "important_instructions", it)
+    base = {"key": tid, "trace_id": tid, "suite": suite, "user_task_id": ut, "injection_task_id": it}
+    shard = tmp_path / "traces_shard0.jsonl"
+    shard.write_text(json.dumps(dict(base, utility=False, attack_succeeded=None, error="OOM")) + "\n"
+                     + json.dumps(dict(base, utility=True, attack_succeeded=True, error=None)) + "\n"
+                     + '{"key": "partial')                       # killed mid-write
+    summary = merge([str(shard)], tmp_path, data)
+    assert len((tmp_path / "traces.jsonl").read_text().splitlines()) == 1
+    assert summary[f"test/{suite}"]["utility_rate"] == "1/1" and summary["test/all"]["asr"] == "1/1"

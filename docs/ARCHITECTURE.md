@@ -447,8 +447,6 @@ unauthorized-action vs final-resolution-success frontier with the success region
 
 ### 9.2 Notebooks
 
-| NB | Purpose | Accelerator | Inputs → outputs | Est. GPU-h |
-|---|---|---|---|---|
 | NB | Purpose | Accelerator | Inputs → outputs | Est. session-h |
 |---|---|---|---|---|
 | NB00 `setup_smoke` | install, load Qwen3-8B nf4, one gate call, one AgentDojo task, **measure prefill/decode tok/s and one 50-step training run** (replaces the estimates below with measured numbers) | T4 | → env check + `throughput.json` | 0.5 |
@@ -616,13 +614,20 @@ B5 − authority. That alone answers H1 and H2.
 
 ## 14. Implementation status (baselines)
 
-**Built and tested** (`pytest`: 37 tests; local smoke run with `Qwen/Qwen3-0.6B` on CPU):
+**Built and tested** (`pytest`: 44 tests; local smoke run with `Qwen/Qwen3-0.6B` on CPU):
 `config`, `data/{loaders,splits,cases,build_cases,annotation,ground_truth}`, `evidence/*`, `gate/*`,
 `resolution/*`, `models/{backend,chat}`, `agent/{pipeline,run_b0,extract_proposals}`,
 `eval/{metrics,stats,run_gate,report}`, `smoke`, Kaggle kernels NB00–NB02 + `stage_code.sh` + `bootstrap.py`.
 
 **Not built yet** (after the baselines): `train/*` (variants, SFT build, QLoRA), `eval/pareto.py`
-(B4 threshold sweep), `GatedToolsExecutor` + `run_e2e.py` (NB05), NB03–NB06.
+(B4 threshold sweep), `GatedToolsExecutor` + `run_e2e.py` (NB05), NB03–NB06. Also not built, although §5.0 plans
+it before annotation: **replaying old-log executable cases** in the pinned AgentDojo env and dropping those whose
+prior calls do not reproduce. Until it exists, executable cases from pre-v1.2.2 logs are unverified.
+
+**Baseline run status.** NB00–NB02 are staged but have not produced outputs yet (no B0 traces, no B2/B3
+predictions). Offline B1–B3 metrics need the frozen gold file: before annotation NB02 is a dry run that reports the
+decision mix only. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (adds Qwen proposals) → annotate →
+`annotation gold` → `annotation freeze` → `annotations/<pool>_cases.jsonl` in the staged code → NB02.
 
 **Checks against the data**
 - Provenance tagging reproduces the shipped `arg_provenance` on 100% of sampled arguments; proposal
@@ -662,3 +667,13 @@ B5 − authority. That alone answers H1 and H2.
 12. Metrics add `binary_success` / `binary_unauthorized_rate` (first-round decision projected to ALLOW vs not-ALLOW,
     for B1's binary projection). Executable-subset metrics (tool selection, argument validity, leakage, ASR) and
     provenance attribution accuracy are still to be wired into `metrics.py`.
+13. Fixed user replies: `annotation gold` marks a seeded 15% of them noisy (the annotators' noisy reply if written,
+    else an unhelpful one), so the noisy run and the noise-induced error rate work on the human test set, not only
+    with the pre-annotation `ScenarioResponder`. The `authority_spoofing` category is set by annotators (CSV
+    `category` column); the case builder never assigns it.
+14. B0 utility / attack success come from `run_b0 --merge` (`b0_summary.json`, raw counts per pool and suite).
+    Crashed traces (e.g. OOM) are retried on resume instead of being cached as failures.
+15. Draft authority YAML rules that no code reads yet: banking `user_rules.account_change.password_from_user_only`
+    (so `update_password` / `update_user_info` never need approval) and workspace `security_admin.approves:
+    [disclose_restricted_to_owner]` (no rule emits that basis). Decide with the YAML owners whether to implement or
+    delete them before annotation.
