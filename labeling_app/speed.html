@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate Speed Triage | Keyboard-First Labelling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="speed.css">
+</head>
+<body>
+  <div id="speedApp">
+    <!-- Style Switcher Banner -->
+    <div class="style-switcher-bar">
+      <span class="switcher-label">Design Styles:</span>
+      <a href="index.html" class="style-link">Classic 2-Column</a>
+      <a href="minimal.html" class="style-link">Zen Minimal</a>
+      <a href="compact.html" class="style-link">Compact Reviewer</a>
+      <a href="speed.html" class="style-link active">Speed Triage</a>
+      <a href="wireframe.html" class="style-link">Structured Form (Wireframe)</a>
+    </div>
+
+    <!-- Top Speed Bar -->
+    <header class="speed-header">
+      <div class="speed-logo">⚡ <strong>SaGate</strong> Triage</div>
+      <div class="header-controls">
+        <select id="sBatchSelect" class="s-select"></select>
+        <select id="sAnnotatorSelect" class="s-select">
+          <option value="rinkesh">Rinkesh</option>
+          <option value="prabhash">Prabhash</option>
+          <option value="shubham">Shubham</option>
+          <option value="yogendra">Yogendra</option>
+        </select>
+        <div class="s-progress-badge" id="sProgressBadge">0/100</div>
+        <button id="sBtnExport" class="s-btn s-btn-blue">Export CSV</button>
+      </div>
+    </header>
+
+    <!-- Triage Main Layout (Queue Sidebar + Center Focus Stage) -->
+    <main class="triage-layout">
+      <!-- Left Queue Column -->
+      <aside class="triage-queue">
+        <div class="queue-head">
+          <span>Batch Queue (100)</span>
+          <button id="sBtnNextUnlabeled" class="s-link" title="Jump to next unlabeled (U)">⚡ Unlabeled</button>
+        </div>
+        <div class="queue-list" id="sQueueList">
+          <!-- 100 cases items with status tags -->
+        </div>
+      </aside>
+
+      <!-- Center Stage -->
+      <section class="triage-stage">
+        <div class="stage-container">
+          <!-- Top Case Header -->
+          <div class="stage-header">
+            <div class="stage-meta">
+              <span class="case-number">Case #<span id="sCaseNum">1</span></span>
+              <span id="sSuiteBadge" class="s-tag tag-blue">banking</span>
+              <span id="sCategoryBadge" class="s-tag tag-purple">ambiguity</span>
+              <span id="sDiffBadge" class="s-tag tag-amber">medium</span>
+            </div>
+            <div id="sStatusIndicator" class="decision-badge">UNLABELED</div>
+          </div>
+
+          <!-- Prompt Callout -->
+          <div class="triage-card prompt-card">
+            <div class="card-caption">USER INSTRUCTION (<span id="sPrincipal">emma</span>)</div>
+            <div class="prompt-text" id="sPromptText">Loading prompt...</div>
+          </div>
+
+          <!-- Action & Arg Pills -->
+          <div class="triage-card action-card">
+            <div class="card-caption">PROPOSED TOOL CALL</div>
+            <div class="fn-call-title" id="sFnTitle">send_money()</div>
+            <div class="args-pills" id="sArgsPills">
+              <!-- Inline argument pills -->
+            </div>
+          </div>
+
+          <!-- Security Check & Warnings -->
+          <div class="triage-card security-card">
+            <div class="card-caption">SECURITY STATUS</div>
+            <div class="sec-chips">
+              <span class="sec-chip" id="sAuthChip">Authority: Current User</span>
+              <span class="sec-chip" id="sFlowChip">Flow: PUBLIC → INTERNAL</span>
+              <span class="sec-chip" id="sApproverChip">Approver: None</span>
+            </div>
+            <div id="sUntrustedAlert" class="untrusted-alert" style="display: none;">
+              <strong>⚠️ Untrusted Content Saw by Agent:</strong>
+              <div id="sUntrustedBody" class="untrusted-snippet"></div>
+            </div>
+          </div>
+
+          <!-- Security Policies (Quick Keyboard Citable!) -->
+          <div class="triage-card policy-card">
+            <div class="card-caption">
+              <span>APPLICABLE SECURITY POLICIES</span>
+              <small class="hint">Click or press to cite</small>
+            </div>
+            <div class="policy-triage-list" id="sPolicyList">
+              <!-- Policy cards with 1-click citation -->
+            </div>
+          </div>
+
+          <!-- Floating Triage Decision HUD -->
+          <div class="triage-hud">
+            <div class="hud-top">
+              <div class="decision-actions">
+                <button type="button" class="hud-btn hud-allow" data-decision="ALLOW">
+                  <span class="k">1</span> <strong>ALLOW</strong>
+                </button>
+                <button type="button" class="hud-btn hud-block" data-decision="BLOCK">
+                  <span class="k">2</span> <strong>BLOCK</strong>
+                </button>
+                <button type="button" class="hud-btn hud-ask" data-decision="ASK_USER">
+                  <span class="k">3</span> <strong>ASK USER</strong>
+                </button>
+                <button type="button" class="hud-btn hud-escalate" data-decision="ESCALATE">
+                  <span class="k">4</span> <strong>ESCALATE</strong>
+                </button>
+              </div>
+              <button type="button" id="sSaveNextBtn" class="hud-execute-btn">Save & Next ↵</button>
+            </div>
+
+            <!-- Conditional Drawer -->
+            <div id="sAskDrawer" class="hud-subdrawer" style="display: none;">
+              <span>Missing Evidence:</span>
+              <div class="sub-pills" id="sMissingPills">
+                <button type="button" class="sub-pill active" data-val="user_intent">user_intent</button>
+                <button type="button" class="sub-pill" data-val="recipient_identity">recipient_identity</button>
+                <button type="button" class="sub-pill" data-val="resource_target">resource_target</button>
+                <button type="button" class="sub-pill" data-val="approval">approval</button>
+              </div>
+            </div>
+
+            <div id="sEscalateDrawer" class="hud-subdrawer" style="display: none;">
+              <span>Required Authority:</span>
+              <div class="sub-pills" id="sAuthPills">
+                <button type="button" class="sub-pill active" data-val="manager">manager</button>
+                <button type="button" class="sub-pill" data-val="resource_owner">resource_owner</button>
+                <button type="button" class="sub-pill" data-val="security_admin">security_admin</button>
+              </div>
+            </div>
+
+            <div class="hud-bottom">
+              <div class="hud-cited">
+                <span>Cited:</span>
+                <div id="sCitedTags" class="cited-container">None</div>
+              </div>
+              <span id="sSaveStatus" class="save-msg">Ready</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="speed.js"></script>
+</body>
+</html>

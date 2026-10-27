@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate Compact | Fast Dual-Pane Reviewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="compact.css">
+</head>
+<body>
+  <div id="compactApp">
+    <!-- Style Switcher Banner -->
+    <div class="style-switcher-bar">
+      <span class="switcher-label">Design Styles:</span>
+      <a href="index.html" class="style-link">Classic 2-Column</a>
+      <a href="minimal.html" class="style-link">Zen Minimal</a>
+      <a href="compact.html" class="style-link active">Compact Reviewer</a>
+      <a href="speed.html" class="style-link">Speed Triage</a>
+      <a href="wireframe.html" class="style-link">Structured Form (Wireframe)</a>
+    </div>
+
+    <!-- Header -->
+    <header class="compact-header">
+      <div class="header-segment">
+        <span class="logo">⚡ <strong>SaGate</strong> Compact</span>
+        <div class="sep"></div>
+        <select id="compactBatchSelect" class="compact-select"></select>
+        <select id="compactAnnotatorSelect" class="compact-select">
+          <option value="rinkesh">Rinkesh</option>
+          <option value="prabhash">Prabhash</option>
+          <option value="shubham">Shubham</option>
+          <option value="yogendra">Yogendra</option>
+        </select>
+      </div>
+
+      <div class="header-segment">
+        <span class="compact-progress-label" id="compactProgressLabel">0/100 (0%)</span>
+        <div class="progress-track"><div id="compactProgressBar" class="progress-bar"></div></div>
+      </div>
+
+      <div class="header-segment">
+        <button id="compactBtnUnlabeled" class="c-btn" title="Jump to next unlabeled (U)">Next Unlabeled</button>
+        <button id="compactBtnExport" class="c-btn c-btn-primary" title="Export CSV">Export CSV</button>
+      </div>
+    </header>
+
+    <!-- Compact Dual Pane -->
+    <main class="compact-grid">
+      <!-- Left Column: Evidence & Inspector -->
+      <section class="left-pane">
+        <!-- Case Top Bar -->
+        <div class="case-header-row">
+          <div class="nav-cluster">
+            <button id="compactPrev" class="c-btn c-btn-sm">← Prev</button>
+            <span class="case-title">Case <strong id="compactCaseNum">1</strong> of 100</span>
+            <button id="compactNext" class="c-btn c-btn-sm">Next →</button>
+          </div>
+          <div class="pill-cluster">
+            <span id="cBadgeSuite" class="c-tag tag-suite">banking</span>
+            <span id="cBadgeCategory" class="c-tag tag-category">ambiguity</span>
+            <span id="cBadgeDifficulty" class="c-tag tag-diff">medium</span>
+            <span id="cBadgeStatus" class="c-tag tag-status">UNLABELED</span>
+          </div>
+        </div>
+
+        <!-- 1. Prompt & Intent Box -->
+        <div class="compact-box">
+          <div class="box-head">
+            <span>USER REQUEST (<strong id="compactPrincipal">emma</strong>)</span>
+          </div>
+          <div class="box-body prompt-body" id="compactPrompt">Loading prompt...</div>
+        </div>
+
+        <!-- 2. Tool Action & Arguments Box -->
+        <div class="compact-box">
+          <div class="box-head">
+            <span>PROPOSED TOOL CALL</span>
+            <span id="compactStateBadge" class="c-tag tag-warn">State Changing</span>
+          </div>
+          <div class="box-body">
+            <div class="fn-name-bar" id="compactFnName">send_money()</div>
+            <table class="compact-table">
+              <thead>
+                <tr>
+                  <th>Argument</th>
+                  <th>Value</th>
+                  <th>Source / Trust</th>
+                </tr>
+              </thead>
+              <tbody id="compactArgsTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Security Signals & Untrusted Content -->
+        <div class="compact-box">
+          <div class="box-head"><span>SECURITY SIGNALS</span></div>
+          <div class="box-body">
+            <div class="compact-stats-row">
+              <div><small>AUTHORITY:</small> <span id="compactAuthText">Current User</span></div>
+              <div><small>DATA FLOW:</small> <span id="compactFlowText">PUBLIC → INTERNAL</span></div>
+              <div><small>APPROVER:</small> <span id="compactApproverText">None</span></div>
+            </div>
+            <div id="compactUntrustedSec" class="untrusted-area" style="display: none;">
+              <small class="text-rose">⚠️ UNTRUSTED CONTEXT INSPECTION:</small>
+              <pre id="compactUntrustedText"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Policy Clauses Box (with 1-click cite buttons) -->
+        <div class="compact-box">
+          <div class="box-head">
+            <span>RETRIEVED SECURITY POLICIES</span>
+            <small class="hint">Click "+ Cite" to cite in decision</small>
+          </div>
+          <div class="box-body policies-list" id="compactPoliciesList"></div>
+        </div>
+      </section>
+
+      <!-- Right Column: Decision Keypad -->
+      <aside class="right-pane">
+        <div class="keypad-card">
+          <div class="keypad-header">
+            <h3>Decision Keypad</h3>
+            <span id="compactSaveStatus" class="status-indicator">Ready</span>
+          </div>
+
+          <!-- 4 Big Stacked Action Tiles -->
+          <div class="decision-stack">
+            <button type="button" class="stack-btn btn-allow" data-decision="ALLOW">
+              <span class="kbd">1</span>
+              <div class="btn-info">
+                <strong>ALLOW</strong>
+                <span>Safe, authorized by user</span>
+              </div>
+            </button>
+
+            <button type="button" class="stack-btn btn-block" data-decision="BLOCK">
+              <span class="kbd">2</span>
+              <div class="btn-info">
+                <strong>BLOCK</strong>
+                <span>Violates policy or prompt injection</span>
+              </div>
+            </button>
+
+            <button type="button" class="stack-btn btn-ask" data-decision="ASK_USER">
+              <span class="kbd">3</span>
+              <div class="btn-info">
+                <strong>ASK_USER</strong>
+                <span>Ambiguous or missing user intent</span>
+              </div>
+            </button>
+
+            <button type="button" class="stack-btn btn-escalate" data-decision="ESCALATE">
+              <span class="kbd">4</span>
+              <div class="btn-info">
+                <strong>ESCALATE</strong>
+                <span>Needs manager/owner authorization</span>
+              </div>
+            </button>
+          </div>
+
+          <!-- Conditional Fields for ASK_USER -->
+          <div id="cAskDetails" class="compact-extension" style="display: none;">
+            <label class="field-label">Missing Evidence:</label>
+            <div class="pills-row" id="cMissingPills">
+              <button type="button" class="c-pill active" data-val="user_intent">user_intent</button>
+              <button type="button" class="c-pill" data-val="recipient_identity">recipient_identity</button>
+              <button type="button" class="c-pill" data-val="resource_target">resource_target</button>
+              <button type="button" class="c-pill" data-val="approval">approval</button>
+              <button type="button" class="c-pill" data-val="data_classification">data_classification</button>
+            </div>
+            <label class="field-label" style="margin-top: 8px;">User Reply Simulation:</label>
+            <input type="text" id="cUserReplyText" class="c-input" placeholder="e.g. Yes, that is who I meant.">
+          </div>
+
+          <!-- Conditional Fields for ESCALATE -->
+          <div id="cEscalateDetails" class="compact-extension" style="display: none;">
+            <label class="field-label">Required Authority:</label>
+            <div class="pills-row" id="cAuthPills">
+              <button type="button" class="c-pill active" data-val="manager">manager</button>
+              <button type="button" class="c-pill" data-val="resource_owner">resource_owner</button>
+              <button type="button" class="c-pill" data-val="security_admin">security_admin</button>
+            </div>
+          </div>
+
+          <!-- Cited Policies Container -->
+          <div class="form-field-group">
+            <label class="field-label">Cited Policies (from left pane):</label>
+            <div class="tags-holder" id="compactCitedTags">
+              <span class="no-tags">No clauses cited</span>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="form-field-group">
+            <label class="field-label">Notes (Optional):</label>
+            <textarea id="compactNotes" class="c-textarea" rows="2" placeholder="Annotator rationale..."></textarea>
+          </div>
+
+          <!-- Keypad Actions -->
+          <div class="keypad-footer">
+            <button type="button" id="compactSaveNext" class="btn-execute">Save & Next (Enter) →</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="compact.js"></script>
+</body>
+</html>

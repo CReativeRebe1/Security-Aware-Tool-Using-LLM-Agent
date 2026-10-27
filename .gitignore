@@ -1,0 +1,28 @@
+# Track code, configs, resources, docs and the processed dataset; everything else stays local.
+/*
+!/.gitignore
+!/README.md
+!/pyproject.toml
+!/docs/
+!/configs/
+!/resources/
+!/annotations/
+!/src/
+!/tests/
+!/kaggle/
+!/scripts/
+!/labeling_app/
+
+!/data/
+/data/*
+!/data/processed/
+!/data/synthetic_data/
+
+# Local-only: raw downloads, papers, reference code, proposal PDF, envs, run outputs
+# (data/raw/, papers/, related_code/, project.pdf, .venv/, outputs/, build/, runs/ are ignored by the rules above)
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+*.db

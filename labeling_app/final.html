@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate — Final Annotation Tool</title>
+  <meta name="description" content="Human labeling interface for SaGate security gate annotation tasks.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="final.css">
+</head>
+<body>
+  <div id="app">
+    <!-- TOP BAR -->
+    <header class="topbar" role="banner">
+      <div class="tb-left">
+        <div class="logo-mark">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M10 2L17 6V14L10 18L3 14V6L10 2Z" fill="#6366f1" stroke="#818cf8" stroke-width="0.5"/>
+            <path d="M10 6L14 8.5V13.5L10 16L6 13.5V8.5L10 6Z" fill="#312e81"/>
+            <circle cx="10" cy="10" r="2" fill="#a5b4fc"/>
+          </svg>
+        </div>
+        <span class="logo-text">SaGate<span class="logo-sub">Annotate</span></span>
+        <div class="tb-sep"></div>
+        <select id="batchSelect" class="tb-select" title="Select batch">
+          <option value="">Loading...</option>
+        </select>
+        <select id="annotatorSelect" class="tb-select" title="Select annotator">
+          <option value="rinkesh">Rinkesh</option>
+          <option value="prabhash">Prabhash</option>
+          <option value="shubham">Shubham</option>
+          <option value="yogendra">Yogendra</option>
+        </select>
+      </div>
+      <div class="tb-center">
+        <button id="btnPrev" class="tb-nav" title="Previous">&larr;</button>
+        <span class="case-counter">Case <strong id="caseNum">&#8212;</strong> <span class="case-of">of <span id="caseTotal">&#8212;</span></span></span>
+        <button id="btnNext" class="tb-nav" title="Next">&rarr;</button>
+        <div class="tb-sep"></div>
+        <div class="progress-block">
+          <div class="progress-bar-wrap">
+            <div id="progressBar" class="progress-fill"></div>
+          </div>
+          <span id="progressLabel" class="progress-text">0/100</span>
+        </div>
+      </div>
+      <div class="tb-right">
+        <span id="saveStatus" class="save-chip">Ready</span>
+        <button id="btnUnlabeled" class="tb-btn">Next Unlabeled</button>
+        <button id="btnExport" class="tb-btn tb-btn-primary">&#8595; Export CSV</button>
+      </div>
+    </header>
+
+    <!-- META STRIP -->
+    <div class="meta-strip">
+      <span id="badgeSuite" class="badge badge-suite">banking</span>
+      <span id="badgeCategory" class="badge badge-cat">general</span>
+      <span id="badgeDifficulty" class="badge badge-diff">medium</span>
+      <div class="meta-sep"></div>
+      <span id="badgeStatus" class="badge badge-status">UNLABELED</span>
+      <div class="meta-sep"></div>
+      <span class="meta-label">Principal:</span>
+      <span id="principalText" class="meta-value">&#8212;</span>
+    </div>
+
+    <!-- MAIN 3-COL GRID -->
+    <main class="main-grid" role="main">
+
+      <!-- COL 1: Context -->
+      <section class="col col-1">
+        <div class="col-label">Context</div>
+        <div class="panel panel-request">
+          <div class="panel-hd">
+            <span class="panel-title">USER REQUEST</span>
+          </div>
+          <div class="panel-body">
+            <p id="promptText" class="request-text">Loading&#8230;</p>
+          </div>
+        </div>
+        <div class="panel panel-tool">
+          <div class="panel-hd">
+            <span class="panel-title">PROPOSED TOOL CALL</span>
+            <span id="stateBadge" class="state-badge" style="display:none">State-Changing</span>
+          </div>
+          <div class="panel-body">
+            <div class="fn-bar" id="fnName">unknown_tool()</div>
+            <table class="args-table">
+              <thead><tr><th>Arg</th><th>Value</th><th>Trust</th></tr></thead>
+              <tbody id="argsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- COL 2: Evidence -->
+      <section class="col col-2">
+        <div class="col-label">Evidence</div>
+        <div class="panel panel-security">
+          <div class="panel-hd"><span class="panel-title">SECURITY SIGNALS</span></div>
+          <div class="panel-body">
+            <div class="signals-grid">
+              <div class="signal-item">
+                <div class="signal-key">AUTHORITY</div>
+                <div class="signal-val" id="authText">&#8212;</div>
+              </div>
+              <div class="signal-item">
+                <div class="signal-key">DATA FLOW</div>
+                <div class="signal-val" id="flowText">&#8212;</div>
+              </div>
+              <div class="signal-item">
+                <div class="signal-key">APPROVER</div>
+                <div class="signal-val" id="approverText">None</div>
+              </div>
+            </div>
+            <div id="untrustedWrap" class="untrusted-wrap" style="display:none">
+              <div class="untrusted-label">&#9888; UNTRUSTED CONTENT</div>
+              <pre id="untrustedText" class="untrusted-pre"></pre>
+            </div>
+          </div>
+        </div>
+        <div class="panel panel-policies">
+          <div class="panel-hd">
+            <span class="panel-title">RETRIEVED POLICIES</span>
+            <span class="panel-hint">Click + Cite</span>
+          </div>
+          <div class="panel-body policies-scroll" id="policiesList">
+            <div class="empty-state">No policies loaded</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- COL 3: Decision -->
+      <aside class="col col-3">
+        <div class="col-label">Decision</div>
+        <div class="keypad">
+          <div class="decision-grid">
+            <button type="button" class="dec-btn dec-allow" data-decision="ALLOW">
+              <span class="dec-kbd">1</span>
+              <div class="dec-info"><strong>ALLOW</strong><span>Authorized &amp; safe</span></div>
+            </button>
+            <button type="button" class="dec-btn dec-block" data-decision="BLOCK">
+              <span class="dec-kbd">2</span>
+              <div class="dec-info"><strong>BLOCK</strong><span>Policy violation</span></div>
+            </button>
+            <button type="button" class="dec-btn dec-ask" data-decision="ASK_USER">
+              <span class="dec-kbd">3</span>
+              <div class="dec-info"><strong>ASK_USER</strong><span>Ambiguous intent</span></div>
+            </button>
+            <button type="button" class="dec-btn dec-escalate" data-decision="ESCALATE">
+              <span class="dec-kbd">4</span>
+              <div class="dec-info"><strong>ESCALATE</strong><span>Needs higher auth</span></div>
+            </button>
+          </div>
+
+          <div id="askExtras" class="conditionals" style="display:none">
+            <div class="field-row">
+              <label class="field-label">Missing Evidence</label>
+              <div class="pills-row" id="missingPills">
+                <button type="button" class="pill active" data-val="user_intent">user_intent</button>
+                <button type="button" class="pill" data-val="recipient_identity">recipient</button>
+                <button type="button" class="pill" data-val="resource_target">resource_target</button>
+                <button type="button" class="pill" data-val="approval">approval</button>
+                <button type="button" class="pill" data-val="data_classification">data_class</button>
+              </div>
+            </div>
+            <div class="field-row">
+              <label class="field-label">User Reply Simulation</label>
+              <input type="text" id="userReplyInput" class="field-input" placeholder="e.g. Yes, that is who I meant.">
+            </div>
+          </div>
+
+          <div id="escalateExtras" class="conditionals" style="display:none">
+            <div class="field-row">
+              <label class="field-label">Required Authority</label>
+              <div class="pills-row" id="authPills">
+                <button type="button" class="pill active" data-val="manager">manager</button>
+                <button type="button" class="pill" data-val="resource_owner">resource_owner</button>
+                <button type="button" class="pill" data-val="security_admin">security_admin</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label">Cited Policies</label>
+            <div id="citedTags" class="cited-tags"><span class="cited-empty">None cited</span></div>
+          </div>
+
+          <div class="field-row">
+            <label class="field-label">Notes <span class="optional">(optional)</span></label>
+            <textarea id="notesArea" class="field-textarea" rows="2" placeholder="Annotator rationale..."></textarea>
+          </div>
+
+          <button type="button" id="btnSaveNext" class="btn-save">
+            Save &amp; Next <span class="save-hint">Enter</span>
+          </button>
+
+          <div class="kbd-legend">
+            <span><kbd>1-4</kbd> decide</span>
+            <span><kbd>&#8592;&#8594;</kbd> navigate</span>
+            <span><kbd>U</kbd> unlabeled</span>
+            <span><kbd>Ctrl+Enter</kbd> save in textarea</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- FOOTER STYLE SWITCHER -->
+    <footer class="style-footer" role="contentinfo">
+      <span class="sf-label">Other styles:</span>
+      <a href="index.html" class="sf-link">Classic</a>
+      <a href="minimal.html" class="sf-link">Zen</a>
+      <a href="compact.html" class="sf-link">Compact</a>
+      <a href="speed.html" class="sf-link">Speed</a>
+      <a href="wireframe.html" class="sf-link">Wireframe</a>
+      <a href="final.html" class="sf-link active">Final &#9733;</a>
+    </footer>
+
+  </div>
+  <script src="final.js"></script>
+</body>
+</html>

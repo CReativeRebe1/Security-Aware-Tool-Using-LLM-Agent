@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate Form | Structured Labelling Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wireframe.css">
+</head>
+<body>
+  <div class="wf-page-wrapper">
+    <!-- Style Switcher Banner -->
+    <div class="style-switcher-bar">
+      <span class="switcher-label">Design Styles:</span>
+      <a href="index.html" class="style-link">Classic 2-Column</a>
+      <a href="minimal.html" class="style-link">Zen Minimal</a>
+      <a href="compact.html" class="style-link">Compact Reviewer</a>
+      <a href="speed.html" class="style-link">Speed Triage</a>
+      <a href="wireframe.html" class="style-link active">Structured Form (Wireframe)</a>
+    </div>
+
+    <!-- Wireframe Canvas Container -->
+    <main class="wf-container">
+      <!-- Top Bar: Progress, Title, Prev/Next -->
+      <header class="wf-top-bar">
+        <div class="wf-progress-pill" id="wfProgressPill">0/100 labeled</div>
+        <h2 class="wf-case-title">Case <span id="wfCurrentIdx">1</span> of <span id="wfTotalCount">100</span></h2>
+        <div class="wf-nav-buttons">
+          <button type="button" id="wfPrevBtn" class="wf-icon-btn" title="Previous Case ([)">&lt;</button>
+          <button type="button" id="wfNextBtn" class="wf-icon-btn" title="Next Case (])">&gt;</button>
+        </div>
+      </header>
+
+      <!-- Subheader Pills -->
+      <section class="wf-pill-bar">
+        <span class="wf-chip" id="wfSuiteChip">🌐 suite=banking</span>
+        <span class="wf-chip" id="wfCategoryChip">🔒 category=ambiguity</span>
+        <span class="wf-chip" id="wfDiffChip">💼 difficulty=medium</span>
+        <span class="wf-chip wf-status-chip" id="wfStatusChip">✓ status=UNLABELED</span>
+
+        <!-- Batch & Annotator Switchers in subtle inline style -->
+        <div class="wf-meta-selects">
+          <select id="wfBatchSelect" class="wf-mini-select"></select>
+          <select id="wfAnnotatorSelect" class="wf-mini-select">
+            <option value="rinkesh">rinkesh</option>
+            <option value="prabhash">prabhash</option>
+            <option value="shubham">shubham</option>
+            <option value="yogendra">yogendra</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- 1. User Request -->
+      <section class="wf-card">
+        <div class="wf-card-title">
+          <span class="wf-step-num">1</span> User Request
+        </div>
+        <div class="wf-card-body">
+          <div class="wf-subfield">
+            <span class="wf-subfield-label">Principal</span>
+            <span class="wf-subfield-val" id="wfPrincipal">emma</span>
+          </div>
+          <div class="wf-subfield full-prompt-field">
+            <span class="wf-subfield-label">Full Prompt</span>
+            <p class="wf-prompt-text" id="wfPrompt">Loading user prompt...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Proposed Tool Call -->
+      <section class="wf-card">
+        <div class="wf-card-title">
+          <span class="wf-step-num">2</span> Proposed Tool Call
+        </div>
+        <div class="wf-card-body">
+          <div class="wf-fn-row">
+            <span class="wf-label-inline">Function</span>
+            <span class="wf-fn-badge" id="wfFnBadge">internal.sendMoney</span>
+          </div>
+
+          <table class="wf-table">
+            <thead>
+              <tr>
+                <th>Argument</th>
+                <th>Value</th>
+                <th>Provenance - Trust</th>
+              </tr>
+            </thead>
+            <tbody id="wfArgsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+
+          <div class="wf-state-changing-tag" id="wfStateChangingTag">
+            state-changing: yes
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Security Context -->
+      <section class="wf-card">
+        <div class="wf-card-title">
+          <span class="wf-step-num">3</span> Security Context
+        </div>
+        <div class="wf-card-body wf-security-grid">
+          <div class="wf-sec-col">
+            <div class="wf-sec-icon-label">🔒 Authority</div>
+            <div class="wf-sec-data" id="wfAuthData">current_user (authorized)</div>
+          </div>
+          <div class="wf-sec-col">
+            <div class="wf-sec-icon-label">Ⓐ Information Flow</div>
+            <div class="wf-sec-data" id="wfFlowData">PUBLIC → INTERNAL</div>
+          </div>
+          <div class="wf-sec-col">
+            <div class="wf-sec-icon-label">❓ Approver</div>
+            <div class="wf-sec-data" id="wfApproverData">—</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Untrusted Content -->
+      <section class="wf-card" id="wfUntrustedCard" style="display: none;">
+        <div class="wf-card-title">
+          <span class="wf-step-num">4</span> Untrusted Content
+        </div>
+        <div class="wf-card-body wf-untrusted-grid" id="wfUntrustedGrid">
+          <!-- Side-by-side untrusted cards -->
+        </div>
+      </section>
+
+      <!-- 5. Policy Clauses -->
+      <section class="wf-card">
+        <div class="wf-card-title">
+          <span class="wf-step-num">5</span> Policy Clauses
+        </div>
+        <div class="wf-card-body">
+          <div class="wf-policies-list" id="wfPoliciesList">
+            <!-- Populated dynamically with +Cite button -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Decision Header & 4-Way Buttons -->
+      <section class="wf-decision-section">
+        <div class="wf-section-heading">Decision</div>
+        <div class="wf-decision-buttons">
+          <button type="button" class="wf-dec-btn btn-allow" data-decision="ALLOW">
+            <span class="wf-icon">✓</span> ALLOW
+          </button>
+          <button type="button" class="wf-dec-btn btn-block" data-decision="BLOCK">
+            <span class="wf-icon">✕</span> BLOCK
+          </button>
+          <button type="button" class="wf-dec-btn btn-ask" data-decision="ASK_USER">
+            <span class="wf-icon">❓</span> ASK_USER
+          </button>
+          <button type="button" class="wf-dec-btn btn-escalate" data-decision="ESCALATE">
+            <span class="wf-icon">↑</span> ESCALATE
+          </button>
+        </div>
+
+        <!-- Conditional Side-by-Side Area -->
+        <div class="wf-conditional-container">
+          <!-- ASK_USER Conditional Box -->
+          <div class="wf-conditional-card wf-ask-box" id="wfAskBox" style="display: none;">
+            <div class="wf-cond-title">ASK_USER (conditional)</div>
+            <div class="wf-cond-body">
+              <label class="wf-cond-label">Missing Evidence</label>
+              <div class="wf-cond-pills" id="wfMissingPills">
+                <button type="button" class="wf-cond-pill active" data-val="user_intent">user_intent</button>
+                <button type="button" class="wf-cond-pill" data-val="recipient_identity">recipient_identity</button>
+                <button type="button" class="wf-cond-pill" data-val="resource_target">resource_target</button>
+                <button type="button" class="wf-cond-pill" data-val="approval">approval</button>
+                <button type="button" class="wf-cond-pill" data-val="data_classification">data_classification</button>
+              </div>
+
+              <div class="wf-cond-subgroup">
+                <label class="wf-cond-label">User Reply (optional)</label>
+                <textarea id="wfUserReplyInput" class="wf-textarea" rows="2" maxlength="500" placeholder="Enter reply or rationale from the user..."></textarea>
+                <div class="wf-char-count"><span id="wfReplyCharCount">0</span>/500</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ESCALATE Conditional Box -->
+          <div class="wf-conditional-card wf-escalate-box" id="wfEscalateBox" style="display: none;">
+            <div class="wf-cond-title">ESCALATE (conditional)</div>
+            <div class="wf-cond-body">
+              <label class="wf-cond-label">Required Authority</label>
+              <div class="wf-cond-pills" id="wfAuthPills">
+                <button type="button" class="wf-cond-pill active" data-val="manager">manager</button>
+                <button type="button" class="wf-cond-pill" data-val="resource_owner">resource_owner</button>
+                <button type="button" class="wf-cond-pill" data-val="security_admin">security_admin</button>
+                <button type="button" class="wf-cond-pill" data-val="current_user">current_user</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cited Clauses & Notes Card -->
+        <div class="wf-card wf-cited-notes-card">
+          <div class="wf-cited-row">
+            <span class="wf-cited-label">Cited Clauses</span>
+            <div class="wf-cited-tags" id="wfCitedTags">
+              <span class="wf-no-tags">(none cited)</span>
+            </div>
+            <div class="wf-add-clause-wrapper">
+              <input type="text" id="wfAddClauseInput" placeholder="Clause ID..." class="wf-mini-input">
+              <button type="button" id="wfBtnAddClause" class="wf-btn-add">+ Add</button>
+            </div>
+          </div>
+
+          <div class="wf-notes-row">
+            <span class="wf-cited-label">Notes</span>
+            <textarea id="wfNotesInput" class="wf-textarea" rows="2" maxlength="1000" placeholder="Add notes or rationale for your decision..."></textarea>
+            <div class="wf-char-count"><span id="wfNotesCharCount">0</span>/1000</div>
+          </div>
+        </div>
+
+        <!-- Save & Next Button -->
+        <button type="button" id="wfSaveNextBtn" class="wf-save-next-button">
+          Save & Next
+        </button>
+        <div class="wf-save-status-msg" id="wfSaveStatus">Auto-saved to local SQLite & JSON/CSV</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="wireframe.js"></script>
+</body>
+</html>

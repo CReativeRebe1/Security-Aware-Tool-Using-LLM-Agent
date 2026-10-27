@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate Zen | Minimalist Labelling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="minimal.css">
+</head>
+<body>
+  <div id="zenApp">
+    <!-- Design Switcher Banner -->
+    <div class="style-switcher-bar">
+      <span class="switcher-label">Design Styles:</span>
+      <a href="index.html" class="style-link">Classic 2-Column</a>
+      <a href="minimal.html" class="style-link active">Zen Minimal</a>
+      <a href="compact.html" class="style-link">Compact Reviewer</a>
+      <a href="speed.html" class="style-link">Speed Triage</a>
+      <a href="wireframe.html" class="style-link">Structured Form (Wireframe)</a>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="zen-header">
+      <div class="zen-header-left">
+        <div class="zen-logo">✨ <strong>SaGate</strong> <span class="tag-zen">Zen</span></div>
+        <div class="zen-picker">
+          <label>Annotator:</label>
+          <select id="zenAnnotatorSelect">
+            <option value="rinkesh">Rinkesh</option>
+            <option value="prabhash">Prabhash</option>
+            <option value="shubham">Shubham</option>
+            <option value="yogendra">Yogendra</option>
+          </select>
+        </div>
+        <div class="zen-picker">
+          <label>Batch:</label>
+          <select id="zenBatchSelect"></select>
+        </div>
+      </div>
+
+      <div class="zen-header-center">
+        <div class="zen-progress">
+          <span id="zenProgressText">0 / 100</span>
+          <div class="zen-progress-bar"><div id="zenProgressFill" style="width: 0%;"></div></div>
+        </div>
+      </div>
+
+      <div class="zen-header-right">
+        <button id="zenBtnUnlabeled" class="zen-btn zen-btn-ghost" title="Next Unlabeled (U)">⚡ Unlabeled</button>
+        <button id="zenBtnExport" class="zen-btn zen-btn-outline" title="Export CSV">💾 Export</button>
+        <button id="zenBtnHelp" class="zen-btn zen-btn-icon" title="Shortcuts (?)">?</button>
+      </div>
+    </header>
+
+    <!-- Main Clean Container -->
+    <main class="zen-main">
+      <!-- Breadcrumb & Case Counter -->
+      <div class="zen-case-nav">
+        <div class="nav-arrows">
+          <button id="zenPrevBtn" class="arrow-btn" title="Previous (Left Arrow / [)">←</button>
+          <span class="counter-display">Case <strong id="zenCaseIdx">1</strong> <span class="dim">/ 100</span></span>
+          <button id="zenNextBtn" class="arrow-btn" title="Next (Right Arrow / ])">→</button>
+        </div>
+        <div class="zen-badges" id="zenBadges">
+          <span id="badgeSuite" class="zen-chip">banking</span>
+          <span id="badgeCategory" class="zen-chip">ambiguity</span>
+          <span id="badgeDifficulty" class="zen-chip">medium</span>
+          <span id="badgeStatus" class="zen-chip status-chip">UNLABELED</span>
+        </div>
+      </div>
+
+      <!-- Focused Case Document Card -->
+      <article class="zen-card">
+        <!-- 1. The User's Prompt -->
+        <section class="zen-section prompt-section">
+          <div class="section-kicker">User Prompt (<span id="zenPrincipal">emma</span>)</div>
+          <blockquote id="zenPromptText" class="prompt-quote">Loading prompt...</blockquote>
+        </section>
+
+        <!-- 2. What the Agent Wants to Do -->
+        <section class="zen-section action-section">
+          <div class="section-kicker">Proposed Tool Action</div>
+          <div class="action-highlight">
+            <span class="action-fn" id="zenFnName">function_name()</span>
+            <span class="action-state-tag" id="zenStateBadge">State Changing</span>
+          </div>
+          <div class="action-arguments" id="zenArgsList">
+            <!-- Populated dynamically with clean pills and trust tags -->
+          </div>
+        </section>
+
+        <!-- 3. Security Checks (Clean Context) -->
+        <section class="zen-section security-section">
+          <div class="section-kicker">Security & Authority Check</div>
+          <div class="zen-sec-grid">
+            <div class="sec-item">
+              <span class="sec-item-label">Authority</span>
+              <span class="sec-item-value" id="zenAuthorityVal">Current User Authorized</span>
+            </div>
+            <div class="sec-item">
+              <span class="sec-item-label">Data Flow</span>
+              <span class="sec-item-value" id="zenFlowVal">PUBLIC → INTERNAL</span>
+            </div>
+            <div class="sec-item">
+              <span class="sec-item-label">Approver Needed</span>
+              <span class="sec-item-value" id="zenApproverVal">None</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Suspicious / Untrusted Content (if any) -->
+        <section class="zen-section untrusted-section" id="zenUntrustedSec">
+          <div class="section-kicker warn-kicker">⚠️ External / Untrusted Context (Inspect for Injection)</div>
+          <div id="zenUntrustedContent" class="untrusted-preview"></div>
+        </section>
+
+        <!-- 5. Applicable Security Policies (Crucial!) -->
+        <section class="zen-section policy-section">
+          <div class="section-kicker">Security Policy Clauses <span class="hint">(Click "+ Cite" to attach)</span></div>
+          <div class="zen-policies-grid" id="zenPoliciesGrid">
+            <!-- Clean policy cards with cite button -->
+          </div>
+        </section>
+      </article>
+
+      <!-- Decision Bar (Always Accessible) -->
+      <div class="zen-decision-panel">
+        <div class="panel-header">
+          <span class="panel-title">Annotator Decision <span class="hint">(Press 1, 2, 3, or 4)</span></span>
+          <span id="zenSaveStatus" class="save-indicator">Saved</span>
+        </div>
+
+        <div class="zen-decision-options">
+          <button type="button" class="zen-decision-btn btn-allow" data-decision="ALLOW">
+            <span class="key-hint">1</span>
+            <span class="btn-label">ALLOW</span>
+            <span class="btn-sub">Safe & authorized</span>
+          </button>
+
+          <button type="button" class="zen-decision-btn btn-block" data-decision="BLOCK">
+            <span class="key-hint">2</span>
+            <span class="btn-label">BLOCK</span>
+            <span class="btn-sub">Unsafe or injection</span>
+          </button>
+
+          <button type="button" class="zen-decision-btn btn-ask" data-decision="ASK_USER">
+            <span class="key-hint">3</span>
+            <span class="btn-label">ASK USER</span>
+            <span class="btn-sub">Needs user clarification</span>
+          </button>
+
+          <button type="button" class="zen-decision-btn btn-escalate" data-decision="ESCALATE">
+            <span class="key-hint">4</span>
+            <span class="btn-label">ESCALATE</span>
+            <span class="btn-sub">Needs manager/owner</span>
+          </button>
+        </div>
+
+        <!-- Dynamic Extension for ASK_USER -->
+        <div id="zenAskExtension" class="zen-extension" style="display: none;">
+          <div class="extension-row">
+            <label>Missing Evidence:</label>
+            <div class="pill-selector" id="zenMissingPills">
+              <span class="zen-pill active" data-val="user_intent">user_intent</span>
+              <span class="zen-pill" data-val="recipient_identity">recipient_identity</span>
+              <span class="zen-pill" data-val="resource_target">resource_target</span>
+              <span class="zen-pill" data-val="approval">approval</span>
+              <span class="zen-pill" data-val="data_classification">data_classification</span>
+            </div>
+          </div>
+          <div class="extension-row">
+            <label>Simulated User Reply:</label>
+            <input type="text" id="zenUserReplyInput" class="zen-text-input" placeholder="e.g. Yes, that is the person I meant.">
+            <div class="toggle-yes-no">
+              <button type="button" class="mini-toggle active" id="zenReplyYes">Yes</button>
+              <button type="button" class="mini-toggle" id="zenReplyNo">No</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Extension for ESCALATE -->
+        <div id="zenEscalateExtension" class="zen-extension" style="display: none;">
+          <div class="extension-row">
+            <label>Required Authority:</label>
+            <div class="pill-selector" id="zenAuthPills">
+              <span class="zen-pill active" data-val="manager">manager</span>
+              <span class="zen-pill" data-val="resource_owner">resource_owner</span>
+              <span class="zen-pill" data-val="security_admin">security_admin</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cited Policies & Notes Bar -->
+        <div class="zen-form-footer">
+          <div class="cited-bar">
+            <label>Cited Policies:</label>
+            <div class="cited-tags-wrapper" id="zenCitedTags">
+              <span class="empty-hint">None cited yet (click "+ Cite" on policies above)</span>
+            </div>
+          </div>
+          <input type="text" id="zenNotesInput" class="zen-notes-input" placeholder="Notes/rationale (optional)...">
+          <button id="zenSaveBtn" class="zen-save-next-btn" title="Save and Next (Enter)">Save & Next ↵</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="zenModal" class="zen-modal">
+      <div class="zen-modal-card">
+        <h3>⌨️ Keyboard Shortcuts</h3>
+        <ul>
+          <li><kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd> — Select ALLOW / BLOCK / ASK / ESCALATE</li>
+          <li><kbd>Enter</kbd> — Save and go to Next Case</li>
+          <li><kbd>[</kbd> or <kbd>←</kbd> — Previous Case</li>
+          <li><kbd>]</kbd> or <kbd>→</kbd> — Next Case</li>
+          <li><kbd>U</kbd> — Jump to Next Unlabeled</li>
+          <li><kbd>?</kbd> — Toggle this help modal</li>
+        </ul>
+        <button id="zenCloseModal" class="zen-btn zen-btn-outline" style="margin-top: 14px;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="minimal.js"></script>
+</body>
+</html>

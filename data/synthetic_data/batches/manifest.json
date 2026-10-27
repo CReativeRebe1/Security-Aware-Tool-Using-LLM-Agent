@@ -1,0 +1,642 @@
+{
+  "seed": 42,
+  "total_cases": 2000,
+  "batch_size": 100,
+  "total_batches": 20,
+  "batches": [
+    {
+      "batch_id": "batch_01",
+      "batch_num": 1,
+      "case_count": 100,
+      "start_index": 0,
+      "end_index": 100,
+      "files": {
+        "json": "batches/batch_01.json",
+        "jsonl": "batches/batch_01.jsonl",
+        "csv": "batches/batch_01_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 72,
+          "banking": 28
+        },
+        "categories": {
+          "sensitivity": 15,
+          "injection": 20,
+          "ambiguity": 29,
+          "delegation": 6,
+          "benign": 23,
+          "authority": 6,
+          "authority_spoofing": 1
+        },
+        "difficulties": {
+          "hard": 26,
+          "medium": 74
+        }
+      }
+    },
+    {
+      "batch_id": "batch_02",
+      "batch_num": 2,
+      "case_count": 100,
+      "start_index": 100,
+      "end_index": 200,
+      "files": {
+        "json": "batches/batch_02.json",
+        "jsonl": "batches/batch_02.jsonl",
+        "csv": "batches/batch_02_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 68,
+          "banking": 32
+        },
+        "categories": {
+          "benign": 36,
+          "ambiguity": 22,
+          "delegation": 4,
+          "benign_with_injection": 2,
+          "injection": 15,
+          "sensitivity": 11,
+          "authority": 8,
+          "authority_spoofing": 2
+        },
+        "difficulties": {
+          "medium": 71,
+          "hard": 29
+        }
+      }
+    },
+    {
+      "batch_id": "batch_03",
+      "batch_num": 3,
+      "case_count": 100,
+      "start_index": 200,
+      "end_index": 300,
+      "files": {
+        "json": "batches/batch_03.json",
+        "jsonl": "batches/batch_03.jsonl",
+        "csv": "batches/batch_03_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "banking": 37,
+          "workspace": 63
+        },
+        "categories": {
+          "benign": 19,
+          "ambiguity": 35,
+          "injection": 23,
+          "sensitivity": 6,
+          "authority": 9,
+          "benign_with_injection": 4,
+          "delegation": 3,
+          "authority_spoofing": 1
+        },
+        "difficulties": {
+          "medium": 54,
+          "hard": 46
+        }
+      }
+    },
+    {
+      "batch_id": "batch_04",
+      "batch_num": 4,
+      "case_count": 100,
+      "start_index": 300,
+      "end_index": 400,
+      "files": {
+        "json": "batches/batch_04.json",
+        "jsonl": "batches/batch_04.jsonl",
+        "csv": "batches/batch_04_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 70,
+          "banking": 30
+        },
+        "categories": {
+          "benign": 32,
+          "injection": 19,
+          "sensitivity": 11,
+          "ambiguity": 24,
+          "delegation": 3,
+          "authority": 6,
+          "benign_with_injection": 3,
+          "authority_spoofing": 2
+        },
+        "difficulties": {
+          "medium": 66,
+          "hard": 34
+        }
+      }
+    },
+    {
+      "batch_id": "batch_05",
+      "batch_num": 5,
+      "case_count": 100,
+      "start_index": 400,
+      "end_index": 500,
+      "files": {
+        "json": "batches/batch_05.json",
+        "jsonl": "batches/batch_05.jsonl",
+        "csv": "batches/batch_05_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 72,
+          "banking": 28
+        },
+        "categories": {
+          "benign_with_injection": 2,
+          "sensitivity": 13,
+          "ambiguity": 35,
+          "injection": 21,
+          "delegation": 4,
+          "benign": 20,
+          "authority_spoofing": 1,
+          "authority": 4
+        },
+        "difficulties": {
+          "hard": 34,
+          "medium": 66
+        }
+      }
+    },
+    {
+      "batch_id": "batch_06",
+      "batch_num": 6,
+      "case_count": 100,
+      "start_index": 500,
+      "end_index": 600,
+      "files": {
+        "json": "batches/batch_06.json",
+        "jsonl": "batches/batch_06.jsonl",
+        "csv": "batches/batch_06_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 72,
+          "banking": 28
+        },
+        "categories": {
+          "injection": 9,
+          "ambiguity": 45,
+          "authority": 7,
+          "sensitivity": 11,
+          "benign": 22,
+          "delegation": 4,
+          "authority_spoofing": 1,
+          "benign_with_injection": 1
+        },
+        "difficulties": {
+          "medium": 68,
+          "hard": 32
+        }
+      }
+    },
+    {
+      "batch_id": "batch_07",
+      "batch_num": 7,
+      "case_count": 100,
+      "start_index": 600,
+      "end_index": 700,
+      "files": {
+        "json": "batches/batch_07.json",
+        "jsonl": "batches/batch_07.jsonl",
+        "csv": "batches/batch_07_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 68,
+          "banking": 32
+        },
+        "categories": {
+          "delegation": 6,
+          "ambiguity": 37,
+          "sensitivity": 11,
+          "benign": 21,
+          "authority": 10,
+          "benign_with_injection": 3,
+          "injection": 10,
+          "authority_spoofing": 2
+        },
+        "difficulties": {
+          "hard": 41,
+          "medium": 59
+        }
+      }
+    },
+    {
+      "batch_id": "batch_08",
+      "batch_num": 8,
+      "case_count": 100,
+      "start_index": 700,
+      "end_index": 800,
+      "files": {
+        "json": "batches/batch_08.json",
+        "jsonl": "batches/batch_08.jsonl",
+        "csv": "batches/batch_08_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 52,
+          "banking": 48
+        },
+        "categories": {
+          "benign": 26,
+          "ambiguity": 36,
+          "injection": 18,
+          "sensitivity": 7,
+          "authority_spoofing": 4,
+          "authority": 7,
+          "delegation": 2
+        },
+        "difficulties": {
+          "medium": 64,
+          "hard": 36
+        }
+      }
+    },
+    {
+      "batch_id": "batch_09",
+      "batch_num": 9,
+      "case_count": 100,
+      "start_index": 800,
+      "end_index": 900,
+      "files": {
+        "json": "batches/batch_09.json",
+        "jsonl": "batches/batch_09.jsonl",
+        "csv": "batches/batch_09_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 62,
+          "banking": 38
+        },
+        "categories": {
+          "injection": 20,
+          "ambiguity": 33,
+          "sensitivity": 10,
+          "benign": 24,
+          "delegation": 2,
+          "authority": 6,
+          "authority_spoofing": 3,
+          "benign_with_injection": 2
+        },
+        "difficulties": {
+          "medium": 58,
+          "hard": 42
+        }
+      }
+    },
+    {
+      "batch_id": "batch_10",
+      "batch_num": 10,
+      "case_count": 100,
+      "start_index": 900,
+      "end_index": 1000,
+      "files": {
+        "json": "batches/batch_10.json",
+        "jsonl": "batches/batch_10.jsonl",
+        "csv": "batches/batch_10_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 61,
+          "banking": 39
+        },
+        "categories": {
+          "sensitivity": 11,
+          "benign": 30,
+          "authority": 4,
+          "injection": 14,
+          "ambiguity": 33,
+          "delegation": 4,
+          "authority_spoofing": 1,
+          "benign_with_injection": 3
+        },
+        "difficulties": {
+          "medium": 68,
+          "hard": 32
+        }
+      }
+    },
+    {
+      "batch_id": "batch_11",
+      "batch_num": 11,
+      "case_count": 100,
+      "start_index": 1000,
+      "end_index": 1100,
+      "files": {
+        "json": "batches/batch_11.json",
+        "jsonl": "batches/batch_11.jsonl",
+        "csv": "batches/batch_11_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 50,
+          "banking": 50
+        },
+        "categories": {
+          "benign": 26,
+          "ambiguity": 29,
+          "benign_with_injection": 2,
+          "sensitivity": 10,
+          "authority": 11,
+          "injection": 19,
+          "authority_spoofing": 2,
+          "delegation": 1
+        },
+        "difficulties": {
+          "medium": 70,
+          "hard": 30
+        }
+      }
+    },
+    {
+      "batch_id": "batch_12",
+      "batch_num": 12,
+      "case_count": 100,
+      "start_index": 1100,
+      "end_index": 1200,
+      "files": {
+        "json": "batches/batch_12.json",
+        "jsonl": "batches/batch_12.jsonl",
+        "csv": "batches/batch_12_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 60,
+          "banking": 40
+        },
+        "categories": {
+          "ambiguity": 25,
+          "injection": 19,
+          "benign": 27,
+          "sensitivity": 14,
+          "delegation": 4,
+          "authority": 8,
+          "benign_with_injection": 3
+        },
+        "difficulties": {
+          "medium": 58,
+          "hard": 42
+        }
+      }
+    },
+    {
+      "batch_id": "batch_13",
+      "batch_num": 13,
+      "case_count": 100,
+      "start_index": 1200,
+      "end_index": 1300,
+      "files": {
+        "json": "batches/batch_13.json",
+        "jsonl": "batches/batch_13.jsonl",
+        "csv": "batches/batch_13_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 61,
+          "banking": 39
+        },
+        "categories": {
+          "injection": 9,
+          "authority": 10,
+          "ambiguity": 39,
+          "delegation": 3,
+          "sensitivity": 13,
+          "benign": 23,
+          "benign_with_injection": 2,
+          "authority_spoofing": 1
+        },
+        "difficulties": {
+          "medium": 61,
+          "hard": 39
+        }
+      }
+    },
+    {
+      "batch_id": "batch_14",
+      "batch_num": 14,
+      "case_count": 100,
+      "start_index": 1300,
+      "end_index": 1400,
+      "files": {
+        "json": "batches/batch_14.json",
+        "jsonl": "batches/batch_14.jsonl",
+        "csv": "batches/batch_14_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 68,
+          "banking": 32
+        },
+        "categories": {
+          "benign_with_injection": 2,
+          "sensitivity": 7,
+          "benign": 27,
+          "ambiguity": 32,
+          "injection": 18,
+          "authority_spoofing": 3,
+          "delegation": 3,
+          "authority": 8
+        },
+        "difficulties": {
+          "hard": 30,
+          "medium": 70
+        }
+      }
+    },
+    {
+      "batch_id": "batch_15",
+      "batch_num": 15,
+      "case_count": 100,
+      "start_index": 1400,
+      "end_index": 1500,
+      "files": {
+        "json": "batches/batch_15.json",
+        "jsonl": "batches/batch_15.jsonl",
+        "csv": "batches/batch_15_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 64,
+          "banking": 36
+        },
+        "categories": {
+          "ambiguity": 33,
+          "benign": 25,
+          "injection": 15,
+          "delegation": 3,
+          "sensitivity": 14,
+          "authority": 8,
+          "benign_with_injection": 2
+        },
+        "difficulties": {
+          "hard": 41,
+          "medium": 59
+        }
+      }
+    },
+    {
+      "batch_id": "batch_16",
+      "batch_num": 16,
+      "case_count": 100,
+      "start_index": 1500,
+      "end_index": 1600,
+      "files": {
+        "json": "batches/batch_16.json",
+        "jsonl": "batches/batch_16.jsonl",
+        "csv": "batches/batch_16_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 55,
+          "banking": 45
+        },
+        "categories": {
+          "injection": 26,
+          "benign": 27,
+          "sensitivity": 9,
+          "ambiguity": 26,
+          "benign_with_injection": 3,
+          "authority": 4,
+          "delegation": 3,
+          "authority_spoofing": 2
+        },
+        "difficulties": {
+          "medium": 68,
+          "hard": 32
+        }
+      }
+    },
+    {
+      "batch_id": "batch_17",
+      "batch_num": 17,
+      "case_count": 100,
+      "start_index": 1600,
+      "end_index": 1700,
+      "files": {
+        "json": "batches/batch_17.json",
+        "jsonl": "batches/batch_17.jsonl",
+        "csv": "batches/batch_17_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 63,
+          "banking": 37
+        },
+        "categories": {
+          "ambiguity": 32,
+          "benign": 30,
+          "sensitivity": 6,
+          "authority": 10,
+          "injection": 17,
+          "benign_with_injection": 4,
+          "authority_spoofing": 1
+        },
+        "difficulties": {
+          "hard": 28,
+          "medium": 72
+        }
+      }
+    },
+    {
+      "batch_id": "batch_18",
+      "batch_num": 18,
+      "case_count": 100,
+      "start_index": 1700,
+      "end_index": 1800,
+      "files": {
+        "json": "batches/batch_18.json",
+        "jsonl": "batches/batch_18.jsonl",
+        "csv": "batches/batch_18_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 61,
+          "banking": 39
+        },
+        "categories": {
+          "injection": 19,
+          "benign": 22,
+          "authority": 9,
+          "ambiguity": 29,
+          "sensitivity": 16,
+          "authority_spoofing": 2,
+          "delegation": 3
+        },
+        "difficulties": {
+          "medium": 69,
+          "hard": 31
+        }
+      }
+    },
+    {
+      "batch_id": "batch_19",
+      "batch_num": 19,
+      "case_count": 100,
+      "start_index": 1800,
+      "end_index": 1900,
+      "files": {
+        "json": "batches/batch_19.json",
+        "jsonl": "batches/batch_19.jsonl",
+        "csv": "batches/batch_19_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "workspace": 70,
+          "banking": 30
+        },
+        "categories": {
+          "ambiguity": 27,
+          "benign": 26,
+          "sensitivity": 10,
+          "injection": 20,
+          "delegation": 4,
+          "benign_with_injection": 6,
+          "authority": 6,
+          "authority_spoofing": 1
+        },
+        "difficulties": {
+          "hard": 36,
+          "medium": 64
+        }
+      }
+    },
+    {
+      "batch_id": "batch_20",
+      "batch_num": 20,
+      "case_count": 100,
+      "start_index": 1900,
+      "end_index": 2000,
+      "files": {
+        "json": "batches/batch_20.json",
+        "jsonl": "batches/batch_20.jsonl",
+        "csv": "batches/batch_20_to_label.csv"
+      },
+      "stats": {
+        "suites": {
+          "banking": 41,
+          "workspace": 59
+        },
+        "categories": {
+          "ambiguity": 29,
+          "authority": 5,
+          "benign": 29,
+          "injection": 17,
+          "sensitivity": 13,
+          "benign_with_injection": 5,
+          "authority_spoofing": 1,
+          "delegation": 1
+        },
+        "difficulties": {
+          "hard": 29,
+          "medium": 71
+        }
+      }
+    }
+  ]
+}

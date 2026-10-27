@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaGate Annotator | Human Labelling Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Design Switcher Banner -->
+    <div class="style-switcher-bar">
+      <span class="switcher-label">Design Styles:</span>
+      <a href="index.html" class="style-link active">Classic 2-Column</a>
+      <a href="minimal.html" class="style-link">Zen Minimal</a>
+      <a href="compact.html" class="style-link">Compact Reviewer</a>
+      <a href="speed.html" class="style-link">Speed Triage</a>
+      <a href="wireframe.html" class="style-link">Structured Form (Wireframe)</a>
+    </div>
+
+    <!-- Top Navigation Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <div class="brand">
+          <div class="brand-logo">🛡️</div>
+          <div class="brand-text">
+            <h1>SaGate Annotator</h1>
+            <span class="sub-title">Synthetic Data Labelling</span>
+          </div>
+        </div>
+
+        <div class="control-group annotator-select">
+          <label for="annotatorSelect">Annotator:</label>
+          <select id="annotatorSelect">
+            <option value="rinkesh">Rinkesh (Me)</option>
+            <option value="prabhash">Prabhash</option>
+            <option value="shubham">Shubham</option>
+            <option value="yogendra">Yogendra</option>
+            <option value="custom">Other / Custom...</option>
+          </select>
+          <input type="text" id="customAnnotatorInput" placeholder="Enter name" style="display: none;">
+        </div>
+
+        <div class="control-group batch-select">
+          <label for="batchSelect">Batch:</label>
+          <select id="batchSelect">
+            <!-- Populated dynamically: Batch 01 to Batch 20 -->
+          </select>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="batch-progress-wrapper" title="Batch Progress">
+          <div class="progress-info">
+            <span id="batchProgressText">0 / 100 labeled (0%)</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="batchProgressBar" class="progress-bar-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btnCaseDrawer" class="btn btn-outline" title="View all 100 cases in batch (G)">
+          <span class="icon">📑</span> Grid (1-100)
+        </button>
+        <button id="btnNextUnlabeled" class="btn btn-secondary" title="Jump to next unlabeled case (U)">
+          <span class="icon">⚡</span> Next Unlabeled
+        </button>
+        <button id="btnExportCsv" class="btn btn-primary" title="Export batch CSV for annotation pipeline">
+          <span class="icon">💾</span> Export CSV
+        </button>
+        <button id="btnHelp" class="btn btn-icon" title="Keyboard Shortcuts (?)">?</button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-layout">
+      <!-- Case Meta Bar -->
+      <section class="case-meta-bar">
+        <div class="meta-left">
+          <div class="case-nav-controls">
+            <button id="btnPrev" class="btn btn-sm btn-outline" title="Previous case ([)">← Prev</button>
+            <span class="case-counter">Case <strong id="currentCaseNum">1</strong> of <span id="totalCasesNum">100</span></span>
+            <button id="btnNext" class="btn btn-sm btn-outline" title="Next case (])">Next →</button>
+          </div>
+          <div class="meta-badges">
+            <span id="badgeSuite" class="badge badge-suite">banking</span>
+            <span id="badgeCategory" class="badge badge-category">ambiguity</span>
+            <span id="badgeDifficulty" class="badge badge-difficulty">medium</span>
+            <span id="badgeRound" class="badge badge-round">Round 0</span>
+            <span id="badgeCaseStatus" class="badge badge-status">UNLABELED</span>
+          </div>
+        </div>
+        <div class="meta-right">
+          <span class="case-id-text" id="caseIdDisplay" title="Click to copy case ID">syn|bank|...</span>
+          <div class="view-toggle">
+            <button id="btnViewStructured" class="toggle-btn active">Structured</button>
+            <button id="btnViewRaw" class="toggle-btn">Raw Prompt</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Two-Column Workspace -->
+      <div class="workspace-grid">
+        <!-- Left Column: Context, Policy & Evidence -->
+        <div class="workspace-col context-col">
+          <!-- Structured View -->
+          <div id="structuredView" class="view-panel active">
+            <!-- 1. User Request Card -->
+            <div class="card user-card">
+              <div class="card-header">
+                <span class="card-title">👤 User Request</span>
+                <span class="card-tag" id="principalDisplay">principal: emma</span>
+              </div>
+              <div class="card-body">
+                <p id="userPromptText" class="user-prompt">Loading prompt...</p>
+              </div>
+            </div>
+
+            <!-- 2. Proposed Tool Call Card -->
+            <div class="card call-card">
+              <div class="card-header">
+                <span class="card-title">⚙️ Proposed Tool Call</span>
+                <div class="call-flags">
+                  <span id="stateChangingBadge" class="badge badge-warn">State Changing</span>
+                  <span id="actionTypeBadge" class="badge badge-info">transfer</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="function-banner">
+                  <span class="fn-name" id="fnNameDisplay">function_name()</span>
+                </div>
+                <div class="fn-args-container">
+                  <table class="args-table">
+                    <thead>
+                      <tr>
+                        <th>Argument</th>
+                        <th>Value</th>
+                        <th>Provenance & Trust</th>
+                      </tr>
+                    </thead>
+                    <tbody id="argsTableBody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Security Context & Policy Accordion -->
+            <div class="card security-card">
+              <div class="card-header">
+                <span class="card-title">🛡️ Security Context & Evidence</span>
+              </div>
+              <div class="card-body security-sections">
+                <!-- Authority & Sensitivity Summary -->
+                <div class="sec-summary-grid">
+                  <div class="sec-stat-box">
+                    <span class="stat-label">Authority</span>
+                    <span class="stat-value" id="authSummary">current_user (authorized)</span>
+                  </div>
+                  <div class="sec-stat-box">
+                    <span class="stat-label">Information Flow</span>
+                    <span class="stat-value" id="sensSummary">PUBLIC → INTERNAL [OK]</span>
+                  </div>
+                  <div class="sec-stat-box">
+                    <span class="stat-label">Approver Needed</span>
+                    <span class="stat-value" id="approverSummary">None</span>
+                  </div>
+                </div>
+
+                <!-- Untrusted Content (Prompt Injections / External data) -->
+                <div id="untrustedSection" class="sec-subgroup">
+                  <div class="subgroup-title">
+                    <span>⚠️ External / Untrusted Content Saw by Agent</span>
+                    <span class="subgroup-hint">(Inspect for prompt injection / hijacked data)</span>
+                  </div>
+                  <div id="untrustedList" class="untrusted-cards">
+                    <!-- Dynamic untrusted items -->
+                  </div>
+                </div>
+
+                <!-- Retrieved Security Policy Clauses -->
+                <div class="sec-subgroup">
+                  <div class="subgroup-title">
+                    <span>📜 Retrieved Security Policy Clauses</span>
+                    <span class="subgroup-hint">(Click "+ Cite" to add to your decision)</span>
+                  </div>
+                  <div id="policyClausesList" class="policy-cards">
+                    <!-- Dynamic policy clauses -->
+                  </div>
+                </div>
+
+                <!-- Resolution History (if any) -->
+                <div id="resolutionHistorySection" class="sec-subgroup" style="display: none;">
+                  <div class="subgroup-title">
+                    <span>💬 Earlier Resolution History</span>
+                  </div>
+                  <div id="resolutionHistoryList" class="resolution-cards">
+                    <!-- History rounds -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw LLM Prompt View (Alternative) -->
+          <div id="rawPromptView" class="view-panel">
+            <div class="card raw-card">
+              <div class="card-header">
+                <span class="card-title">📄 Exact Case Prompt (as seen by Gate LLM)</span>
+                <button id="btnCopyRaw" class="btn btn-sm btn-outline">Copy Text</button>
+              </div>
+              <div class="card-body">
+                <pre id="rawCaseText" class="code-block"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Labelling & Decision Form -->
+        <div class="workspace-col form-col">
+          <div class="card form-card sticky-card">
+            <div class="card-header">
+              <span class="card-title">✍️ Annotator Decision</span>
+              <span class="save-status" id="saveStatusIndicator">Auto-saved</span>
+            </div>
+
+            <div class="card-body form-body">
+              <!-- 4-Way Decision Grid -->
+              <div class="form-section">
+                <label class="section-label">Primary Gate Decision <span class="hotkeys-hint">(Keys 1 - 4)</span></label>
+                <div class="decision-grid">
+                  <!-- ALLOW -->
+                  <div class="decision-card decision-allow" data-decision="ALLOW" tabindex="0">
+                    <div class="decision-header">
+                      <span class="key-badge">1</span>
+                      <span class="decision-name">ALLOW</span>
+                    </div>
+                    <p class="decision-desc">Action is authorized, safe, and backed by trusted evidence.</p>
+                  </div>
+
+                  <!-- BLOCK -->
+                  <div class="decision-card decision-block" data-decision="BLOCK" tabindex="0">
+                    <div class="decision-header">
+                      <span class="key-badge">2</span>
+                      <span class="decision-name">BLOCK</span>
+                    </div>
+                    <p class="decision-desc">Prohibited by policy, or triggered by untrusted prompt injection.</p>
+                  </div>
+
+                  <!-- ASK_USER -->
+                  <div class="decision-card decision-ask" data-decision="ASK_USER" tabindex="0">
+                    <div class="decision-header">
+                      <span class="key-badge">3</span>
+                      <span class="decision-name">ASK_USER</span>
+                    </div>
+                    <p class="decision-desc">Ambiguous or missing user intent/details the user can supply.</p>
+                  </div>
+
+                  <!-- ESCALATE -->
+                  <div class="decision-card decision-escalate" data-decision="ESCALATE" tabindex="0">
+                    <div class="decision-header">
+                      <span class="key-badge">4</span>
+                      <span class="decision-name">ESCALATE</span>
+                    </div>
+                    <p class="decision-desc">Requires authority user lacks (manager, owner, admin approval).</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Conditional Fields: ASK_USER Details -->
+              <div id="askUserDetails" class="conditional-section" style="display: none;">
+                <div class="form-section">
+                  <label class="section-label">Missing Evidence (What is missing?)</label>
+                  <div class="pill-group" id="missingEvidencePills">
+                    <button type="button" class="pill" data-val="user_intent">user_intent</button>
+                    <button type="button" class="pill" data-val="recipient_identity">recipient_identity</button>
+                    <button type="button" class="pill" data-val="resource_target">resource_target</button>
+                    <button type="button" class="pill" data-val="approval">approval</button>
+                    <button type="button" class="pill" data-val="data_classification">data_classification</button>
+                    <button type="button" class="pill" data-val="none">none</button>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <label class="section-label">Simulated User Response</label>
+                  <input type="text" id="userResponseTextInput" class="form-input" placeholder="e.g. Yes, that's what I intended.">
+                  <div class="user-confirmed-toggle">
+                    <label>User Confirms?</label>
+                    <div class="btn-group-toggle">
+                      <button type="button" class="toggle-btn" id="btnUserConfYes" data-val="yes">Yes (Confirmed)</button>
+                      <button type="button" class="toggle-btn" id="btnUserConfNo" data-val="no">No (Declined)</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Conditional Fields: ESCALATE Details -->
+              <div id="escalateDetails" class="conditional-section" style="display: none;">
+                <div class="form-section">
+                  <label class="section-label">Required Authority (Who must authorize?)</label>
+                  <div class="pill-group" id="requiredAuthorityPills">
+                    <button type="button" class="pill" data-val="manager">manager</button>
+                    <button type="button" class="pill" data-val="resource_owner">resource_owner</button>
+                    <button type="button" class="pill" data-val="security_admin">security_admin</button>
+                    <button type="button" class="pill" data-val="current_user">current_user</button>
+                    <button type="button" class="pill" data-val="none">none</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Final Action (For ASK_USER / ESCALATE deferrals) -->
+              <div id="finalActionSection" class="form-section" style="display: none;">
+                <label class="section-label">Expected Final Action (if resolved/approved)</label>
+                <div class="btn-group-toggle">
+                  <button type="button" class="toggle-btn active" id="btnFinalAllow" data-val="ALLOW">ALLOW</button>
+                  <button type="button" class="toggle-btn" id="btnFinalBlock" data-val="BLOCK">BLOCK</button>
+                </div>
+              </div>
+
+              <!-- Cited Policy Clauses -->
+              <div class="form-section">
+                <label class="section-label">Policy Clauses Cited (e.g. BANK-2.2, WS-1.4)</label>
+                <div class="tag-input-container" id="citedClausesContainer">
+                  <!-- Tag pills inserted here -->
+                  <input type="text" id="clauseTagInput" placeholder="Add clause ID and press Enter...">
+                </div>
+              </div>
+
+              <!-- Annotator Notes -->
+              <div class="form-section">
+                <label class="section-label">Notes / Rationale <span class="optional">(optional)</span></label>
+                <textarea id="notesInput" class="form-textarea" rows="2" placeholder="Explain rationale or edge cases..."></textarea>
+              </div>
+
+              <!-- Form Action Buttons -->
+              <div class="form-actions">
+                <button type="button" id="btnSaveAndNext" class="btn btn-primary btn-lg" title="Save and jump to next case (Enter)">
+                  Save & Next →
+                </button>
+                <button type="button" id="btnClearLabel" class="btn btn-outline" title="Clear current label">
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Drawer: 100 Cases Quick Switcher -->
+    <aside id="caseDrawer" class="case-drawer">
+      <div class="drawer-header">
+        <h3>Batch Case Switcher (1 - 100)</h3>
+        <button id="btnCloseDrawer" class="btn-close">&times;</button>
+      </div>
+      <div class="drawer-filters">
+        <button class="filter-chip active" data-filter="all">All (100)</button>
+        <button class="filter-chip" data-filter="unlabeled">Unlabeled (<span id="unlabeledFilterCount">100</span>)</button>
+        <button class="filter-chip" data-filter="labeled">Labeled (<span id="labeledFilterCount">0</span>)</button>
+      </div>
+      <div class="drawer-grid" id="drawerCasesGrid">
+        <!-- 100 interactive tiles generated dynamically -->
+      </div>
+    </aside>
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+
+    <!-- Modal: Keyboard Shortcuts Guide -->
+    <div id="shortcutsModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>⌨️ Keyboard Shortcuts</h3>
+          <button id="btnCloseModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <table class="shortcuts-table">
+            <tr><td><kbd>1</kbd></td><td>Select <strong>ALLOW</strong></td></tr>
+            <tr><td><kbd>2</kbd></td><td>Select <strong>BLOCK</strong></td></tr>
+            <tr><td><kbd>3</kbd></td><td>Select <strong>ASK_USER</strong></td></tr>
+            <tr><td><kbd>4</kbd></td><td>Select <strong>ESCALATE</strong></td></tr>
+            <tr><td><kbd>Enter</kbd></td><td>Save & Jump to Next Case</td></tr>
+            <tr><td><kbd>[</kbd> or <kbd>←</kbd></td><td>Previous Case</td></tr>
+            <tr><td><kbd>]</kbd> or <kbd>→</kbd></td><td>Next Case</td></tr>
+            <tr><td><kbd>U</kbd></td><td>Jump to Next Unlabeled Case</td></tr>
+            <tr><td><kbd>G</kbd></td><td>Toggle 1-100 Case Grid Drawer</td></tr>
+            <tr><td><kbd>R</kbd></td><td>Toggle Structured / Raw Prompt View</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Open this Shortcuts Guide</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
