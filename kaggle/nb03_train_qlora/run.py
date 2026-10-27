@@ -15,6 +15,7 @@ NUM_GPUS = 2
 MAX_STEPS = None        # e.g. 20 for a smoke run
 OUT = "/kaggle/working/outputs"
 
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")   # long examples fragment T4 memory
 root = bootstrap.setup("gpu,train")
 py = sys.executable
 # Resume (ARCHITECTURE.md §9.3): adapters/checkpoints of an earlier run, attached as "sagate-progress-nb03", are

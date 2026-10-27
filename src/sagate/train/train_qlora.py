@@ -100,6 +100,19 @@ def _quantise(model_id: str, load_in_4bit: bool | None, cuda: bool) -> bool:
     return "bnb-4bit" in m or any(s in m for s in ("8b", "14b", "32b"))
 
 
+def _sdpa_without_gqa(torch) -> None:
+    """Without a padding mask, transformers calls SDPA with enable_gqa=True, which only the flash and math kernels
+    support. A T4 (sm75) has no flash kernel, so it falls back to math and materialises the full fp32 attention matrix
+    (1.7 GiB per layer at 3.8k tokens, OOM in backward). Repeating the KV heads keeps SDPA on the memory-efficient
+    kernel instead."""
+    if not torch.cuda.is_available() or torch.cuda.get_device_capability() >= (8, 0):
+        return
+    from transformers.integrations import sdpa_attention
+
+    if hasattr(sdpa_attention, "use_gqa_in_sdpa"):
+        sdpa_attention.use_gqa_in_sdpa = lambda attention_mask, key: False
+
+
 def load_peft_model(model_id: str, tcfg: dict, mcfg: dict, cache_dir: str | None, seed: int,
                     load_in_4bit: bool | None = None, trainer: str = "peft"):
     import torch
@@ -107,6 +120,7 @@ def load_peft_model(model_id: str, tcfg: dict, mcfg: dict, cache_dir: str | None
     dtype = getattr(torch, mcfg.get("compute_dtype", "float16"))
     lora = tcfg["lora"]
     cuda = torch.cuda.is_available()
+    _sdpa_without_gqa(torch)
     if trainer == "unsloth":
         from unsloth import FastLanguageModel
 
@@ -118,7 +132,7 @@ def load_peft_model(model_id: str, tcfg: dict, mcfg: dict, cache_dir: str | None
             random_state=seed)
         return model, tok
 
-    from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+    from peft import LoraConfig, get_peft_model
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
     tok = AutoTokenizer.from_pretrained(model_id, revision=mcfg.get("revision"), cache_dir=cache_dir)
@@ -135,12 +149,11 @@ def load_peft_model(model_id: str, tcfg: dict, mcfg: dict, cache_dir: str | None
     if cuda:
         _set_4bit_compute_dtype(model, dtype)        # pre-quantised checkpoints save bf16 compute (no bf16 on T4)
     model.config.use_cache = False
-    if q:
-        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True,
-                                                gradient_checkpointing_kwargs={"use_reentrant": False})
-    else:
-        model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-        model.enable_input_require_grads()
+    # Not peft's prepare_model_for_kbit_training: it upcasts every non-4-bit weight to fp32, including the frozen
+    # 151k x 4096 embedding and lm_head (+2.5 GB on Qwen3-8B), which ran a T4 out of memory on the longest examples.
+    # LoRA weights are still fp32 (get_peft_model autocasts adapters) and Qwen3's RMSNorm computes in fp32.
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    model.enable_input_require_grads()
     model = get_peft_model(model, LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora["dropout"],
                                              target_modules=lora["target_modules"], bias="none",
                                              task_type="CAUSAL_LM"))
@@ -223,7 +236,8 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     model.save_pretrained(str(adapter_dir))
     summary = {"condition": cond.name, "model_id": model_id, "trainer": trainer, "sft": str(sft_path),
                **stats, "train_loss": result.training_loss, "global_step": result.global_step,
-               "runtime_s": time.time() - t0, "resumed_from": last, "log_history": tr.state.log_history}
+               "runtime_s": time.time() - t0, "resumed_from": last, "log_history": tr.state.log_history,
+               "peak_gpu_gb": torch.cuda.max_memory_allocated() / 2**30 if cuda else None}
     (adapter_dir / "train_summary.json").write_text(json.dumps(summary, indent=1, default=str))
     write_manifest(adapter_dir / "manifest.json", cfg,
                    extra={"stage": "train_qlora", "condition": cond.__dict__, "model_id": model_id,
