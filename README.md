@@ -29,6 +29,8 @@ scripts/
 ```
 
 ---
+## Design 
+![Demo Design](/labeling_app/Qe5WK.jpg)
 
 ## How to start labeling
 
