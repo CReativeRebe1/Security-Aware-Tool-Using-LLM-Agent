@@ -11,13 +11,13 @@
 !/tests/
 !/kaggle/
 !/scripts/
-
+!/results/
 !/data/
 /data/*
 !/data/processed/
 !/data/synthetic_data/
 !/data/labled-data/
-
+!/outputs/
 # Local-only: raw downloads, papers, reference code, proposal PDF, envs, run outputs
 # (data/raw/, papers/, related_code/, project.pdf, .venv/, outputs/, build/, runs/ are ignored by the rules above)
 __pycache__/
