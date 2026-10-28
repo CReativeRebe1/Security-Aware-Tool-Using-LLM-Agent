@@ -49,7 +49,7 @@ train:
   lr: 2.0e-4
   scheduler: cosine
   warmup_ratio: 0.03
-  epochs: 2
+  epochs: 1                    # measured on T4: 111-143 s/step, so 2 epochs (~375 steps) exceeds a 12 h session
   max_grad_norm: 0.3
   save_steps: 100
   logging_steps: 10
