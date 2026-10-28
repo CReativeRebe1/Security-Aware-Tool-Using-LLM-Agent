@@ -4,7 +4,7 @@
 #   build/kernels/nbXX/  -> kernel folders with "<owner>" filled in; push these, not kaggle/nbXX
 # Usage: bash kaggle/stage_code.sh [--owner <kaggle-username>]
 set -euo pipefail
-OWNER="prabhashpadhan"
+OWNER="sunnyshubhamiiith"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --owner) OWNER="$2"; shift 2 ;;

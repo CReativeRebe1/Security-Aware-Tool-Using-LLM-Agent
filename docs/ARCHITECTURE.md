@@ -488,7 +488,7 @@ driven from the local machine; nothing is edited in the Kaggle web UI.
 ```
 kaggle/
 ├── stage_code.sh                  # copies src/ configs/ resources/ data/ pyproject.toml → build/sagate-code/
-├── code-dataset/dataset-metadata.json      # id: prabhashpadhan/sagate-code
+├── code-dataset/dataset-metadata.json      # id: sunnyshubhamiiith/sagate-code
 ├── nb00_setup_smoke/{kernel-metadata.json, run.py}
 ├── nb01_b0_traces/{kernel-metadata.json, run.py}
 ├── …                                        # nb02 … nb05
@@ -498,7 +498,7 @@ kaggle/
 
 ```json
 {
-  "id": "prabhashpadhan/sagate-nb03-train-qlora",
+  "id": "sunnyshubhamiiith/sagate-nb03-train-qlora",
   "title": "sagate-nb03-train-qlora",
   "code_file": "run.py",
   "language": "python",
@@ -507,8 +507,8 @@ kaggle/
   "enable_gpu": "true",
   "enable_tpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["prabhashpadhan/sagate-code"],
-  "kernel_sources": ["prabhashpadhan/sagate-nb01-b0-traces"],
+  "dataset_sources": ["sunnyshubhamiiith/sagate-code"],
+  "kernel_sources": ["sunnyshubhamiiith/sagate-nb01-b0-traces"],
   "competition_sources": [],
   "model_sources": []
 }
@@ -533,8 +533,8 @@ bash kaggle/stage_code.sh && kaggle datasets version -p build/sagate-code -m "<g
 # run a stage on GPU T4 x2 (background commit run, survives closing the laptop)
 kaggle kernels push -p kaggle/nb03_train_qlora --accelerator NvidiaTeslaT4 -t 32400   # 9 h cap
 
-kaggle kernels status prabhashpadhan/sagate-nb03-train-qlora        # queued / running / complete / error
-kaggle kernels output prabhashpadhan/sagate-nb03-train-qlora -p runs/nb03/   # log + /kaggle/working files
+kaggle kernels status sunnyshubhamiiith/sagate-nb03-train-qlora        # queued / running / complete / error
+kaggle kernels output sunnyshubhamiiith/sagate-nb03-train-qlora -p runs/nb03/   # log + /kaggle/working files
 ```
 
 Notes:
