@@ -699,9 +699,13 @@ decision mix. Flow: NB01 → `build_cases --extra-proposals/--extra-traces` (add
    through the retrieved clauses); clauses about injected instructions are therefore rarely retrieved.
 6. Before annotation, `ScenarioResponder` answers ASK_USER (confirms calls matching the user task's ground
    truth, 15% seeded noise). `FixedUserResponder` takes over automatically for cases with a `user_response`.
-7. `MockApprover` denies when the call's oracle origin is untrusted, when the gate escalates to the wrong role,
-   or when a basis rule is in the approver's `denies` list. When no approval is needed, it answers "the user
-   may authorize this" (the deferral is still counted).
+   It declines any call whose oracle provenance (call or argument) is untrusted, since the loose ground-truth
+   match confirms a call on a single shared value. An annotated case without a fixed reply answers with its
+   gold final action.
+7. `MockApprover` denies when the call or any argument has an untrusted oracle origin, when an annotated case's
+   gold final action is BLOCK, when the gate escalates to the wrong role, or when a basis rule is in the
+   approver's `denies` list. When no approval is needed, it answers "the user may authorize this" (the deferral
+   is still counted). The gold rule never fires in training (cases have no gold when the approver is called).
 8. `injection_seen_before_call` in extracted proposals is whitespace/quote-insensitive, so it also catches
    injections split by YAML line-wrapping. The shipped flag misses those, so it is True less often.
 9. B0 trace ids are `qwen3-8b|<suite>|<user_task>|<attack|none>|<injection_task|none>`; the AgentDojo pipeline
