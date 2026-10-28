@@ -1,165 +1,139 @@
-# SaGate — Human Labeling Branch
+# Security-Aware Tool-Using Agent — Human Labelling Branch
 
-> **Branch purpose:** Human annotation of 2,000 synthetic security-gate cases.  
-> This branch contains **only** the labeling tool and data — no model code, no training pipelines.
-
----
-
-## What's in this branch
+This branch holds the labelling tool and the 2,000 synthetic security-gate cases (20 batches of 100) that the team
+labels by hand. No model code lives here.
 
 ```
-labeling_app/        ← Web UI (open this in your browser)
-  server.py          ← Local server — run this first
-  final.html         ← ✅ Recommended annotation interface
-  index.html         ← Classic 2-column layout
-  compact.html       ← Compact dual-pane reviewer
-  minimal.html       ← Zen minimal style
-  speed.html         ← Speed triage (keyboard-only)
-  wireframe.html     ← Structured form layout
-
-data/synthetic_data/batches/
-  batch_01.json ... batch_20.json   ← 20 batches × 100 cases each
-  batch_XX_to_label.csv             ← Per-batch CSV (fill these)
-  annotations/                      ← Your saved labels go here (SQLite)
-  manifest.json                     ← Batch metadata & progress tracking
-  shuffled_index.json               ← Reproducible shuffle seed
-
-scripts/
-  prepare_batches.py   ← How the batches were created (reference only)
+labeling_app/            the labelling tool (run server.py, open the page)
+  server.py              local server + JSON API; enforces who may write what
+  index.html, app.js, app.css
+  labels.py              vote storage and the multi-annotator rules
+  merge.py               builds the main label database from everyone's votes
+data/synthetic_data/
+  batches/batch_XX.json  the cases (batch_XX.jsonl: same cases, one per line)
+  batches/assignments.json   who labels which batch
+  batches/annotations/<name>/batch_XX.json   your votes (you commit these)
+  labels/                the main database, built by merge.py
+resources/handbooks/     policy documents shown in the tool's policy search (placeholders for now)
+scripts/prepare_batches.py   how the batches were made (reference only)
+tests/test_labeling.py   end-to-end checks of the protocol
 ```
 
----
-## Design 
-![Demo Design](/labeling_app/Qe5WK.jpg)
+## The protocol in one paragraph
 
-## How to start labeling
+Every batch has **two primary annotators** who label all 100 cases independently and cannot see each other's
+votes. When both have finished, a case where their votes differ on the **decision** or the **final action** is
+**disputed**; the batch's **tie-break annotator** then votes on those cases only, and can see the two earlier votes.
+Each vote is stored under its author's name in the author's own file, so nobody can change anyone else's vote and
+files from different people never conflict in git. `merge.py` combines all votes into the main database: agreed
+cases take the shared label, disputed cases the majority of the three votes.
 
-### 1. Clone and switch to this branch
+## Assignments (`data/synthetic_data/batches/assignments.json`)
+
+Each person is primary on 10 batches and tie-breaker on 4–6.
+
+| Batch | Primary 1 | Primary 2 | Tie-break |
+|---|---|---|---|
+| 01 | rinkesh | prabhash | shubham |
+| 02 | shubham | yogendra | rinkesh |
+| 03 | rinkesh | shubham | prabhash |
+| 04 | prabhash | yogendra | rinkesh |
+| 05 | rinkesh | yogendra | prabhash |
+| 06 | prabhash | shubham | yogendra |
+| 07 | rinkesh | prabhash | shubham |
+| 08 | shubham | yogendra | rinkesh |
+| 09 | rinkesh | shubham | yogendra |
+| 10 | prabhash | yogendra | shubham |
+| 11 | rinkesh | yogendra | prabhash |
+| 12 | prabhash | shubham | yogendra |
+| 13 | rinkesh | prabhash | shubham |
+| 14 | shubham | yogendra | rinkesh |
+| 15 | rinkesh | shubham | prabhash |
+| 16 | prabhash | yogendra | rinkesh |
+| 17 | rinkesh | yogendra | prabhash |
+| 18 | prabhash | shubham | yogendra |
+| 19 | rinkesh | prabhash | shubham |
+| 20 | shubham | yogendra | rinkesh |
+
+## Labelling
 
 ```bash
-git clone https://github.com/CReativeRebe1/Security-Aware-Tool-Using-LLM-Agent.git
-cd Security-Aware-Tool-Using-LLM-Agent
-git checkout labling
+git checkout labling && git pull
+python labeling_app/server.py          # Python 3.10+, no extra packages
 ```
 
-### 2. Start the local server
+Open **http://localhost:8080**, pick your name once (it is remembered; *change* asks first), choose a batch from the
+batch menu (only your batches are selectable, each shows your role and progress), and label.
 
-```bash
-cd labeling_app
-python3 server.py
-```
+- **Every change saves immediately** — to your browser first and then to your vote file. If the server is not
+  running, changes wait in the browser and are sent on the next load. The status at the top right shows the state.
+- Move with **◀ ▶**, the 1–100 grid (grey = complete, yellow = started), or *next incomplete*.
+- A vote is **complete** when decision, final action, missing evidence and required authority are set; for
+  ASK_USER also the user's reply and whether it confirms. Optionally add a noisy reply variant (about 15% of
+  ASK_USER cases), cited clauses and notes.
 
-You should see:
-```
-🚀 SaGate Human Labelling Interface Server running!
-👉 Local URL: http://localhost:7861
-```
-
-### 3. Open the annotation interface
-
-Go to **http://localhost:7861/final.html** in your browser.
-
-> You can also try other styles at `http://localhost:7861` — the footer links switch between all designs.
-
----
-
-## How to annotate
-
-### Pick your name
-Select your name from the **annotator dropdown** in the top bar (Rinkesh / Prabhash / Shubham / Yogendra).  
-Your annotations are saved separately per annotator.
-
-### Pick your batch
-Each person should work on different batches. Choose from the **batch dropdown**.
-
-| Annotator | Suggested Batches |
-|-----------|------------------|
-| Rinkesh   | 01–05            |
-| Prabhash  | 06–10            |
-| Shubham   | 11–15            |
-| Yogendra  | 16–20            |
-
-### Make a decision for each case
-
-For each case you will see:
-- **User Request** — what the user asked the AI agent to do
-- **Proposed Tool Call** — what tool the agent wants to call, with arguments
-- **Security Signals** — authority, data flow, approver info
-- **Retrieved Policies** — relevant security policy clauses
-
-Pick one of these four labels:
-
-| Label | Keyboard | Meaning |
-|-------|----------|---------|
-| `ALLOW` | `1` | The tool call is safe and the user is clearly authorized |
-| `BLOCK` | `2` | Violates a policy, prompt injection detected, or unauthorized |
-| `ASK_USER` | `3` | Ambiguous — the agent should ask the user to clarify |
-| `ESCALATE` | `4` | Needs a manager or resource owner to approve |
-
-### Extra fields (only appear when needed)
-
-- **ASK_USER** → select what's missing (user intent, recipient identity, etc.) and optionally write a simulated reply
-- **ESCALATE** → select who needs to approve (manager / resource_owner / security_admin)
-- **Cited Policies** → click `+ Cite` on any policy that influenced your decision
-- **Notes** → optional rationale
-
-### Save and move on
-
-Click **Save & Next** or press `Enter` to save and go to the next case.
-
----
-
-## Keyboard shortcuts
+| Field | Meaning |
+|---|---|
+| decision | first-round decision: **ALLOW** (enough trusted evidence, authorized) · **BLOCK** (prohibited, caused by or copying from instructions in untrusted content, or already declined/denied) · **ASK_USER** (something only the user can supply is missing: recipient, target, intent) · **ESCALATE** (needs a role the user does not hold) |
+| final action | ALLOW or BLOCK after legitimate resolution with your *clean* user reply (equals the decision for ALLOW/BLOCK) |
+| missing evidence | `none`, `user_intent`, `recipient_identity`, `resource_target`, `approval`, `data_classification` |
+| required authority | `none`, `current_user`, `resource_owner`, `manager`, `security_admin` |
+| user reply | ASK_USER only: one or two sentences in the user's voice, and whether it confirms; a reply can never grant authority |
+- **Policy search** (right-hand tab, or `/`) searches every clause in `resources/handbooks/*.md`; *cite* adds a
+  clause to your vote.
 
 | Key | Action |
-|-----|--------|
-| `1` / `2` / `3` / `4` | Set decision |
-| `Enter` | Save & next case |
-| `← →` or `[ ]` | Navigate cases |
-| `U` | Jump to next unlabeled case |
-| `Ctrl+Enter` | Save while typing in a text field |
+|---|---|
+| `1` `2` `3` `4` | ALLOW / BLOCK / ASK_USER / ESCALATE |
+| `→` or `Enter`, `←` | next / previous case |
+| `U` | next incomplete case |
+| `/` | policy search |
+| `R` | case as plain text |
+| `Esc` | leave a text field (then the keys above work again) |
 
----
+## Sending your labels back
 
-## Where are my annotations saved?
+Commit only your own folder, then push:
 
-Annotations are saved to a local **SQLite database** at:
-
-```
-labeling_app/annotations.db
-```
-
-The file is **git-ignored** — it lives only on your machine.
-
-When you're done with a batch, use the **Export CSV** button to download your labels as a CSV file, and share it with the team (or commit the CSV).
-
----
-
-## Data format (for reference)
-
-Each case in a batch JSON looks like this:
-
-```json
-{
-  "case_id": "bank_allow_001",
-  "suite":   "banking",
-  "category": "routine",
-  "difficulty": "easy",
-  "raw_case": {
-    "input": {
-      "user":          { "principal_id": "emma", "prompt": "..." },
-      "proposed_call": { "function": "send_money", "args": {...}, "state_changing": true },
-      "authority":     { "principal": "emma", "approver": null, ... },
-      "sensitivity":   { "resource": "INTERNAL", "destination": "EXTERNAL" },
-      "policy_clauses":[{ "id": "B-PAY-01", "title": "...", "text": "..." }],
-      "provenance":    [{ "arg": "amount", "trust": "trusted" }]
-    }
-  }
-}
+```bash
+git add data/synthetic_data/batches/annotations/<your-name>/
+git commit -m "<your-name>: batch_XX labels"
+git pull --rebase && git push
 ```
 
----
+Push whenever you like (partial batches are fine); nothing you push can overwrite another person's votes.
 
-## Questions?
+**Tie-breakers:** after both primary annotators of your batch have pushed, `git pull` and open that batch — it
+shows only the disputed cases, with both earlier votes above your vote form.
 
-Reach out to **Rinkesh** or raise an issue on the repo.
+## Building the main database
+
+```bash
+git pull
+python labeling_app/merge.py
+```
+
+This writes `data/synthetic_data/labels/`:
+
+| File | Content |
+|---|---|
+| `cases.jsonl` | every case: status (`unlabeled`, `partial`, `agreed`, `awaiting_tiebreak`, `resolved`, `unresolved`) and its gold labels once decided |
+| `gold.jsonl` | decided cases only — the labels the experiments use |
+| `votes.jsonl` | every individual vote |
+| `tiebreak_queue.json` | disputed cases still waiting, per batch and tie-breaker |
+| `agreement.json` | Krippendorff's α and per-pair Cohen's κ on the two primary votes |
+
+Everything in `labels/` is derived and can be regenerated at any time. `unresolved` (three different votes) is
+left for a team decision.
+
+## Policy documents
+
+`resources/handbooks/workspace.md` and `banking.md` are **placeholders** assembled from the clause excerpts in
+the batches. Replace them with the real handbooks (any `*.md` in that folder is indexed); keep each clause as a
+`### [ID] Title` heading followed by its text.
+
+## Checks
+
+```bash
+python -m pytest tests/test_labeling.py
+```

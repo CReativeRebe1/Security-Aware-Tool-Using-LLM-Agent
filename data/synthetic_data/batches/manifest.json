@@ -12,8 +12,7 @@
       "end_index": 100,
       "files": {
         "json": "batches/batch_01.json",
-        "jsonl": "batches/batch_01.jsonl",
-        "csv": "batches/batch_01_to_label.csv"
+        "jsonl": "batches/batch_01.jsonl"
       },
       "stats": {
         "suites": {
@@ -43,8 +42,7 @@
       "end_index": 200,
       "files": {
         "json": "batches/batch_02.json",
-        "jsonl": "batches/batch_02.jsonl",
-        "csv": "batches/batch_02_to_label.csv"
+        "jsonl": "batches/batch_02.jsonl"
       },
       "stats": {
         "suites": {
@@ -75,8 +73,7 @@
       "end_index": 300,
       "files": {
         "json": "batches/batch_03.json",
-        "jsonl": "batches/batch_03.jsonl",
-        "csv": "batches/batch_03_to_label.csv"
+        "jsonl": "batches/batch_03.jsonl"
       },
       "stats": {
         "suites": {
@@ -107,8 +104,7 @@
       "end_index": 400,
       "files": {
         "json": "batches/batch_04.json",
-        "jsonl": "batches/batch_04.jsonl",
-        "csv": "batches/batch_04_to_label.csv"
+        "jsonl": "batches/batch_04.jsonl"
       },
       "stats": {
         "suites": {
@@ -139,8 +135,7 @@
       "end_index": 500,
       "files": {
         "json": "batches/batch_05.json",
-        "jsonl": "batches/batch_05.jsonl",
-        "csv": "batches/batch_05_to_label.csv"
+        "jsonl": "batches/batch_05.jsonl"
       },
       "stats": {
         "suites": {
@@ -171,8 +166,7 @@
       "end_index": 600,
       "files": {
         "json": "batches/batch_06.json",
-        "jsonl": "batches/batch_06.jsonl",
-        "csv": "batches/batch_06_to_label.csv"
+        "jsonl": "batches/batch_06.jsonl"
       },
       "stats": {
         "suites": {
@@ -203,8 +197,7 @@
       "end_index": 700,
       "files": {
         "json": "batches/batch_07.json",
-        "jsonl": "batches/batch_07.jsonl",
-        "csv": "batches/batch_07_to_label.csv"
+        "jsonl": "batches/batch_07.jsonl"
       },
       "stats": {
         "suites": {
@@ -235,8 +228,7 @@
       "end_index": 800,
       "files": {
         "json": "batches/batch_08.json",
-        "jsonl": "batches/batch_08.jsonl",
-        "csv": "batches/batch_08_to_label.csv"
+        "jsonl": "batches/batch_08.jsonl"
       },
       "stats": {
         "suites": {
@@ -266,8 +258,7 @@
       "end_index": 900,
       "files": {
         "json": "batches/batch_09.json",
-        "jsonl": "batches/batch_09.jsonl",
-        "csv": "batches/batch_09_to_label.csv"
+        "jsonl": "batches/batch_09.jsonl"
       },
       "stats": {
         "suites": {
@@ -298,8 +289,7 @@
       "end_index": 1000,
       "files": {
         "json": "batches/batch_10.json",
-        "jsonl": "batches/batch_10.jsonl",
-        "csv": "batches/batch_10_to_label.csv"
+        "jsonl": "batches/batch_10.jsonl"
       },
       "stats": {
         "suites": {
@@ -330,8 +320,7 @@
       "end_index": 1100,
       "files": {
         "json": "batches/batch_11.json",
-        "jsonl": "batches/batch_11.jsonl",
-        "csv": "batches/batch_11_to_label.csv"
+        "jsonl": "batches/batch_11.jsonl"
       },
       "stats": {
         "suites": {
@@ -362,8 +351,7 @@
       "end_index": 1200,
       "files": {
         "json": "batches/batch_12.json",
-        "jsonl": "batches/batch_12.jsonl",
-        "csv": "batches/batch_12_to_label.csv"
+        "jsonl": "batches/batch_12.jsonl"
       },
       "stats": {
         "suites": {
@@ -393,8 +381,7 @@
       "end_index": 1300,
       "files": {
         "json": "batches/batch_13.json",
-        "jsonl": "batches/batch_13.jsonl",
-        "csv": "batches/batch_13_to_label.csv"
+        "jsonl": "batches/batch_13.jsonl"
       },
       "stats": {
         "suites": {
@@ -425,8 +412,7 @@
       "end_index": 1400,
       "files": {
         "json": "batches/batch_14.json",
-        "jsonl": "batches/batch_14.jsonl",
-        "csv": "batches/batch_14_to_label.csv"
+        "jsonl": "batches/batch_14.jsonl"
       },
       "stats": {
         "suites": {
@@ -457,8 +443,7 @@
       "end_index": 1500,
       "files": {
         "json": "batches/batch_15.json",
-        "jsonl": "batches/batch_15.jsonl",
-        "csv": "batches/batch_15_to_label.csv"
+        "jsonl": "batches/batch_15.jsonl"
       },
       "stats": {
         "suites": {
@@ -488,8 +473,7 @@
       "end_index": 1600,
       "files": {
         "json": "batches/batch_16.json",
-        "jsonl": "batches/batch_16.jsonl",
-        "csv": "batches/batch_16_to_label.csv"
+        "jsonl": "batches/batch_16.jsonl"
       },
       "stats": {
         "suites": {
@@ -520,8 +504,7 @@
       "end_index": 1700,
       "files": {
         "json": "batches/batch_17.json",
-        "jsonl": "batches/batch_17.jsonl",
-        "csv": "batches/batch_17_to_label.csv"
+        "jsonl": "batches/batch_17.jsonl"
       },
       "stats": {
         "suites": {
@@ -551,8 +534,7 @@
       "end_index": 1800,
       "files": {
         "json": "batches/batch_18.json",
-        "jsonl": "batches/batch_18.jsonl",
-        "csv": "batches/batch_18_to_label.csv"
+        "jsonl": "batches/batch_18.jsonl"
       },
       "stats": {
         "suites": {
@@ -582,8 +564,7 @@
       "end_index": 1900,
       "files": {
         "json": "batches/batch_19.json",
-        "jsonl": "batches/batch_19.jsonl",
-        "csv": "batches/batch_19_to_label.csv"
+        "jsonl": "batches/batch_19.jsonl"
       },
       "stats": {
         "suites": {
@@ -614,8 +595,7 @@
       "end_index": 2000,
       "files": {
         "json": "batches/batch_20.json",
-        "jsonl": "batches/batch_20.jsonl",
-        "csv": "batches/batch_20_to_label.csv"
+        "jsonl": "batches/batch_20.jsonl"
       },
       "stats": {
         "suites": {

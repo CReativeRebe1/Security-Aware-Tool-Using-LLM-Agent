@@ -1,1095 +1,440 @@
-/**
- * SaGate Annotator - High-Productivity Human Labelling Client
- */
+/* Labelling tool. Every change is saved at once: first to this browser (localStorage queue), then to the local
+   server, which writes your own vote file. Unsent changes are re-sent on the next load. */
 
-// Application State
-const state = {
-  annotator: 'rinkesh',
-  currentBatchId: 'batch_01',
-  manifest: null,
-  cases: [],
-  currentIndex: 0,
-  annotations: {}, // { [case_id]: labelData }
-  drawerFilter: 'all', // 'all' | 'unlabeled' | 'labeled'
-  citedClauses: new Set(),
-  dirty: false,
+const $ = (id) => document.getElementById(id);
+const S = {
+  who: null, config: null, batches: [], batchId: null, role: null,
+  cases: [], votes: {}, others: {}, idx: 0, policies: [], raw: false, sending: false,
+};
+const LS = { who: 'labeler.who', pos: (w) => `labeler.pos.${w}`, queue: (w) => `labeler.queue.${w}` };
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } }
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+const DEFAULTS = {
+  ALLOW: ['none', 'current_user'], BLOCK: ['none', 'none'],
+  ASK_USER: ['user_intent', 'current_user'], ESCALATE: ['approval', 'manager'],
 };
 
-// DOM Elements
-const el = {
-  annotatorSelect: document.getElementById('annotatorSelect'),
-  customAnnotatorInput: document.getElementById('customAnnotatorInput'),
-  batchSelect: document.getElementById('batchSelect'),
-  batchProgressBar: document.getElementById('batchProgressBar'),
-  batchProgressText: document.getElementById('batchProgressText'),
-  
-  // Navigation
-  btnPrev: document.getElementById('btnPrev'),
-  btnNext: document.getElementById('btnNext'),
-  btnNextUnlabeled: document.getElementById('btnNextUnlabeled'),
-  currentCaseNum: document.getElementById('currentCaseNum'),
-  totalCasesNum: document.getElementById('totalCasesNum'),
-  
-  // Badges
-  badgeSuite: document.getElementById('badgeSuite'),
-  badgeCategory: document.getElementById('badgeCategory'),
-  badgeDifficulty: document.getElementById('badgeDifficulty'),
-  badgeRound: document.getElementById('badgeRound'),
-  badgeCaseStatus: document.getElementById('badgeCaseStatus'),
-  caseIdDisplay: document.getElementById('caseIdDisplay'),
-  
-  // View Toggle
-  btnViewStructured: document.getElementById('btnViewStructured'),
-  btnViewRaw: document.getElementById('btnViewRaw'),
-  structuredView: document.getElementById('structuredView'),
-  rawPromptView: document.getElementById('rawPromptView'),
-  rawCaseText: document.getElementById('rawCaseText'),
-  btnCopyRaw: document.getElementById('btnCopyRaw'),
-  
-  // Left Column Details
-  userPromptText: document.getElementById('userPromptText'),
-  principalDisplay: document.getElementById('principalDisplay'),
-  fnNameDisplay: document.getElementById('fnNameDisplay'),
-  stateChangingBadge: document.getElementById('stateChangingBadge'),
-  actionTypeBadge: document.getElementById('actionTypeBadge'),
-  argsTableBody: document.getElementById('argsTableBody'),
-  authSummary: document.getElementById('authSummary'),
-  sensSummary: document.getElementById('sensSummary'),
-  approverSummary: document.getElementById('approverSummary'),
-  untrustedSection: document.getElementById('untrustedSection'),
-  untrustedList: document.getElementById('untrustedList'),
-  policyClausesList: document.getElementById('policyClausesList'),
-  resolutionHistorySection: document.getElementById('resolutionHistorySection'),
-  resolutionHistoryList: document.getElementById('resolutionHistoryList'),
-  
-  // Right Column Form
-  decisionCards: document.querySelectorAll('.decision-card'),
-  askUserDetails: document.getElementById('askUserDetails'),
-  escalateDetails: document.getElementById('escalateDetails'),
-  finalActionSection: document.getElementById('finalActionSection'),
-  missingEvidencePills: document.querySelectorAll('#missingEvidencePills .pill'),
-  requiredAuthorityPills: document.querySelectorAll('#requiredAuthorityPills .pill'),
-  btnFinalAllow: document.getElementById('btnFinalAllow'),
-  btnFinalBlock: document.getElementById('btnFinalBlock'),
-  userResponseTextInput: document.getElementById('userResponseTextInput'),
-  btnUserConfYes: document.getElementById('btnUserConfYes'),
-  btnUserConfNo: document.getElementById('btnUserConfNo'),
-  citedClausesContainer: document.getElementById('citedClausesContainer'),
-  clauseTagInput: document.getElementById('clauseTagInput'),
-  notesInput: document.getElementById('notesInput'),
-  btnSaveAndNext: document.getElementById('btnSaveAndNext'),
-  btnClearLabel: document.getElementById('btnClearLabel'),
-  saveStatusIndicator: document.getElementById('saveStatusIndicator'),
-  
-  // Drawer & Modals
-  btnCaseDrawer: document.getElementById('btnCaseDrawer'),
-  caseDrawer: document.getElementById('caseDrawer'),
-  drawerOverlay: document.getElementById('drawerOverlay'),
-  btnCloseDrawer: document.getElementById('btnCloseDrawer'),
-  drawerCasesGrid: document.getElementById('drawerCasesGrid'),
-  unlabeledFilterCount: document.getElementById('unlabeledFilterCount'),
-  labeledFilterCount: document.getElementById('labeledFilterCount'),
-  drawerFilterChips: document.querySelectorAll('.filter-chip'),
-  
-  btnExportCsv: document.getElementById('btnExportCsv'),
-  btnHelp: document.getElementById('btnHelp'),
-  shortcutsModal: document.getElementById('shortcutsModal'),
-  btnCloseModal: document.getElementById('btnCloseModal'),
-};
-
-// =============================================================================
-// Initialization
-// =============================================================================
-
-async function init() {
-  setupEventListeners();
-  loadSavedAnnotator();
-  await loadManifest();
-  await loadBatch(state.currentBatchId);
-}
-
-function loadSavedAnnotator() {
-  const saved = localStorage.getItem('sagate_annotator');
-  if (saved) {
-    state.annotator = saved;
-    if (['rinkesh', 'prabhash', 'shubham', 'yogendra'].includes(saved)) {
-      el.annotatorSelect.value = saved;
-    } else {
-      el.annotatorSelect.value = 'custom';
-      el.customAnnotatorInput.style.display = 'inline-block';
-      el.customAnnotatorInput.value = saved;
-    }
-  }
-}
-
-// =============================================================================
-// API Calls & Data Loading
-// =============================================================================
-
-async function loadManifest() {
-  try {
-    const res = await fetch(`/api/manifest?annotator=${encodeURIComponent(state.annotator)}`);
-    if (!res.ok) throw new Error('Failed to fetch manifest');
-    state.manifest = await res.json();
-    populateBatchSelect(state.manifest.batches);
-  } catch (err) {
-    console.warn('API error loading manifest, falling back to static batch list:', err);
-    populateBatchSelectFallback();
-  }
-}
-
-function populateBatchSelect(batches) {
-  el.batchSelect.innerHTML = '';
-  batches.forEach((b) => {
-    const opt = document.createElement('option');
-    opt.value = b.batch_id;
-    const labeled = b.labeled_count || 0;
-    opt.textContent = `Batch ${b.batch_num.toString().padStart(2, '0')} (${labeled}/${b.case_count})`;
-    el.batchSelect.appendChild(opt);
+/* ---------- identity ---------- */
+function askWho(force) {
+  if (S.who && !force) return Promise.resolve(S.who);
+  return new Promise((resolve) => {
+    const box = $('whoNames');
+    box.innerHTML = '';
+    S.config.annotators.forEach((n) => {
+      const b = document.createElement('button');
+      b.textContent = n;
+      b.onclick = () => { $('whoDialog').classList.add('hidden'); resolve(n); };
+      box.appendChild(b);
+    });
+    $('whoDialog').classList.remove('hidden');
   });
-  el.batchSelect.value = state.currentBatchId;
 }
 
-function populateBatchSelectFallback() {
-  el.batchSelect.innerHTML = '';
-  for (let i = 1; i <= 20; i++) {
-    const bId = `batch_${i.toString().padStart(2, '0')}`;
-    const opt = document.createElement('option');
-    opt.value = bId;
-    opt.textContent = `Batch ${i.toString().padStart(2, '0')} (100 cases)`;
-    el.batchSelect.appendChild(opt);
+async function setWho(name) {
+  S.who = name;
+  lsSet(LS.who, name);
+  $('who').textContent = name;
+  await flushQueue();
+  await loadBatches();
+  const pos = lsGet(LS.pos(name), {});
+  const mine = S.batches.filter((b) => b.role);
+  const start = mine.find((b) => b.batch_id === pos.batchId) || mine[0];
+  if (start) await loadBatch(start.batch_id, pos.batchId === start.batch_id ? pos.idx : 0);
+}
+
+/* ---------- batches ---------- */
+async function loadBatches() {
+  S.batches = await api(`/api/batches?annotator=${S.who}`);
+  const sel = $('batchSelect');
+  sel.innerHTML = '';
+  for (const b of S.batches) {
+    const o = document.createElement('option');
+    o.value = b.batch_id;
+    const n = b.batch_id.replace('batch_', 'Batch ');
+    o.textContent = b.role ? `${n} · ${b.role} · ${b.done}/${b.total}` : `${n} · not assigned`;
+    o.disabled = !b.role;
+    sel.appendChild(o);
+  }
+  if (S.batchId) sel.value = S.batchId;
+}
+
+async function loadBatch(batchId, idx = 0) {
+  const d = await api(`/api/batch?id=${batchId}&annotator=${S.who}`);
+  S.batchId = batchId; S.role = d.role; S.cases = d.cases; S.votes = d.votes; S.others = d.others;
+  for (const q of lsGet(LS.queue(S.who), [])) {           // unsent local changes win over the server copy
+    if (q.batch_id === batchId) { if (q.vote) S.votes[q.case_id] = q.vote; else delete S.votes[q.case_id]; }
+  }
+  $('batchSelect').value = batchId;
+  $('roleChip').textContent = d.role === 'tiebreak' ? 'tie-break: disputed cases only' : 'primary · blind';
+  $('roleChip').className = `chip ${d.role}`;
+  $('othersWrap').classList.toggle('hidden', d.role !== 'tiebreak');
+  go(Math.min(idx, Math.max(S.cases.length - 1, 0)));
+}
+
+/* ---------- navigation ---------- */
+function complete(v) {
+  if (!v || !v.gold_decision || !v.gold_final_action || !v.gold_missing_evidence || !v.gold_required_authority) return false;
+  if (v.gold_decision !== 'ASK_USER') return true;
+  const u = v.user_response || {};
+  return !!(u.text || '').trim() && (u.confirmed === true || u.confirmed === false);
+}
+function go(i) {
+  if (!S.cases.length) { renderEmpty(); return; }
+  S.idx = (i + S.cases.length) % S.cases.length;
+  lsSet(LS.pos(S.who), { batchId: S.batchId, idx: S.idx });
+  render();
+}
+function nextIncomplete() {
+  for (let k = 1; k <= S.cases.length; k++) {
+    const j = (S.idx + k) % S.cases.length;
+    if (!complete(S.votes[S.cases[j].case_id])) return go(j);
   }
 }
 
-async function loadBatch(batchId) {
-  state.currentBatchId = batchId;
-  el.saveStatusIndicator.textContent = 'Loading batch...';
-
-  try {
-    const res = await fetch(`/api/batch?id=${batchId}&annotator=${encodeURIComponent(state.annotator)}`);
-    if (!res.ok) throw new Error(`Batch fetch error ${res.status}`);
-    const data = await res.json();
-    state.cases = data.cases || [];
-    state.annotations = data.annotations || {};
-  } catch (err) {
-    console.warn(`Falling back to direct json fetch for ${batchId}:`, err);
-    try {
-      const res = await fetch(`../data/synthetic_data/batches/${batchId}.json`);
-      state.cases = await res.json();
-      state.annotations = loadLocalStorageAnnotations(batchId);
-    } catch (e2) {
-      alert(`Could not load batch data for ${batchId}. Make sure python server is running.`);
-      return;
-    }
+/* ---------- rendering ---------- */
+function isEmpty(v) {
+  return v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length) ||
+    (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);
+}
+/* Compact facts: two per row, empty values hidden, booleans coloured, lists as pills, long values span the row. */
+function kv(obj) {
+  if (!obj || typeof obj !== 'object') return '<span class="empty">—</span>';
+  const cells = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (isEmpty(v)) continue;
+    let html;
+    let wide = false;
+    if (typeof v === 'boolean') html = `<span class="${v ? 'yes' : 'no'}">${v ? 'yes' : 'no'}</span>`;
+    else if (Array.isArray(v)) { html = v.map((x) => `<span class="pill">${val(x)}</span>`).join(''); wide = true; }
+    else if (typeof v === 'object') { html = esc(JSON.stringify(v)); wide = true; }
+    else { html = esc(v); wide = String(v).length > 28; }
+    cells.push(`<div class="pair${wide ? ' wide' : ''}"><span class="k">${esc(k)}</span> <span class="v">${html}</span></div>`);
   }
+  return cells.length ? `<div class="kv">${cells.join('')}</div>` : '<span class="empty">nothing recorded</span>';
+}
+function trust(t) { return `<span class="t t-${esc(t || 'unknown')}">${esc(t || 'unknown')}</span>`; }
+function val(v) { return esc(typeof v === 'object' ? JSON.stringify(v) : v); }
 
-  state.currentIndex = 0;
-  updateBatchProgress();
-  renderCurrentCase();
-  renderDrawerGrid();
-  el.saveStatusIndicator.textContent = 'Ready';
+function renderEmpty() {
+  ['request', 'call', 'prior', 'resolution', 'authority', 'sensitivity', 'origin', 'untrusted', 'retrieved', 'grid']
+    .forEach((id) => { $(id).innerHTML = ''; });
+  $('request').innerHTML = `<span class="empty">${S.role === 'tiebreak'
+    ? 'No disputed cases in this batch yet (both primary annotators must finish their votes, then pull).'
+    : 'No cases.'}</span>`;
+  $('pos').textContent = '0 / 0';
+  updateProgress();
 }
 
-function loadLocalStorageAnnotations(batchId) {
-  const key = `sagate_ann_${batchId}_${state.annotator}`;
-  try {
-    return JSON.parse(localStorage.getItem(key)) || {};
-  } catch {
-    return {};
-  }
-}
+function render() {
+  const c = S.cases[S.idx];
+  const inp = c.input || {};
+  $('pos').textContent = `${S.idx + 1} / ${S.cases.length}`;
+  $('caseMeta').innerHTML = `<b>${esc(c.suite)}</b> · <b>${esc(c.category)}</b> · ${esc(c.difficulty)} · round ${esc(c.round)}` +
+    ` · <span title="case id">${esc(c.case_id)}</span>`;
+  $('request').textContent = (inp.user && inp.user.prompt) || '—';
 
-function saveLocalStorageAnnotations(batchId, annotations) {
-  const key = `sagate_ann_${batchId}_${state.annotator}`;
-  localStorage.setItem(key, JSON.stringify(annotations));
-}
-
-// =============================================================================
-// Rendering Case Details
-// =============================================================================
-
-function renderCurrentCase() {
-  if (!state.cases || state.cases.length === 0) return;
-
-  const item = state.cases[state.currentIndex];
-  const raw = item.raw_case || {};
-  const inp = raw.input || {};
-  const meta = item.raw_case?.meta || {};
-
-  // Case Counter
-  el.currentCaseNum.textContent = state.currentIndex + 1;
-  el.totalCasesNum.textContent = state.cases.length;
-
-  // Header Badges
-  el.badgeSuite.textContent = item.suite || inp.suite || 'banking';
-  el.badgeCategory.textContent = item.category || 'general';
-  el.badgeDifficulty.textContent = item.difficulty || meta.difficulty || 'medium';
-  el.badgeRound.textContent = `Round ${item.round ?? meta.round ?? 0}`;
-  el.caseIdDisplay.textContent = item.case_id;
-
-  // 1. User Prompt Card
-  el.userPromptText.textContent = inp.user?.prompt || '(No prompt available)';
-  el.principalDisplay.textContent = `principal: ${inp.user?.principal_id || 'user'}`;
-
-  // 2. Proposed Tool Call
   const call = inp.proposed_call || {};
-  el.fnNameDisplay.textContent = `${call.function || 'unknown_tool'}()`;
-  el.stateChangingBadge.style.display = call.state_changing ? 'inline-flex' : 'none';
-  el.actionTypeBadge.textContent = call.action || 'action';
-
-  // Arguments Table with Provenance
-  renderArgumentsTable(call.args || {}, inp.provenance || []);
-
-  // 3. Security Summary
-  renderSecuritySummary(inp.authority || {}, inp.sensitivity || {});
-
-  // 4. Untrusted Content
-  renderUntrustedContent(inp.untrusted_content || []);
-
-  // 5. Retrieved Policy Clauses
-  renderPolicyClauses(inp.policy_clauses || []);
-
-  // 6. Resolution History
-  renderResolutionHistory(inp.resolution_history || []);
-
-  // 7. Raw Case Text
-  el.rawCaseText.textContent = item.case_text || JSON.stringify(item, null, 2);
-
-  // 8. Populate Annotation Form
-  populateFormForCurrentCase();
-
-  // Update Drawer Current Tile
-  highlightCurrentDrawerTile();
-}
-
-function renderArgumentsTable(args, provenance) {
-  el.argsTableBody.innerHTML = '';
-  const provMap = {};
-  provenance.forEach((p) => {
-    if (p.arg) provMap[p.arg] = p;
+  const prov = {};
+  (inp.provenance || []).forEach((p) => { if (p.arg) prov[p.arg] = p; });
+  const rows = Object.entries(call.args || {}).map(([k, v]) => {
+    const p = prov[k] || {};
+    return `<tr><td>${esc(k)}</td><td>${val(v)}</td><td>${esc((p.sources || []).join(', ') || '—')}</td>` +
+      `<td>${trust(p.trust)}</td></tr>`;
   });
+  $('call').innerHTML = `<div class="fn">${esc(call.function)}() <span class="muted">${esc(call.action || '')}` +
+    `${call.state_changing ? ' · state-changing' : ''}</span></div>` +
+    `<table><tr><th>arg</th><th>value</th><th>source</th><th>trust</th></tr>${rows.join('') || '<tr><td colspan="4">no arguments</td></tr>'}</table>`;
 
-  const argEntries = Object.entries(args);
-  if (argEntries.length === 0) {
-    el.argsTableBody.innerHTML = `<tr><td colspan="3" style="color: var(--text-muted); text-align: center;">No arguments</td></tr>`;
-    return;
+  const prior = inp.prior_calls || [];
+  $('priorWrap').classList.toggle('hidden', !prior.length);
+  $('prior').innerHTML = prior.map((p, i) => `<div><span class="fn">${i + 1}. ${esc(p.function)}</span> ${val(p.args || {})}</div>`).join('');
+
+  const res = inp.resolution_history || [];
+  $('resWrap').classList.toggle('hidden', !res.length);
+  $('resolution').innerHTML = res.map((r) => `<div class="res">round ${esc(r.round)} · ${esc(r.kind)} asked ${val(r.asked || {})}<br>` +
+    `${esc(r.responder)}: "${esc(r.response)}"` +
+    (r.kind === 'ESCALATE' ? ` · approved: ${esc(r.approved)}` : ` · confirmed: ${esc(r.confirmed)}`) + '</div>').join('');
+
+  $('authority').innerHTML = kv(inp.authority);
+  const sens = inp.sensitivity || {};
+  const high = (l) => (l === 'CONFIDENTIAL' || l === 'RESTRICTED' ? ' hi' : '');
+  $('sensitivity').innerHTML = `<div class="flow"><span class="pill${high(sens.resource)}">${esc(sens.resource ?? '—')}</span>` +
+    `<span class="arrow">→</span><span class="pill">${esc(sens.destination ?? '—')}</span></div>` +
+    `<div class="flow">flow: <b class="${sens.flow === 'high_to_low' ? 'no' : ''}">${esc(sens.flow ?? '—')}</b></div>` +
+    ((sens.basis || []).length ? `<div class="flow">${sens.basis.map((b) => `<span class="pill">${esc(b)}</span>`).join('')}</div>` : '');
+  const origin = (inp.provenance || []).find((p) => p.kind === 'call');
+  document.querySelector('.c-origin').classList.toggle('bad', !!origin && origin.trust === 'untrusted');
+  $('origin').innerHTML = origin ? `<div>${esc(origin.instruction_origin)}</div>` +
+    `${origin.origin_source ? `<div class="doc">${esc(origin.origin_source)}</div>` : ''}${trust(origin.trust)}` : '<span class="empty">—</span>';
+  const untrusted = inp.untrusted_content || [];
+  $('untrustedCount').textContent = untrusted.length ? `${untrusted.length} block${untrusted.length > 1 ? 's' : ''}` : '';
+  document.querySelector('.c-untrusted').classList.toggle('has', untrusted.length > 0);
+  $('untrusted').innerHTML = untrusted.map((u) =>
+    `<div class="untrusted"><div class="src">${esc(u.id)} · ${esc(u.source)}</div><pre>${esc(u.text)}</pre></div>`).join('') ||
+    '<span class="empty">none</span>';
+  $('retrieved').innerHTML = (inp.policy_clauses || []).map((cl) => clauseHtml(cl)).join('') || '<span class="empty">none</span>';
+  $('rawText').textContent = c.case_text || '';
+
+  if (S.role === 'tiebreak') {
+    $('others').innerHTML = (S.others[c.case_id] || []).map((v) =>
+      `<div class="other"><b>${esc(v.annotator)}</b>: ${esc(v.gold_decision)} → ${esc(v.gold_final_action)} · ` +
+      `${esc(v.gold_missing_evidence)} / ${esc(v.gold_required_authority)}` +
+      (v.gold_clause_ids && v.gold_clause_ids.length ? ` · ${esc(v.gold_clause_ids.join(', '))}` : '') +
+      (v.user_response && v.user_response.text ? `<br>reply: "${esc(v.user_response.text)}" (${v.user_response.confirmed ? 'yes' : 'no'})` : '') +
+      (v.notes ? `<br><span class="empty">${esc(v.notes)}</span>` : '') + '</div>').join('');
   }
+  renderVote();
+  renderGrid();
+  updateProgress();
+  bindCiteButtons();
+}
 
-  argEntries.forEach(([argName, argVal]) => {
-    const tr = document.createElement('tr');
-    const p = provMap[argName];
-    const trust = p?.trust || 'unknown';
-    const sources = (p?.sources || []).join(', ') || 'none';
-
-    let provBadgeClass = 'prov-unknown';
-    if (trust === 'trusted') provBadgeClass = 'prov-trusted';
-    else if (trust === 'third_party' || trust === 'injection') provBadgeClass = 'prov-untrusted';
-
-    tr.innerHTML = `
-      <td class="arg-name">${escapeHtml(argName)}</td>
-      <td class="arg-val">${escapeHtml(typeof argVal === 'object' ? JSON.stringify(argVal) : String(argVal))}</td>
-      <td>
-        <span class="arg-prov-tag ${provBadgeClass}">${trust}</span>
-        <span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">[src: ${escapeHtml(sources)}]</span>
-      </td>
-    `;
-    el.argsTableBody.appendChild(tr);
+function clauseHtml(cl, hl) {
+  const cited = (cur().gold_clause_ids || []).includes(cl.id);
+  const text = hl ? highlight(cl.text, hl) : esc(cl.text);
+  return `<div class="clause${cited ? ' cited' : ''}${hl ? ' open' : ''}" data-id="${esc(cl.id)}">` +
+    `<span class="id">${esc(cl.id)}</span> ${hl ? highlight(cl.title, hl) : esc(cl.title)} ` +
+    `<button class="link cite" data-id="${esc(cl.id)}">${cited ? '✓ cited' : '+ cite'}</button>` +
+    `${cl.doc ? ` <span class="doc">${esc(cl.doc)}</span>` : ''}<div class="body">${text}</div></div>`;
+}
+function bindCiteButtons() {
+  document.querySelectorAll('.cite').forEach((b) => {
+    b.onclick = (e) => { e.stopPropagation(); toggleCite(b.dataset.id); };
   });
+  document.querySelectorAll('.clause').forEach((d) => { d.onclick = () => d.classList.toggle('open'); });
 }
 
-function renderSecuritySummary(auth, sens) {
-  // Authority
-  const principal = auth.principal || 'user';
-  const role = auth.principal_role || 'current_user';
-  const mayAuth = auth.user_may_authorize ? 'Authorized' : 'Unauthorized';
-  el.authSummary.textContent = `${principal} (${role}) — ${mayAuth}`;
+function cur() { return S.votes[S.cases[S.idx]?.case_id] || {}; }
 
-  // Sensitivity / IFC flow
-  const rLabel = sens.resource || 'PUBLIC';
-  const dLabel = sens.destination || 'INTERNAL';
-  const flow = sens.flow || 'ok';
-  el.sensSummary.textContent = `${rLabel} → ${dLabel} [${flow.toUpperCase()}]`;
-
-  // Approver
-  el.approverSummary.textContent = auth.approver || 'None required';
-}
-
-function renderUntrustedContent(untrustedList) {
-  if (!untrustedList || untrustedList.length === 0) {
-    el.untrustedSection.style.display = 'none';
-    return;
-  }
-  el.untrustedSection.style.display = 'flex';
-  el.untrustedList.innerHTML = '';
-
-  untrustedList.forEach((u) => {
-    const card = document.createElement('div');
-    card.className = 'untrusted-card';
-    card.innerHTML = `
-      <div class="untrusted-header">
-        <span>ID: ${escapeHtml(u.id)}</span>
-        <span>Source: ${escapeHtml(u.source)}</span>
-      </div>
-      <div class="untrusted-body">${escapeHtml(u.text)}</div>
-    `;
-    el.untrustedList.appendChild(card);
+function renderVote() {
+  const v = cur();
+  document.querySelectorAll('#decisionRow button').forEach((b) => b.classList.toggle('on', b.dataset.decision === v.gold_decision));
+  const fixed = v.gold_decision === 'ALLOW' || v.gold_decision === 'BLOCK';
+  document.querySelectorAll('#finalRow button').forEach((b) => {
+    b.classList.toggle('on', b.dataset.final === v.gold_final_action);
+    b.disabled = fixed;
   });
-}
-
-function renderPolicyClauses(clauses) {
-  el.policyClausesList.innerHTML = '';
-  if (!clauses || clauses.length === 0) {
-    el.policyClausesList.innerHTML = `<div style="font-size: 12px; color: var(--text-muted);">No policy clauses retrieved.</div>`;
-    return;
-  }
-
-  clauses.forEach((c) => {
-    const card = document.createElement('div');
-    card.className = 'policy-card';
-    card.innerHTML = `
-      <div class="policy-header">
-        <span class="policy-id">${escapeHtml(c.id)}</span>
-        <span class="policy-title">${escapeHtml(c.title)}</span>
-        <button type="button" class="btn-cite-clause" data-id="${escapeHtml(c.id)}">+ Cite</button>
-      </div>
-      <div class="policy-text">${escapeHtml(c.text)}</div>
-    `;
-    el.policyClausesList.appendChild(card);
+  $('missing').value = v.gold_missing_evidence || '';
+  $('authorityReq').value = v.gold_required_authority || '';
+  const ask = v.gold_decision === 'ASK_USER';
+  $('userReply').classList.toggle('hidden', !ask);
+  const u = v.user_response || {};
+  $('replyText').value = u.text || '';
+  document.querySelectorAll('input[name=confirmed]').forEach((r) => {
+    r.checked = (r.value === 'yes' && u.confirmed === true) || (r.value === 'no' && u.confirmed === false);
   });
-
-  // Attach Cite listeners
-  el.policyClausesList.querySelectorAll('.btn-cite-clause').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      addCitedClause(btn.getAttribute('data-id'));
-    });
+  const noisy = u.noisy_text !== undefined && u.noisy_text !== null;
+  $('noisyOn').checked = noisy;
+  $('noisyWrap').classList.toggle('hidden', !noisy);
+  $('noisyText').value = u.noisy_text || '';
+  document.querySelectorAll('input[name=noisyConfirmed]').forEach((r) => {
+    r.checked = noisy && ((r.value === 'yes' && u.noisy_confirmed === true) || (r.value === 'no' && u.noisy_confirmed === false) ||
+      (r.value === 'none' && u.noisy_confirmed === null));
   });
+  const ids = v.gold_clause_ids || [];
+  $('cited').innerHTML = ids.length ? ids.map((id) => `<span class="tag">${esc(id)}<button data-id="${esc(id)}" title="remove">×</button></span>`).join('')
+    : '<span class="empty">none — use + cite on a clause</span>';
+  $('cited').querySelectorAll('button').forEach((b) => { b.onclick = () => toggleCite(b.dataset.id); });
+  $('notes').value = v.notes || '';
+  const st = !v.gold_decision ? ['none', 'not labelled'] : complete(v) ? ['done', '✓ complete'] : ['part', 'incomplete'];
+  $('voteState').className = `state ${st[0]}`;
+  $('voteState').textContent = st[1];
 }
 
-function renderResolutionHistory(history) {
-  if (!history || history.length === 0) {
-    el.resolutionHistorySection.style.display = 'none';
-    return;
-  }
-  el.resolutionHistorySection.style.display = 'flex';
-  el.resolutionHistoryList.innerHTML = '';
-
-  history.forEach((h) => {
-    const card = document.createElement('div');
-    card.className = 'policy-card';
-    card.innerHTML = `
-      <div class="policy-header">
-        <span class="policy-id">Round ${h.round} (${escapeHtml(h.kind)})</span>
-        <span class="policy-title">Response from: ${escapeHtml(h.responder || 'user')}</span>
-      </div>
-      <div class="policy-text">
-        <strong>Reply:</strong> "${escapeHtml(h.response)}" 
-        <span style="margin-left: 8px; color: var(--color-accent);">[Confirmed: ${h.confirmed ? 'YES' : 'NO'}]</span>
-      </div>
-    `;
-    el.resolutionHistoryList.appendChild(card);
-  });
+function renderGrid() {
+  $('grid').innerHTML = S.cases.map((c, i) => {
+    const v = S.votes[c.case_id];
+    const cls = complete(v) ? `d-${v.gold_decision}` : v && v.gold_decision ? 'partial' : '';
+    const tip = v && v.gold_decision ? `${v.gold_decision}${complete(v) ? ` → ${v.gold_final_action}` : ' (incomplete)'}` : 'not labelled';
+    return `<button class="${cls}${i === S.idx ? ' current' : ''}" data-i="${i}" title="case ${i + 1}: ${tip}">${i + 1}</button>`;
+  }).join('');
+  $('grid').querySelectorAll('button').forEach((b) => { b.onclick = () => go(+b.dataset.i); });
 }
 
-// =============================================================================
-// Labelling Form Management
-// =============================================================================
-
-function populateFormForCurrentCase() {
-  const currentCase = state.cases[state.currentIndex];
-  const caseId = currentCase.case_id;
-  const label = state.annotations[caseId] || currentCase.current_label || {};
-
-  // Reset form
-  resetForm();
-
-  // Set Decision
-  if (label.gold_decision) {
-    setDecision(label.gold_decision, false);
-    updateCaseStatusBadge(label.gold_decision);
-  } else {
-    updateCaseStatusBadge(null);
-  }
-
-  // Set Missing Evidence
-  if (label.gold_missing_evidence) {
-    setMissingEvidence(label.gold_missing_evidence);
-  }
-
-  // Set Required Authority
-  if (label.gold_required_authority) {
-    setRequiredAuthority(label.gold_required_authority);
-  }
-
-  // Set Final Action
-  if (label.gold_final_action) {
-    setFinalAction(label.gold_final_action);
-  }
-
-  // User Response text & confirmed
-  if (label.user_response_text) {
-    el.userResponseTextInput.value = label.user_response_text;
-  }
-  if (label.user_response_confirmed !== undefined && label.user_response_confirmed !== null) {
-    setUserConfirmed(label.user_response_confirmed ? 'yes' : 'no');
-  }
-
-  // Cited Clauses
-  state.citedClauses.clear();
-  if (label.gold_clause_ids) {
-    const list = Array.isArray(label.gold_clause_ids)
-      ? label.gold_clause_ids
-      : String(label.gold_clause_ids).split(/[,;]/);
-    list.forEach((cid) => {
-      if (cid.trim()) state.citedClauses.add(cid.trim());
-    });
-  }
-  renderCitedClausesTags();
-
-  // Notes
-  if (label.notes) {
-    el.notesInput.value = label.notes;
-  }
-
-  state.dirty = false;
+function updateProgress() {
+  const done = S.cases.filter((c) => complete(S.votes[c.case_id])).length;
+  $('progress').textContent = `${done} / ${S.cases.length} complete`;
+  $('progressFill').style.width = S.cases.length ? `${(100 * done) / S.cases.length}%` : '0';
+  const opt = $('batchSelect').selectedOptions[0];
+  const b = S.batches.find((x) => x.batch_id === S.batchId);
+  if (opt && b) opt.textContent = `${b.batch_id.replace('batch_', 'Batch ')} · ${b.role} · ${done}/${S.cases.length}`;
 }
 
-function resetForm() {
-  el.decisionCards.forEach((c) => c.classList.remove('active'));
-  el.askUserDetails.style.display = 'none';
-  el.escalateDetails.style.display = 'none';
-  el.finalActionSection.style.display = 'none';
-
-  el.missingEvidencePills.forEach((p) => p.classList.remove('active'));
-  el.requiredAuthorityPills.forEach((p) => p.classList.remove('active'));
-
-  el.btnFinalAllow.classList.add('active');
-  el.btnFinalBlock.classList.remove('active');
-
-  el.userResponseTextInput.value = '';
-  el.btnUserConfYes.classList.remove('active');
-  el.btnUserConfNo.classList.remove('active');
-
-  state.citedClauses.clear();
-  renderCitedClausesTags();
-
-  el.notesInput.value = '';
+/* ---------- editing + saving ---------- */
+function edit(patch) {
+  const c = S.cases[S.idx];
+  if (!c) return;
+  const v = { ...cur(), ...patch };
+  S.votes[c.case_id] = v;
+  enqueue(c.case_id, v);
+  renderVote();
+  renderGrid();
+  updateProgress();
 }
 
-function setDecision(decision, markDirty = true) {
-  el.decisionCards.forEach((c) => {
-    c.classList.toggle('active', c.getAttribute('data-decision') === decision);
-  });
-
-  // Toggle conditional sections
-  el.askUserDetails.style.display = decision === 'ASK_USER' ? 'flex' : 'none';
-  el.escalateDetails.style.display = decision === 'ESCALATE' ? 'flex' : 'none';
-  el.finalActionSection.style.display = (decision === 'ASK_USER' || decision === 'ESCALATE') ? 'flex' : 'none';
-
-  // Automatically default final_action
-  if (decision === 'ALLOW') {
-    setFinalAction('ALLOW');
-  } else if (decision === 'BLOCK') {
-    setFinalAction('BLOCK');
-  } else if (decision === 'ASK_USER' && !getSelectedMissingEvidence()) {
-    // Default to user_intent
-    setMissingEvidence('user_intent');
-  } else if (decision === 'ESCALATE' && !getSelectedRequiredAuthority()) {
-    // Default to manager
-    setRequiredAuthority('manager');
-  }
-
-  updateCaseStatusBadge(decision);
-  if (markDirty) {
-    state.dirty = true;
-    el.saveStatusIndicator.textContent = 'Unsaved changes';
-    el.saveStatusIndicator.className = 'save-status unsaved';
-  }
+function setDecision(d) {
+  const [m, a] = DEFAULTS[d];
+  const v = cur();
+  const patch = { gold_decision: d, gold_missing_evidence: m, gold_required_authority: a };
+  patch.gold_final_action = (d === 'ALLOW' || d === 'BLOCK') ? d : (v.gold_decision === d ? v.gold_final_action : null);
+  if (d !== 'ASK_USER') patch.user_response = null;
+  edit(patch);
 }
 
-function getSelectedDecision() {
-  const active = document.querySelector('.decision-card.active');
-  return active ? active.getAttribute('data-decision') : null;
+function editReply(patch) { edit({ user_response: { ...(cur().user_response || {}), ...patch } }); }
+
+function toggleCite(id) {
+  const ids = new Set(cur().gold_clause_ids || []);
+  if (ids.has(id)) ids.delete(id); else ids.add(id);
+  edit({ gold_clause_ids: [...ids].sort() });
+  document.querySelectorAll(`.cite[data-id="${CSS.escape(id)}"]`).forEach((b) => { b.textContent = ids.has(id) ? '✓ cited' : '+ cite'; });
+  document.querySelectorAll(`.clause[data-id="${CSS.escape(id)}"]`).forEach((d) => d.classList.toggle('cited', ids.has(id)));
 }
 
-function setMissingEvidence(val) {
-  el.missingEvidencePills.forEach((p) => {
-    p.classList.toggle('active', p.getAttribute('data-val') === val);
-  });
-  state.dirty = true;
+function clearVote() {
+  const c = S.cases[S.idx];
+  if (!c || !S.votes[c.case_id] || !confirm('Delete your vote on this case?')) return;
+  delete S.votes[c.case_id];
+  enqueue(c.case_id, null);
+  render();
 }
 
-function getSelectedMissingEvidence() {
-  const active = document.querySelector('#missingEvidencePills .pill.active');
-  return active ? active.getAttribute('data-val') : null;
+function enqueue(caseId, vote) {
+  const q = lsGet(LS.queue(S.who), []).filter((x) => !(x.batch_id === S.batchId && x.case_id === caseId));
+  q.push({ batch_id: S.batchId, case_id: caseId, vote });
+  lsSet(LS.queue(S.who), q);
+  setSave('saving…');
+  clearTimeout(enqueue.t);
+  enqueue.t = setTimeout(flushQueue, 300);
 }
 
-function setRequiredAuthority(val) {
-  el.requiredAuthorityPills.forEach((p) => {
-    p.classList.toggle('active', p.getAttribute('data-val') === val);
-  });
-  state.dirty = true;
-}
-
-function getSelectedRequiredAuthority() {
-  const active = document.querySelector('#requiredAuthorityPills .pill.active');
-  return active ? active.getAttribute('data-val') : null;
-}
-
-function setFinalAction(action) {
-  el.btnFinalAllow.classList.toggle('active', action === 'ALLOW');
-  el.btnFinalBlock.classList.toggle('active', action === 'BLOCK');
-  state.dirty = true;
-}
-
-function getSelectedFinalAction() {
-  const decision = getSelectedDecision();
-  if (decision === 'ALLOW' || decision === 'BLOCK') return decision;
-  return el.btnFinalAllow.classList.contains('active') ? 'ALLOW' : 'BLOCK';
-}
-
-function setUserConfirmed(val) {
-  el.btnUserConfYes.classList.toggle('active', val === 'yes');
-  el.btnUserConfNo.classList.toggle('active', val === 'no');
-  state.dirty = true;
-}
-
-function getUserConfirmed() {
-  if (el.btnUserConfYes.classList.contains('active')) return 'yes';
-  if (el.btnUserConfNo.classList.contains('active')) return 'no';
-  return '';
-}
-
-// =============================================================================
-// Cited Policy Clauses Tags
-// =============================================================================
-
-function addCitedClause(clauseId) {
-  if (!clauseId) return;
-  state.citedClauses.add(clauseId.trim());
-  renderCitedClausesTags();
-  state.dirty = true;
-}
-
-function removeCitedClause(clauseId) {
-  state.citedClauses.delete(clauseId);
-  renderCitedClausesTags();
-  state.dirty = true;
-}
-
-function renderCitedClausesTags() {
-  // Clear old pills except the input
-  const pills = el.citedClausesContainer.querySelectorAll('.tag-pill');
-  pills.forEach((p) => p.remove());
-
-  state.citedClauses.forEach((cid) => {
-    const pill = document.createElement('span');
-    pill.className = 'tag-pill';
-    pill.innerHTML = `
-      ${escapeHtml(cid)}
-      <span class="tag-remove" data-id="${escapeHtml(cid)}">&times;</span>
-    `;
-    el.citedClausesContainer.insertBefore(pill, el.clauseTagInput);
-  });
-
-  // Attach remove listeners
-  el.citedClausesContainer.querySelectorAll('.tag-remove').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      removeCitedClause(btn.getAttribute('data-id'));
-    });
-  });
-}
-
-function updateCaseStatusBadge(decision) {
-  el.badgeCaseStatus.className = 'badge badge-status';
-  if (!decision) {
-    el.badgeCaseStatus.textContent = 'UNLABELED';
-  } else {
-    el.badgeCaseStatus.textContent = decision;
-    el.badgeCaseStatus.classList.add(`labeled-${decision.toLowerCase().replace('_', '')}`);
-  }
-}
-
-// =============================================================================
-// Saving Annotation
-// =============================================================================
-
-async function saveCurrentAnnotation() {
-  const currentCase = state.cases[state.currentIndex];
-  if (!currentCase) return;
-
-  const caseId = currentCase.case_id;
-  const decision = getSelectedDecision();
-
-  if (!decision) {
-    // Nothing selected
-    return;
-  }
-
-  const labelData = {
-    case_id: caseId,
-    gold_decision: decision,
-    gold_final_action: getSelectedFinalAction(),
-    gold_missing_evidence: decision === 'ASK_USER' ? getSelectedMissingEvidence() : '',
-    gold_required_authority: decision === 'ESCALATE' ? getSelectedRequiredAuthority() : '',
-    gold_clause_ids: Array.from(state.citedClauses).join(', '),
-    user_response_text: el.userResponseTextInput.value.trim(),
-    user_response_confirmed: getUserConfirmed(),
-    notes: el.notesInput.value.trim(),
-  };
-
-  // Update in-memory state
-  state.annotations[caseId] = labelData;
-  currentCase.current_label = labelData;
-
-  // LocalStorage fallback
-  saveLocalStorageAnnotations(state.currentBatchId, state.annotations);
-
-  // Send to Python server
+async function flushQueue() {
+  if (!S.who || S.sending) return;
+  S.sending = true;
   try {
-    const res = await fetch('/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        batch_id: state.currentBatchId,
-        annotator: state.annotator,
-        case_id: caseId,
-        label: labelData,
-      }),
-    });
-    if (!res.ok) throw new Error(`Save failed: ${res.status}`);
-    el.saveStatusIndicator.textContent = 'Saved to disk';
-    el.saveStatusIndicator.className = 'save-status';
-  } catch (err) {
-    console.warn('API save error, saved locally:', err);
-    el.saveStatusIndicator.textContent = 'Saved locally (offline)';
-    el.saveStatusIndicator.className = 'save-status';
-  }
-
-  state.dirty = false;
-  updateBatchProgress();
-  updateDrawerTile(state.currentIndex, decision);
-}
-
-function clearCurrentAnnotation() {
-  const currentCase = state.cases[state.currentIndex];
-  if (!currentCase) return;
-
-  const caseId = currentCase.case_id;
-  delete state.annotations[caseId];
-  currentCase.current_label = null;
-
-  resetForm();
-  updateCaseStatusBadge(null);
-  updateBatchProgress();
-  updateDrawerTile(state.currentIndex, null);
-
-  // Save empty to server
-  fetch('/api/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      batch_id: state.currentBatchId,
-      annotator: state.annotator,
-      case_id: caseId,
-      label: {},
-    }),
-  }).catch(() => {});
-}
-
-// =============================================================================
-// Navigation & Progress
-// =============================================================================
-
-function jumpToCase(index) {
-  if (index < 0 || index >= state.cases.length) return;
-  if (state.dirty) {
-    saveCurrentAnnotation();
-  }
-  state.currentIndex = index;
-  renderCurrentCase();
-}
-
-function prevCase() {
-  if (state.currentIndex > 0) {
-    jumpToCase(state.currentIndex - 1);
-  }
-}
-
-function nextCase() {
-  if (state.currentIndex < state.cases.length - 1) {
-    jumpToCase(state.currentIndex + 1);
-  }
-}
-
-async function saveAndNext() {
-  await saveCurrentAnnotation();
-  if (state.currentIndex < state.cases.length - 1) {
-    jumpToCase(state.currentIndex + 1);
-  } else {
-    alert('🎉 Congratulations! You have reached the end of this batch!');
-  }
-}
-
-function jumpToNextUnlabeled() {
-  if (state.dirty) saveCurrentAnnotation();
-
-  for (let i = state.currentIndex + 1; i < state.cases.length; i++) {
-    const cid = state.cases[i].case_id;
-    if (!state.annotations[cid]?.gold_decision) {
-      jumpToCase(i);
-      return;
-    }
-  }
-
-  // Wrap around from beginning
-  for (let i = 0; i <= state.currentIndex; i++) {
-    const cid = state.cases[i].case_id;
-    if (!state.annotations[cid]?.gold_decision) {
-      jumpToCase(i);
-      return;
-    }
-  }
-
-  alert('All 100 cases in this batch are labeled!');
-}
-
-function updateBatchProgress() {
-  const total = state.cases.length || 100;
-  const labeled = Object.values(state.annotations).filter((a) => a.gold_decision).length;
-  const pct = Math.round((labeled / total) * 100);
-
-  el.batchProgressText.textContent = `${labeled} / ${total} labeled (${pct}%)`;
-  el.batchProgressBar.style.width = `${pct}%`;
-
-  el.labeledFilterCount.textContent = labeled;
-  el.unlabeledFilterCount.textContent = total - labeled;
-}
-
-// =============================================================================
-// Drawer (1-100 Cases Grid)
-// =============================================================================
-
-function renderDrawerGrid() {
-  el.drawerCasesGrid.innerHTML = '';
-  state.cases.forEach((c, idx) => {
-    const cid = c.case_id;
-    const ann = state.annotations[cid];
-    const decision = ann?.gold_decision;
-
-    const tile = document.createElement('div');
-    tile.className = 'drawer-case-tile';
-    tile.setAttribute('data-index', idx);
-    tile.setAttribute('data-labeled', decision ? 'true' : 'false');
-
-    if (decision) {
-      tile.classList.add(`labeled-${decision.toLowerCase().replace('_', '')}`);
-      tile.innerHTML = `<span>${idx + 1}</span><span class="tile-badge">${formatTileBadge(decision)}</span>`;
-    } else {
-      tile.innerHTML = `<span>${idx + 1}</span>`;
-    }
-
-    tile.addEventListener('click', () => {
-      jumpToCase(idx);
-      closeDrawer();
-    });
-
-    el.drawerCasesGrid.appendChild(tile);
-  });
-
-  applyDrawerFilter();
-  highlightCurrentDrawerTile();
-}
-
-function formatTileBadge(decision) {
-  switch (decision) {
-    case 'ALLOW': return 'A';
-    case 'BLOCK': return 'B';
-    case 'ASK_USER': return 'AU';
-    case 'ESCALATE': return 'ESC';
-    default: return '';
-  }
-}
-
-function updateDrawerTile(idx, decision) {
-  const tile = el.drawerCasesGrid.querySelector(`.drawer-case-tile[data-index="${idx}"]`);
-  if (!tile) return;
-
-  tile.className = 'drawer-case-tile';
-  tile.setAttribute('data-labeled', decision ? 'true' : 'false');
-
-  if (decision) {
-    tile.classList.add(`labeled-${decision.toLowerCase().replace('_', '')}`);
-    tile.innerHTML = `<span>${idx + 1}</span><span class="tile-badge">${formatTileBadge(decision)}</span>`;
-  } else {
-    tile.innerHTML = `<span>${idx + 1}</span>`;
-  }
-
-  highlightCurrentDrawerTile();
-  applyDrawerFilter();
-}
-
-function highlightCurrentDrawerTile() {
-  const tiles = el.drawerCasesGrid.querySelectorAll('.drawer-case-tile');
-  tiles.forEach((t) => {
-    const idx = parseInt(t.getAttribute('data-index'), 10);
-    t.classList.toggle('current', idx === state.currentIndex);
-  });
-}
-
-function applyDrawerFilter() {
-  const tiles = el.drawerCasesGrid.querySelectorAll('.drawer-case-tile');
-  tiles.forEach((t) => {
-    const isLabeled = t.getAttribute('data-labeled') === 'true';
-    if (state.drawerFilter === 'all') {
-      t.style.display = 'flex';
-    } else if (state.drawerFilter === 'labeled') {
-      t.style.display = isLabeled ? 'flex' : 'none';
-    } else if (state.drawerFilter === 'unlabeled') {
-      t.style.display = !isLabeled ? 'flex' : 'none';
-    }
-  });
-}
-
-function openDrawer() {
-  el.caseDrawer.classList.add('open');
-  el.drawerOverlay.classList.add('active');
-  highlightCurrentDrawerTile();
-}
-
-function closeDrawer() {
-  el.caseDrawer.classList.remove('open');
-  el.drawerOverlay.classList.remove('active');
-}
-
-// =============================================================================
-// Exporting CSV
-// =============================================================================
-
-function exportBatchCsv() {
-  if (state.dirty) saveCurrentAnnotation();
-  const url = `/api/export?batch_id=${encodeURIComponent(state.currentBatchId)}&annotator=${encodeURIComponent(state.annotator)}`;
-  window.open(url, '_blank');
-}
-
-// =============================================================================
-// Event Listeners & Shortcuts
-// =============================================================================
-
-function setupEventListeners() {
-  // Annotator Change
-  el.annotatorSelect.addEventListener('change', () => {
-    if (el.annotatorSelect.value === 'custom') {
-      el.customAnnotatorInput.style.display = 'inline-block';
-      el.customAnnotatorInput.focus();
-    } else {
-      el.customAnnotatorInput.style.display = 'none';
-      state.annotator = el.annotatorSelect.value;
-      localStorage.setItem('sagate_annotator', state.annotator);
-      loadManifest();
-      loadBatch(state.currentBatchId);
-    }
-  });
-
-  el.customAnnotatorInput.addEventListener('change', () => {
-    const val = el.customAnnotatorInput.value.trim().toLowerCase();
-    if (val) {
-      state.annotator = val;
-      localStorage.setItem('sagate_annotator', state.annotator);
-      loadManifest();
-      loadBatch(state.currentBatchId);
-    }
-  });
-
-  // Batch Select Change
-  el.batchSelect.addEventListener('change', () => {
-    if (state.dirty) saveCurrentAnnotation();
-    loadBatch(el.batchSelect.value);
-  });
-
-  // Navigation
-  el.btnPrev.addEventListener('click', prevCase);
-  el.btnNext.addEventListener('click', nextCase);
-  el.btnNextUnlabeled.addEventListener('click', jumpToNextUnlabeled);
-  el.btnSaveAndNext.addEventListener('click', saveAndNext);
-  el.btnClearLabel.addEventListener('click', clearCurrentAnnotation);
-  el.btnExportCsv.addEventListener('click', exportBatchCsv);
-
-  // Copy Case ID
-  el.caseIdDisplay.addEventListener('click', () => {
-    navigator.clipboard.writeText(el.caseIdDisplay.textContent);
-    const orig = el.caseIdDisplay.textContent;
-    el.caseIdDisplay.textContent = 'Copied to clipboard!';
-    setTimeout(() => { el.caseIdDisplay.textContent = orig; }, 1200);
-  });
-
-  // View Toggle (Structured vs Raw)
-  el.btnViewStructured.addEventListener('click', () => {
-    el.btnViewStructured.classList.add('active');
-    el.btnViewRaw.classList.remove('active');
-    el.structuredView.classList.add('active');
-    el.rawPromptView.classList.remove('active');
-  });
-
-  el.btnViewRaw.addEventListener('click', () => {
-    el.btnViewRaw.classList.add('active');
-    el.btnViewStructured.classList.remove('active');
-    el.rawPromptView.classList.add('active');
-    el.structuredView.classList.remove('active');
-  });
-
-  el.btnCopyRaw.addEventListener('click', () => {
-    navigator.clipboard.writeText(el.rawCaseText.textContent);
-    el.btnCopyRaw.textContent = 'Copied!';
-    setTimeout(() => { el.btnCopyRaw.textContent = 'Copy Text'; }, 1200);
-  });
-
-  // Decision Card Clicks
-  el.decisionCards.forEach((card) => {
-    card.addEventListener('click', () => {
-      setDecision(card.getAttribute('data-decision'));
-    });
-  });
-
-  // Pills
-  el.missingEvidencePills.forEach((p) => {
-    p.addEventListener('click', () => {
-      setMissingEvidence(p.getAttribute('data-val'));
-    });
-  });
-
-  el.requiredAuthorityPills.forEach((p) => {
-    p.addEventListener('click', () => {
-      setRequiredAuthority(p.getAttribute('data-val'));
-    });
-  });
-
-  el.btnFinalAllow.addEventListener('click', () => setFinalAction('ALLOW'));
-  el.btnFinalBlock.addEventListener('click', () => setFinalAction('BLOCK'));
-
-  el.btnUserConfYes.addEventListener('click', () => setUserConfirmed('yes'));
-  el.btnUserConfNo.addEventListener('click', () => setUserConfirmed('no'));
-
-  // Tag Input for Policy Clauses
-  el.clauseTagInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const val = el.clauseTagInput.value.trim().toUpperCase();
-      if (val) {
-        addCitedClause(val);
-        el.clauseTagInput.value = '';
+    let q = lsGet(LS.queue(S.who), []);
+    if (!q.length) { setSave('all saved'); return; }
+    while (q.length) {
+      const item = q[0];
+      try {
+        await api('/api/vote', { annotator: S.who, ...item });
+      } catch (e) {
+        if (e instanceof TypeError) { setSave('offline — kept in this browser, will retry'); setTimeout(flushQueue, 5000); return; }
+        setSave(`not saved: ${e.message}`);                // rejected by the server: drop it, keep going
       }
+      q = lsGet(LS.queue(S.who), []);
+      const i = q.findIndex((x) => x.batch_id === item.batch_id && x.case_id === item.case_id && JSON.stringify(x.vote) === JSON.stringify(item.vote));
+      if (i >= 0) q.splice(i, 1);
+      lsSet(LS.queue(S.who), q);
     }
-  });
-
-  // Drawer Toggle
-  el.btnCaseDrawer.addEventListener('click', openDrawer);
-  el.btnCloseDrawer.addEventListener('click', closeDrawer);
-  el.drawerOverlay.addEventListener('click', closeDrawer);
-
-  el.drawerFilterChips.forEach((chip) => {
-    chip.addEventListener('click', () => {
-      el.drawerFilterChips.forEach((c) => c.classList.remove('active'));
-      chip.classList.add('active');
-      state.drawerFilter = chip.getAttribute('data-filter');
-      applyDrawerFilter();
-    });
-  });
-
-  // Help Modal
-  el.btnHelp.addEventListener('click', () => el.shortcutsModal.classList.add('active'));
-  el.btnCloseModal.addEventListener('click', () => el.shortcutsModal.classList.remove('active'));
-  el.shortcutsModal.addEventListener('click', (e) => {
-    if (e.target === el.shortcutsModal) el.shortcutsModal.classList.remove('active');
-  });
-
-  // Global Keyboard Shortcuts
-  window.addEventListener('keydown', handleGlobalKeydown);
+    if (!$('saveState').textContent.startsWith('not saved')) setSave(`saved ${new Date().toLocaleTimeString()}`);
+  } finally {
+    S.sending = false;
+  }
+}
+function setSave(t) {
+  $('saveState').textContent = t;
+  $('saveState').className = 'save ' + (t.startsWith('saved') || t === 'all saved' ? 'ok'
+    : t.startsWith('saving') ? 'busy' : t.startsWith('not saved') || t.startsWith('offline') ? 'err' : '');
 }
 
-function handleGlobalKeydown(e) {
-  // Ignore shortcuts when user is typing in text inputs or textareas
-  const tag = e.target.tagName.toLowerCase();
-  const isInput = tag === 'input' || tag === 'textarea';
-
-  if (isInput) {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      saveAndNext();
-    }
+/* ---------- policy search ---------- */
+function highlight(text, terms) {
+  let out = esc(text);
+  for (const t of terms) out = out.replace(new RegExp(`(${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>');
+  return out;
+}
+function search() {
+  const terms = $('q').value.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
+  if (!terms.length) {
+    $('results').innerHTML = `<span class="empty">${S.policies.length} clauses. Type to search ids, titles and text.</span>`;
     return;
   }
-
-  switch (e.key) {
-    case '1':
-      e.preventDefault();
-      setDecision('ALLOW');
-      break;
-    case '2':
-      e.preventDefault();
-      setDecision('BLOCK');
-      break;
-    case '3':
-      e.preventDefault();
-      setDecision('ASK_USER');
-      break;
-    case '4':
-      e.preventDefault();
-      setDecision('ESCALATE');
-      break;
-    case 'Enter':
-      e.preventDefault();
-      saveAndNext();
-      break;
-    case '[':
-    case 'ArrowLeft':
-      e.preventDefault();
-      prevCase();
-      break;
-    case ']':
-    case 'ArrowRight':
-      e.preventDefault();
-      nextCase();
-      break;
-    case 'u':
-    case 'U':
-      e.preventDefault();
-      jumpToNextUnlabeled();
-      break;
-    case 'g':
-    case 'G':
-      e.preventDefault();
-      el.caseDrawer.classList.contains('open') ? closeDrawer() : openDrawer();
-      break;
-    case 'r':
-    case 'R':
-      e.preventDefault();
-      if (el.structuredView.classList.contains('active')) {
-        el.btnViewRaw.click();
-      } else {
-        el.btnViewStructured.click();
-      }
-      break;
-    case '?':
-      e.preventDefault();
-      el.shortcutsModal.classList.toggle('active');
-      break;
-    case 'Escape':
-      closeDrawer();
-      el.shortcutsModal.classList.remove('active');
-      break;
-  }
+  const scored = S.policies.map((p) => {
+    const hay = `${p.id} ${p.title} ${p.title} ${p.text}`.toLowerCase();
+    const s = terms.reduce((n, t) => n + (hay.split(t).length - 1), 0);
+    return { p, s, all: terms.every((t) => hay.includes(t)) };
+  }).filter((x) => x.s > 0).sort((a, b) => (b.all - a.all) || (b.s - a.s));
+  $('results').innerHTML = scored.slice(0, 40).map((x) => clauseHtml(x.p, terms)).join('') || '<span class="empty">no match</span>';
+  bindCiteButtons();
 }
 
-function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+/* ---------- wiring ---------- */
+function tab(name) {
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  $('tabGrid').classList.toggle('hidden', name !== 'grid');
+  $('tabSearch').classList.toggle('hidden', name !== 'search');
+  if (name === 'search') { $('q').focus(); search(); }
 }
 
-// Start application
-window.addEventListener('DOMContentLoaded', init);
+function wire() {
+  const fill = (sel, vals) => { $(sel).innerHTML = '<option value=""></option>' + vals.map((v) => `<option>${v}</option>`).join(''); };
+  fill('missing', S.config.vocab.missing_evidence);
+  fill('authorityReq', S.config.vocab.required_authority);
+
+  $('btnWho').onclick = async () => {
+    if (!confirm('Switch annotator? Votes stay saved under each name.')) return;
+    await setWho(await askWho(true));
+  };
+  $('batchSelect').onchange = (e) => loadBatch(e.target.value, 0);
+  $('btnPrev').onclick = () => go(S.idx - 1);
+  $('btnNext').onclick = () => go(S.idx + 1);
+  $('btnUnlabeled').onclick = nextIncomplete;
+  $('btnRaw').onclick = () => {
+    S.raw = !S.raw;
+    $('colRaw').classList.toggle('hidden', !S.raw);
+    $('colCase').classList.toggle('hidden', S.raw);
+    $('colEvidence').classList.toggle('hidden', S.raw);
+    $('btnRaw').classList.toggle('on', S.raw);
+  };
+  document.querySelectorAll('#decisionRow button').forEach((b) => { b.onclick = () => setDecision(b.dataset.decision); });
+  document.querySelectorAll('#finalRow button').forEach((b) => { b.onclick = () => edit({ gold_final_action: b.dataset.final }); });
+  $('missing').onchange = (e) => edit({ gold_missing_evidence: e.target.value || null });
+  $('authorityReq').onchange = (e) => edit({ gold_required_authority: e.target.value || null });
+  $('replyText').oninput = (e) => editReply({ text: e.target.value });
+  document.querySelectorAll('input[name=confirmed]').forEach((r) => { r.onchange = () => editReply({ confirmed: r.value === 'yes' }); });
+  $('noisyOn').onchange = (e) => editReply(e.target.checked ? { noisy_text: '', noisy_confirmed: null } : { noisy_text: null, noisy_confirmed: null });
+  $('noisyText').oninput = (e) => editReply({ noisy_text: e.target.value });
+  document.querySelectorAll('input[name=noisyConfirmed]').forEach((r) => {
+    r.onchange = () => editReply({ noisy_confirmed: r.value === 'none' ? null : r.value === 'yes' });
+  });
+  $('notes').oninput = (e) => edit({ notes: e.target.value });
+  $('btnClear').onclick = clearVote;
+  document.querySelectorAll('#tabs button').forEach((b) => { b.onclick = () => tab(b.dataset.tab); });
+  $('q').oninput = search;
+
+  document.addEventListener('keydown', (e) => {
+    const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    if (typing) { if (e.key === 'Escape') document.activeElement.blur(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const d = { 1: 'ALLOW', 2: 'BLOCK', 3: 'ASK_USER', 4: 'ESCALATE' }[e.key];
+    if (d) setDecision(d);
+    else if (e.key === 'ArrowRight' || e.key === 'Enter') go(S.idx + 1);
+    else if (e.key === 'ArrowLeft') go(S.idx - 1);
+    else if (e.key === 'u' || e.key === 'U') nextIncomplete();
+    else if (e.key === 'r' || e.key === 'R') $('btnRaw').click();
+    else if (e.key === '/') { e.preventDefault(); tab('search'); }
+    else return;
+    e.preventDefault();
+  });
+  window.addEventListener('online', flushQueue);
+}
+
+(async function init() {
+  S.config = await api('/api/config');
+  S.policies = await api('/api/policies');
+  wire();
+  // a saved name wins; ?annotator=<name> only preselects it on a first visit
+  const saved = lsGet(LS.who, null) || new URLSearchParams(location.search).get('annotator');
+  await setWho(S.config.annotators.includes(saved) ? saved : await askWho(true));
+})();

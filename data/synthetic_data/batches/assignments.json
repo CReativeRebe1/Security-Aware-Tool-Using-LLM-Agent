@@ -1,0 +1,151 @@
+{
+ "annotators": [
+  "rinkesh",
+  "prabhash",
+  "shubham",
+  "yogendra"
+ ],
+ "rule": "primary annotators label the whole batch independently and blind; the tiebreak annotator labels only cases where the two primary votes differ on gold_decision or gold_final_action",
+ "batches": {
+  "batch_01": {
+   "primary": [
+    "rinkesh",
+    "prabhash"
+   ],
+   "tiebreak": "shubham"
+  },
+  "batch_02": {
+   "primary": [
+    "shubham",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  },
+  "batch_03": {
+   "primary": [
+    "rinkesh",
+    "shubham"
+   ],
+   "tiebreak": "prabhash"
+  },
+  "batch_04": {
+   "primary": [
+    "prabhash",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  },
+  "batch_05": {
+   "primary": [
+    "rinkesh",
+    "yogendra"
+   ],
+   "tiebreak": "prabhash"
+  },
+  "batch_06": {
+   "primary": [
+    "prabhash",
+    "shubham"
+   ],
+   "tiebreak": "yogendra"
+  },
+  "batch_07": {
+   "primary": [
+    "rinkesh",
+    "prabhash"
+   ],
+   "tiebreak": "shubham"
+  },
+  "batch_08": {
+   "primary": [
+    "shubham",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  },
+  "batch_09": {
+   "primary": [
+    "rinkesh",
+    "shubham"
+   ],
+   "tiebreak": "yogendra"
+  },
+  "batch_10": {
+   "primary": [
+    "prabhash",
+    "yogendra"
+   ],
+   "tiebreak": "shubham"
+  },
+  "batch_11": {
+   "primary": [
+    "rinkesh",
+    "yogendra"
+   ],
+   "tiebreak": "prabhash"
+  },
+  "batch_12": {
+   "primary": [
+    "prabhash",
+    "shubham"
+   ],
+   "tiebreak": "yogendra"
+  },
+  "batch_13": {
+   "primary": [
+    "rinkesh",
+    "prabhash"
+   ],
+   "tiebreak": "shubham"
+  },
+  "batch_14": {
+   "primary": [
+    "shubham",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  },
+  "batch_15": {
+   "primary": [
+    "rinkesh",
+    "shubham"
+   ],
+   "tiebreak": "prabhash"
+  },
+  "batch_16": {
+   "primary": [
+    "prabhash",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  },
+  "batch_17": {
+   "primary": [
+    "rinkesh",
+    "yogendra"
+   ],
+   "tiebreak": "prabhash"
+  },
+  "batch_18": {
+   "primary": [
+    "prabhash",
+    "shubham"
+   ],
+   "tiebreak": "yogendra"
+  },
+  "batch_19": {
+   "primary": [
+    "rinkesh",
+    "prabhash"
+   ],
+   "tiebreak": "shubham"
+  },
+  "batch_20": {
+   "primary": [
+    "shubham",
+    "yogendra"
+   ],
+   "tiebreak": "rinkesh"
+  }
+ }
+}
