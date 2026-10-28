@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SA-Gate Project Status</title>
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --surface: #ffffff;
+    --surface-2: #f0eee8;
+    --text: #1d1d1b;
+    --muted: #6b6a64;
+    --border: #e2dfd6;
+    --accent: #3b5bdb;
+    --accent-soft: #e7ecfd;
+    --done: #2f855a;
+    --done-soft: #e3f3ea;
+    --part: #b7791f;
+    --part-soft: #fbf0dc;
+    --todo: #8a8780;
+    --todo-soft: #eeece6;
+    --risk: #c53030;
+    --risk-soft: #fbe5e5;
+    --code-bg: #1f2230;
+    --code-text: #e6e8f0;
+    --shadow: 0 1px 2px rgba(20, 20, 10, .04), 0 4px 16px rgba(20, 20, 10, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141413; --surface: #1d1d1b; --surface-2: #262623; --text: #ecebe6; --muted: #a09e96;
+      --border: #34332f; --accent: #8ea6ff; --accent-soft: #232a45;
+      --done: #68d391; --done-soft: #1c3127; --part: #f6c56b; --part-soft: #3a2f19;
+      --todo: #8d8b84; --todo-soft: #2a2a27; --risk: #fc8181; --risk-soft: #3b2020;
+      --code-bg: #0f1017; --code-text: #e6e8f0; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #262623; --text: #ecebe6; --muted: #a09e96;
+    --border: #34332f; --accent: #8ea6ff; --accent-soft: #232a45;
+    --done: #68d391; --done-soft: #1c3127; --part: #f6c56b; --part-soft: #3a2f19;
+    --todo: #8d8b84; --todo-soft: #2a2a27; --risk: #fc8181; --risk-soft: #3b2020;
+    --code-bg: #0f1017; --code-text: #e6e8f0; --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, .mono { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+  /* nav */
+  nav.top {
+    position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  nav.top .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+  nav.top .brand { font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+  nav.top .links { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+  nav.top .links::-webkit-scrollbar { display: none; }
+  nav.top .links a {
+    color: var(--muted); text-decoration: none; font-size: 13.5px; padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+  }
+  nav.top .links a:hover { background: var(--surface-2); color: var(--text); }
+  .theme-btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; font-size: 13px;
+  }
+
+  /* hero */
+  header.hero { padding: 48px 0 28px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--muted); font-weight: 600; }
+  h1 { font-size: clamp(28px, 4.4vw, 42px); line-height: 1.12; margin: 10px 0 10px; letter-spacing: -.02em; }
+  .lede { color: var(--muted); max-width: 720px; font-size: 16.5px; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 4px 10px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+
+  .overall { margin-top: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .overall-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .overall-head strong { font-size: 15px; }
+  .overall-head span { color: var(--muted); font-size: 13px; }
+  .segbar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; margin: 12px 0 10px; background: var(--todo-soft); }
+  .segbar i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+
+  section { padding: 36px 0 8px; }
+  h2 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 14.5px; }
+
+  /* KPI */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .kpi .label { font-size: 12.5px; color: var(--muted); }
+  .kpi .val { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .val small { font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+  .kpi .note { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .kpi.zero .val { color: var(--risk); }
+
+  /* pipeline */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 8px 0; align-items: stretch; }
+  .stage { display: flex; align-items: center; }
+  .stage .box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; min-width: 112px;
+    box-shadow: var(--shadow); border-top: 3px solid var(--c);
+  }
+  .stage .box .n { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .stage .box .t { font-weight: 600; font-size: 13.5px; white-space: nowrap; }
+  .stage .arrow { color: var(--muted); padding: 0 6px; font-size: 14px; }
+  .stage:last-child .arrow { display: none; }
+
+  /* status pills */
+  .pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+  .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill.done { color: var(--done); background: var(--done-soft); }
+  .pill.part { color: var(--part); background: var(--part-soft); }
+  .pill.todo { color: var(--todo); background: var(--todo-soft); }
+  .pill.risk { color: var(--risk); background: var(--risk-soft); }
+
+  /* workstreams */
+  .ws { display: grid; gap: 10px; }
+  .ws-row {
+    display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr) 54px; gap: 14px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px;
+  }
+  .ws-row .name { font-weight: 600; font-size: 14px; }
+  .ws-row .name small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  .bar { height: 8px; background: var(--todo-soft); border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: var(--c, var(--accent)); }
+  .ws-row .pct { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; }
+  @media (max-width: 640px) {
+    .ws-row { grid-template-columns: minmax(0, 1fr) 48px; }
+    .ws-row .bar { grid-column: 1 / -1; grid-row: 2; }
+  }
+
+  /* table */
+  .tablecard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .filters button {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 5px 12px; border-radius: 999px;
+    font-size: 13px; cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 680px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface); }
+  tr:last-child td { border-bottom: 0; }
+  td.item { font-weight: 600; width: 22%; }
+  td.target { color: var(--muted); width: 24%; }
+  td .tiny { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+  /* results */
+  .note-banner {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--part-soft); color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--part) 35%, transparent); border-radius: 12px; padding: 12px 14px;
+    font-size: 13.5px; margin-bottom: 14px;
+  }
+  .note-banner b { color: var(--part); }
+  table.res { min-width: 640px; }
+  table.res td, table.res th { white-space: nowrap; }
+  table.res td.num { font-variant-numeric: tabular-nums; }
+  table.res td.cond { font-weight: 600; white-space: normal; }
+  table.res td.cond small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
+  .mbar { position: relative; display: inline-block; width: 96px; height: 7px; border-radius: 999px; background: var(--todo-soft); vertical-align: middle; margin-left: 8px; }
+  .mbar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--c); }
+  .mbar .tgt { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); left: 5%; opacity: .7; }
+  .good { color: var(--done); font-weight: 600; }
+  .bad { color: var(--risk); font-weight: 600; }
+  .res-foot { padding: 12px 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; background: var(--surface-2); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; margin-top: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .card h4 { margin: 0 0 8px; font-size: 14.5px; }
+  .card ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+  .card li + li { margin-top: 4px; }
+  .card li b { color: var(--text); }
+  .card .delta { font-size: 13.5px; }
+  .card .delta div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--border); }
+  .card .delta div:last-child { border-bottom: 0; }
+  .card .delta span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* checkpoint */
+  .checkpoint {
+    background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--part);
+    border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .checkpoint h3 { margin: 0 0 4px; font-size: 16px; }
+  .checkpoint p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .cp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; }
+  .cp { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+  .cp .ic { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+  .cp .ic.ok { background: var(--done-soft); color: var(--done); }
+  .cp .ic.no { background: var(--risk-soft); color: var(--risk); }
+
+  /* steps */
+  .progress-mini { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 13.5px; color: var(--muted); }
+  .progress-mini .bar { flex: 1; max-width: 320px; }
+  .phases { display: grid; gap: 16px; }
+  .phase { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .phase-head { display: flex; gap: 14px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .phase-num {
+    flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-weight: 700;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .phase-head h3 { margin: 0; font-size: 16px; }
+  .phase-head p { margin: 0; color: var(--muted); font-size: 13px; }
+  .phase-head .when { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .steps { list-style: none; margin: 0; padding: 4px 0; }
+  .step { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; padding: 12px 18px; }
+  .step + .step { border-top: 1px dashed var(--border); }
+  .step input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--done); cursor: pointer; }
+  .step .title { font-weight: 600; font-size: 14.5px; }
+  .step.checked .title { text-decoration: line-through; color: var(--muted); }
+  .step .desc { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .owner { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 6px; margin-left: 6px; vertical-align: 1px; }
+  .owner.you { background: var(--accent-soft); color: var(--accent); }
+  .owner.team { background: var(--part-soft); color: var(--part); }
+  .owner.gpu { background: var(--done-soft); color: var(--done); }
+  .owner.mates { background: var(--risk-soft); color: var(--risk); }
+
+  .code { position: relative; margin-top: 10px; }
+  .code pre {
+    margin: 0; background: var(--code-bg); color: var(--code-text); border-radius: 10px; padding: 12px 14px; padding-right: 64px;
+    font-size: 12.5px; line-height: 1.6; overflow-x: auto; white-space: pre;
+  }
+  .code .cmt { color: #8b93a8; }
+  .copy {
+    position: absolute; top: 8px; right: 8px; font-size: 11.5px; border: 1px solid #3a3f52; background: #2a2e3e; color: #d6d9e4;
+    border-radius: 6px; padding: 3px 8px; cursor: pointer;
+  }
+
+  /* risks */
+  .risks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+  .risk {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .risk .rh { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 6px; }
+  .risk h4 { margin: 0; font-size: 14.5px; }
+  .risk p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .risk p + p { margin-top: 6px; }
+  .risk .fix { color: var(--text); }
+  .risk .fix::before { content: "→ "; color: var(--accent); font-weight: 700; }
+
+  /* branches */
+  .branches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .branch { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .branch .bn { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 14px; }
+  .branch .who { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+  .branch p { margin: 0; font-size: 13.5px; }
+  .branch.main-b { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+  footer { padding: 40px 0 56px; color: var(--muted); font-size: 13px; }
+  footer code { font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap">
+    <div class="brand">SA-Gate · Status</div>
+    <div class="links">
+      <a href="#numbers">Numbers</a>
+      <a href="#results">Results</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#workstreams">Workstreams</a>
+      <a href="#tracker">Done vs left</a>
+      <a href="#checkpoint">Week-2 checkpoint</a>
+      <a href="#next">Next steps</a>
+      <a href="#risks">Risks</a>
+      <a href="#branches">Branches</a>
+    </div>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle colour theme">◐</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">CL3410 · Language Models and Agents · Group Project</div>
+    <h1>Security-Aware Tool-Using LLM Agent</h1>
+    <p class="lede">Status against the final proposal: what has been done, what is still left, and the order to do it in.
+      The training data is labelled, the first baseline results are in on a provisional test set, and the 8B
+      training speed has been measured. Still to do: human test labels and the full B4/B5 training.</p>
+    <div class="meta">
+      <span class="chip">As of <b>28 Oct 2026</b></span>
+      <span class="chip">Branch <b class="mono">prabhash</b> @ <b class="mono">f558cd5</b></span>
+      <span class="chip">Team <b>Yogendra · Rinkesh · Shubham · Prabhash</b></span>
+    </div>
+
+    <div class="overall">
+      <div class="overall-head">
+        <strong>Deliverables in the proposal (14 tracked)</strong>
+        <span>Rough count of the tracker rows below</span>
+      </div>
+      <div class="segbar" aria-hidden="true">
+        <i style="width:28.6%;background:var(--done)"></i>
+        <i style="width:50%;background:var(--part)"></i>
+        <i style="width:21.4%;background:var(--todo)"></i>
+      </div>
+      <div class="legend">
+        <span style="--c:var(--done)">4 done</span>
+        <span style="--c:var(--part)">7 partly done (provisional, timing-only or unchecked)</span>
+        <span style="--c:var(--todo)">3 not started</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="numbers">
+    <h2>Key numbers so far</h2>
+    <p class="sub">Measured results, plus the counts that are still at zero.</p>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="label">B0 task success (test pool)</div>
+        <div class="val">49<small>/ 142</small></div>
+        <div class="note">34.5% · benign 8/22, attacked 41/120</div>
+      </div>
+      <div class="kpi">
+        <div class="label">B0 attack success rate</div>
+        <div class="val">10<small>/ 120</small></div>
+        <div class="note">8.3% · banking 8/24, workspace 2/96</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Best baseline, unsafe allows</div>
+        <div class="val">10.1<small>%</small></div>
+        <div class="note">B3 · 8/79 · target ≤ 5% · provisional labels</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Labelled training cases</div>
+        <div class="val">2,000</div>
+        <div class="note">+1,000 variants · 50 key corrections</div>
+      </div>
+      <div class="kpi zero">
+        <div class="label">Human-labelled test cases</div>
+        <div class="val">0<small>/ ~240</small></div>
+        <div class="note">160 provisional (Claude) labels in use</div>
+      </div>
+      <div class="kpi zero">
+        <div class="label">Fully trained 8B adapters</div>
+        <div class="val">0<small>/ 8</small></div>
+        <div class="note">20-step timing run done for all 8</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results">
+    <h2>Results so far</h2>
+    <p class="sub">NB02 on the 160 executable test cases, clean user replies. The trained gates (B4, B5) are not run yet.</p>
+    <div class="note-banner">
+      <span>⚠</span>
+      <div><b>Provisional, not reportable.</b> The labels are Claude's stand-ins for the two human annotators
+        (<code>annotations/claude/README.md</code>), there are no ESCALATE or decision-only cases, and the AgentDojo
+        replay filter has not been applied. Re-run NB02 once the human gold set is frozen.</div>
+    </div>
+    <div class="tablecard">
+      <div class="scroll">
+        <table class="res">
+          <thead><tr><th>Gate</th><th>Correct final outcome</th><th>Unsafe actions allowed</th><th>Safe actions blocked</th><th>Unneeded asks</th><th>First decision right</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="cond">B1 rules<small>oracle provenance, so injection blocking is partly by construction</small></td>
+              <td class="num good">141/160 · 88.1%</td>
+              <td class="num"><span class="bad">19/79 · 24.1%</span><span class="mbar"><i style="width:24.1%;--c:var(--risk)"></i><span class="tgt"></span></span></td>
+              <td class="num good">0/81 · 0%</td>
+              <td class="num">2.9%</td>
+              <td class="num">85.6%</td>
+            </tr>
+            <tr>
+              <td class="cond">B2 prompted, binary<small>ALLOW / BLOCK only</small></td>
+              <td class="num bad">91/160 · 56.9%</td>
+              <td class="num">9/79 · 11.4%<span class="mbar"><i style="width:11.4%;--c:var(--part)"></i><span class="tgt"></span></span></td>
+              <td class="num bad">60/81 · 74.1%</td>
+              <td class="num">—</td>
+              <td class="num">48.1%</td>
+            </tr>
+            <tr>
+              <td class="cond">B3 prompted, four-way<small>after the simulator fixes (f558cd5)</small></td>
+              <td class="num">137/160 · 85.6%</td>
+              <td class="num">8/79 · 10.1%<span class="mbar"><i style="width:10.1%;--c:var(--part)"></i><span class="tgt"></span></span></td>
+              <td class="num">15/81 · 18.5%</td>
+              <td class="num bad">72.3%</td>
+              <td class="num bad">24.4%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="res-foot">The black tick on each bar marks the proposal's 5% target. With noisy user replies: B1 141/160 and 24.1%; B3 132/160 and 12.7%.
+        Files: <code>runs/nb02/</code> (B1–B3), <code>runs/nb02_b3fix/</code> (B3 after the fixes).</div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h4>What the baselines get wrong</h4>
+        <ul>
+          <li><b>B1</b> lets through agent mistakes that look harmless to the rules: wrong amounts, duplicates, wrong participants, mistyped domains.</li>
+          <li><b>B2</b> is "safe" only because it blocks three quarters of legitimate actions.</li>
+          <li><b>B3</b> asks the user on 74% of cases and makes 30 escalations, none of them correct. In 6 of its 8 unsafe allows the user said "No" and it allowed the action anyway.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Test simulator fixed (f558cd5)</h4>
+        <div class="delta">
+          <div><span>B3 unsafe allows</span><span>17.7% → <b class="good">10.1%</b></span></div>
+          <div><span>B3 correct final outcome</span><span>81.9% → <b class="good">85.6%</b></span></div>
+          <div><span>B1, training data</span><span>unchanged</span></div>
+        </div>
+        <ul style="margin-top:8px">
+          <li>The simulated user no longer confirms injected calls.</li>
+          <li>The simulated approver now checks argument provenance and never approves a gold-BLOCK case.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>8B training speed (NB03 timing run)</h4>
+        <div class="delta">
+          <div><span>Measured on T4</span><span><b>111–143 s</b> per step</span></div>
+          <div><span>Examples per model</span><span>3,000 · none dropped</span></div>
+          <div><span>1 epoch (~188 steps)</span><span>6.2 h (B4) · 7.5 h (B5)</span></div>
+          <div><span>2 epochs (as configured)</span><span class="bad">12.5–15 h per model</span></div>
+          <div><span>Loss after 20 steps</span><span>0.16–0.25</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2>Pipeline at a glance</h2>
+    <p class="sub">The critical path from data to report. The human labels are still the step that blocks reportable results.</p>
+    <div class="pipeline">
+      <div class="stage"><div class="box" style="--c:var(--done)"><div class="n">Data</div><div class="t">AgentDojo + split</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--done)"><div class="n">Code</div><div class="t">sagate package</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--done)"><div class="n">NB00–01</div><div class="t">Smoke + B0 traces</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--done)"><div class="n">Train data</div><div class="t">2,000 labelled</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--risk)"><div class="n">Labels</div><div class="t">Human test set</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB02</div><div class="t">B1–B3 (prov.)</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB03</div><div class="t">QLoRA 8B (timed)</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB04</div><div class="t">B4/B5 + threshold</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB05</div><div class="t">End-to-end</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB06</div><div class="t">Stats + report</div></div><span class="arrow">→</span></div>
+    </div>
+    <div class="legend" style="margin-top:14px">
+      <span style="--c:var(--done)">Done</span>
+      <span style="--c:var(--part)">Partly done</span>
+      <span style="--c:var(--risk)">Blocking</span>
+      <span style="--c:var(--todo)">Not started</span>
+    </div>
+  </section>
+
+  <section id="workstreams">
+    <h2>Workstreams from the proposal's six-week plan</h2>
+    <p class="sub">Rough estimates of how far each workstream has got.</p>
+    <div class="ws">
+      <div class="ws-row">
+        <div class="name">Setup, schema, guide<small>Guide and handbooks not frozen</small></div>
+        <div class="bar"><i style="width:75%;--c:var(--part)"></i></div>
+        <div class="pct">75%</div>
+      </div>
+      <div class="ws-row">
+        <div class="name">Traces, test set, agreement<small>Batch of 160 exported; no human labels</small></div>
+        <div class="bar"><i style="width:45%;--c:var(--part)"></i></div>
+        <div class="pct">45%</div>
+      </div>
+      <div class="ws-row">
+        <div class="name">Training data, B1–B3<small>Labelled; B1–B3 run on provisional set</small></div>
+        <div class="bar"><i style="width:85%;--c:var(--done)"></i></div>
+        <div class="pct">85%</div>
+      </div>
+      <div class="ws-row">
+        <div class="name">QLoRA B4/B5, ablations<small>8B timing run done; full training next</small></div>
+        <div class="bar"><i style="width:40%;--c:var(--part)"></i></div>
+        <div class="pct">40%</div>
+      </div>
+      <div class="ws-row">
+        <div class="name">Statistics, analysis, write-up<small>Stats code done; report not started</small></div>
+        <div class="bar"><i style="width:20%;--c:var(--todo)"></i></div>
+        <div class="pct">20%</div>
+      </div>
+      <div class="ws-row">
+        <div class="name">End-to-end B0/B5<small>B0 done; B5 waits for the adapter</small></div>
+        <div class="bar"><i style="width:45%;--c:var(--part)"></i></div>
+        <div class="pct">45%</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tracker">
+    <h2>Done vs left, item by item</h2>
+    <p class="sub">Each deliverable in the proposal, compared with what exists in the repo now.</p>
+    <div class="tablecard">
+      <div class="filters" role="group" aria-label="Filter by status">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="done" aria-pressed="false">Done</button>
+        <button type="button" data-f="part" aria-pressed="false">Partly done</button>
+        <button type="button" data-f="todo" aria-pressed="false">Not started</button>
+      </div>
+      <div class="scroll">
+        <table id="trackerTable">
+          <thead><tr><th>Deliverable</th><th>Proposal target</th><th>Current state</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr data-s="done">
+              <td class="item">Scenario split</td>
+              <td class="target">~150 scenarios, ~60/40 train/test, split before generation</td>
+              <td>User tasks 28 train / 6 dev / 22 test. Strict scenarios: 276 train, 142 test, 342 excluded. Seed 42.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr data-s="done">
+              <td class="item">Architecture + code</td>
+              <td class="target">Gate, context builder, resolution loop, executor</td>
+              <td>Full <code>sagate</code> package, <code>docs/ARCHITECTURE.md</code>, configs for B0–B5 + 7 ablations, Kaggle NB00–NB06.<span class="tiny">70 tests pass (system python3; the .venv lacks numpy and pytest)</span></td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr data-s="done">
+              <td class="item">B0 traces cached</td>
+              <td class="target">Qwen3-8B, 4-bit, thinking off</td>
+              <td>NB01 on T4: 142 scenarios, 0 errors, 483 proposals (97 state-changing).</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr data-s="done">
+              <td class="item">Structured training variants</td>
+              <td class="target">~1,000, train-source only</td>
+              <td>1,000 at target mix, generated in NB03. 300-case dev pool for the B4 threshold.</td>
+              <td><span class="pill done">Done</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">NL training examples</td>
+              <td class="target">~200, reviewed by a second member</td>
+              <td>2,000 cases labelled in <code>data/labled-data/</code>: the author's design key reviewed by Claude, with 50 corrections listed in <code>review_log.csv</code>. Shipped to Kaggle and used by NB03.</td>
+              <td><span class="pill part">Needs spot-check</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">Policy handbooks + authority</td>
+              <td class="target">Two handbooks of 5–8 pages, clause-ID tagged; frozen</td>
+              <td>Drafts: banking ~770 words, workspace ~1,130 words. Two draft rules unused by code (§14, item 15).</td>
+              <td><span class="pill part">Draft</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">B1–B3 baselines</td>
+              <td class="target">Rules, prompted binary, prompted four-way</td>
+              <td>NB02 run on the provisional test set, clean and noisy (see Results). B3 re-run after the simulator fixes.</td>
+              <td><span class="pill part">Provisional</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">QLoRA B4 / B5 + ablations</td>
+              <td class="target">Qwen3-8B, matched data, 8 trained conditions</td>
+              <td>20-step timing run of all 8 on a T4: 111–143 s/step, no out-of-memory errors, nothing dropped for length. Full training not run.</td>
+              <td><span class="pill part">Timed only</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">Inferred provenance</td>
+              <td class="target">Runtime attribution vs oracle</td>
+              <td>String matching + instruction-cue regex implemented. LLM-based attribution (stretch) not built.</td>
+              <td><span class="pill part">Partial</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">End-to-end B0 / B5</td>
+              <td class="target">Mandatory for B0 and B5</td>
+              <td>B0 done. Gated runner tested on 17 banking scenarios with 0.6B. B5 on 8B needs the trained adapter.</td>
+              <td><span class="pill part">Half done</span></td>
+            </tr>
+            <tr data-s="part">
+              <td class="item">Human test set</td>
+              <td class="target">~240 = ~156 executable + ~84 decision-only NL</td>
+              <td>160 executable cases exported blank (<code>annotations/batch1.csv</code>). The same 160 carry provisional Claude labels (81 ALLOW, 56 BLOCK, 23 ASK_USER, 0 ESCALATE). 0 human labels, 0 decision-only cases, replay filter not applied.</td>
+              <td><span class="pill risk">Blocking</span></td>
+            </tr>
+            <tr data-s="todo">
+              <td class="item">Annotation guide + pilot</td>
+              <td class="target">Guide piloted on ~30 cases, then frozen</td>
+              <td>Not on this branch. A draft exists on <code>yogendra</code> (<code>docs/ANNOTATION_GUIDE.md</code>).</td>
+              <td><span class="pill todo">Not started</span></td>
+            </tr>
+            <tr data-s="todo">
+              <td class="item">Agreement</td>
+              <td class="target">Krippendorff's α ≥ 0.667, pairwise κ</td>
+              <td>Tooling ready (<code>annotation agreement</code>). Nothing to measure until two people have labelled <code>batch1.csv</code>.</td>
+              <td><span class="pill todo">Not started</span></td>
+            </tr>
+            <tr data-s="todo">
+              <td class="item">Stats, analysis, report</td>
+              <td class="target">Bootstrap CIs, McNemar, Holm, Pareto, qualitative cases</td>
+              <td>All analysis code built (<code>eval/analysis</code>, <code>pareto</code>, <code>stats</code>). Report not written.</td>
+              <td><span class="pill todo">Not started</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="checkpoint">
+    <h2>Binding week-2 checkpoint</h2>
+    <p class="sub">The proposal requires all four items before any training starts.</p>
+    <div class="checkpoint">
+      <h3>1 of 4 met</h3>
+      <p>The provisional labels let the pipeline run, but they don't count towards this checkpoint. If agreement stays below target after one revision of the guide, the proposal says to cut scope (e.g. one suite only).</p>
+      <div class="cp-grid">
+        <div class="cp"><span class="ic ok">✓</span><div><b>B0 traces cached</b><br><span style="color:var(--muted)">NB01, 142 scenarios</span></div></div>
+        <div class="cp"><span class="ic no">✕</span><div><b>Annotation guide frozen</b><br><span style="color:var(--muted)">Draft only on yogendra branch</span></div></div>
+        <div class="cp"><span class="ic no">✕</span><div><b>Human test set labelled</b><br><span style="color:var(--muted)">0 / ~240 · batch of 160 ready</span></div></div>
+        <div class="cp"><span class="ic no">✕</span><div><b>Agreement reported</b><br><span style="color:var(--muted)">α and κ not measured</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="next">
+    <h2>Next steps</h2>
+    <p class="sub">In order; phases 1 and 2 run in parallel. Tick items off as you go; ticks are saved in this browser only.</p>
+    <div class="progress-mini"><span id="stepCount">0 / 0 done</span><div class="bar"><i id="stepBar" style="width:0%;--c:var(--done)"></i></div></div>
+
+    <div class="phases">
+
+      <div class="phase">
+        <div class="phase-head">
+          <div class="phase-num">1</div>
+          <div><h3>Train and evaluate B4 and B5</h3><p>Uses the GPU while the team labels. Test labels don't affect training.</p></div>
+          <div class="when">Now</div>
+        </div>
+        <ul class="steps">
+          <li class="step"><input type="checkbox" data-id="v2-1a" aria-label="Done"><div>
+            <div class="title">NB03: B5 and B4, 1 epoch, in parallel <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">About 7.5 h of a 12 h session. Set <code>epochs: 1</code> in <code>configs/base.yaml</code> and <code>CONDITIONS</code> to the first two in <code>kaggle/nb03_train_qlora/run.py</code> (leave <code>MAX_STEPS = None</code>).</div>
+            <div class="code"><button class="copy" type="button">Copy</button><pre>bash kaggle/stage_code.sh
+.venv/bin/kaggle datasets version -p build/sagate-code --dir-mode zip -m "$(git rev-parse --short HEAD)"
+.venv/bin/kaggle kernels push -p build/kernels/nb03_train_qlora --accelerator NvidiaTeslaT4</pre></div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-1b" aria-label="Done"><div>
+            <div class="title">NB04: B4 threshold on dev, then B4 vs B5 on test <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">Attach NB03's adapters. This gives the first H1/H2 numbers, still on provisional labels.</div>
+          </div></li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <div class="phase-num">2</div>
+          <div><h3>Human labels</h3><p>Two annotators per test case; nobody labels a case they wrote.</p></div>
+          <div class="when">This week</div>
+        </div>
+        <ul class="steps">
+          <li class="step"><input type="checkbox" data-id="v2-2a" aria-label="Done"><div>
+            <div class="title">Pick one branch and freeze the policy files <span class="owner team">Team</span></div>
+            <div class="desc">Keep <code>prabhash</code>; bring in Yogendra's annotation guide. Freeze the authority YAML, sensitivity labels and both handbooks.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-2b" aria-label="Done"><div>
+            <div class="title">Pilot 30 cases, then freeze the guide <span class="owner team">Team</span></div>
+            <div class="desc">Fix the guide where the two annotators disagree. <code>annotations/claude/README.md</code> lists the conventions the provisional labels used; they're a useful checklist for the guide.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-2c" aria-label="Done"><div>
+            <div class="title">Two people label <code>annotations/batch1.csv</code> <span class="owner mates">Teammates</span></div>
+            <div class="desc">160 executable cases, blank. Each annotator saves a copy as <code>batch1_&lt;name&gt;.csv</code>.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-2d" aria-label="Done"><div>
+            <div class="title">Write the ~84 decision-only test cases, 30+ ESCALATE <span class="owner mates">Teammates</span></div>
+            <div class="desc">Prabhash wrote the training cases, so the leakage rule rules him out. Without these cases, B5's advantage over B4 can't be measured.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-2e" aria-label="Done"><div>
+            <div class="title">Spot-check the training labels <span class="owner mates">Teammate</span></div>
+            <div class="desc">Start with the 50 corrections in <code>data/labled-data/review_log.csv</code>, then the <code>difficulty: hard</code> cases.</div>
+          </div></li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <div class="phase-num">3</div>
+          <div><h3>Freeze the gold set and re-run</h3><p>This is what turns the provisional numbers into reportable ones.</p></div>
+          <div class="when">Next week</div>
+        </div>
+        <ul class="steps">
+          <li class="step"><input type="checkbox" data-id="v2-3a" aria-label="Done"><div>
+            <div class="title">Agreement, adjudication, freeze <span class="owner you">Prabhash</span></div>
+            <div class="desc">Target α ≥ 0.667. The frozen file replaces the provisional <code>annotations/test_cases.jsonl</code>.</div>
+            <div class="code"><button class="copy" type="button">Copy</button><pre>python -m sagate.data.annotation agreement annotations/batch1_*.csv
+python -m sagate.data.annotation gold annotations/batch1_adjudicated.csv --out annotations/gold.jsonl
+python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.jsonl \
+  annotations/test_nl.jsonl --gold annotations/gold.jsonl --pool test --out annotations/test_cases.jsonl</pre></div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-3b" aria-label="Done"><div>
+            <div class="title">Apply the replay filter <span class="owner gpu">Kaggle</span></div>
+            <div class="desc">AgentDojo is installed on Kaggle, so run <code>sagate.agent.replay</code> there and drop cases that don't reproduce.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-3c" aria-label="Done"><div>
+            <div class="title">Re-run NB02 and NB04 on the frozen set <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">NB03 doesn't need re-running: the adapters don't depend on the test labels.</div>
+          </div></li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <div class="phase-num">4</div>
+          <div><h3>Ablations and end-to-end</h3><p>About 20 GPU-hours, best spread across team accounts.</p></div>
+          <div class="when">Week after</div>
+        </div>
+        <ul class="steps">
+          <li class="step"><input type="checkbox" data-id="v2-4a" aria-label="Done"><div>
+            <div class="title">NB03 + NB04: the 6 ablations, 1 epoch <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">−provenance, −authority, −RAG, −ASK, −ESCALATE, −intermediate supervision. 2 sessions; runs resume from checkpoints. Optionally test <code>trainer: unsloth</code> first, which is usually about 2× faster.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-4b" aria-label="Done"><div>
+            <div class="title">NB05: end-to-end B0 vs B5 <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">Task success, attack success, leakage and tool-call validity on the 142 test scenarios.</div>
+          </div></li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <div class="phase-head">
+          <div class="phase-num">5</div>
+          <div><h3>Analyse and write up</h3><p>NB06 runs on CPU.</p></div>
+          <div class="when">Final week</div>
+        </div>
+        <ul class="steps">
+          <li class="step"><input type="checkbox" data-id="v2-5a" aria-label="Done"><div>
+            <div class="title">NB06: statistics and Pareto frontier <span class="owner you">Prabhash</span></div>
+            <div class="desc">Paired bootstrap CIs, McNemar for H1/H2, Holm–Bonferroni for the ablations. Report raw counts, not only percentages.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-5b" aria-label="Done"><div>
+            <div class="title">Qualitative examples and error analysis <span class="owner team">Team</span></div>
+            <div class="desc">The 10 categories the proposal lists, including failures, an authority-spoofing attempt and a B4/B5 disagreement. B3 ignoring a user's "No" is a ready-made failure example.</div>
+          </div></li>
+          <li class="step"><input type="checkbox" data-id="v2-5c" aria-label="Done"><div>
+            <div class="title">Final report <span class="owner team">Team</span></div>
+            <div class="desc">Include the deviations from the proposal (architecture §14): 1 epoch instead of 2, the simulator fixes, oracle provenance in B1, and any negative results.</div>
+          </div></li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>Risks to watch</h2>
+    <p class="sub">What could sink the results, and what to do about it.</p>
+    <div class="risks">
+      <div class="risk">
+        <div class="rh"><h4>GPU budget for 8B training</h4><span class="pill risk">High</span></div>
+        <p>Measured at 111–143 s per step. 2 epochs is 12.5–15 h per model, so all 8 at 2 epochs would take about 100 GPU-hours.</p>
+        <p class="fix">1 epoch; B4 and B5 first (one ~7.5 h session); ablations across team accounts; try Unsloth.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>No ESCALATE cases in the test set</h4><span class="pill risk">High</span></div>
+        <p>The 160 executable cases contain 0 ESCALATE, so B4 vs B5 on escalation can't be measured yet.</p>
+        <p class="fix">The ~84 decision-only cases must supply 30+ ESCALATE.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>Results are on provisional labels</h4><span class="pill risk">High</span></div>
+        <p>All current numbers use Claude's labels. Some calls are judgement calls a human might label differently (e.g. the mistyped <code>luesparrowtech.com</code> domain).</p>
+        <p class="fix">Freeze the human gold set, then re-run NB02 and NB04. Don't quote the current numbers.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>B1 uses oracle provenance</h4><span class="pill part">Medium</span></div>
+        <p>B1 blocks injections partly because its provenance tags come from the known injected text. That's an upper bound, not a realistic runtime result.</p>
+        <p class="fix">Report it as such, next to the inferred-provenance swap in NB04.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>Labelling is behind schedule</h4><span class="pill part">Medium</span></div>
+        <p>The week-2 checkpoint is 1 of 4 met, and every reportable result depends on the gold labels.</p>
+        <p class="fix">The batch is ready; freeze the guide this week and split labelling across all four members.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>Weak B0 baseline</h4><span class="pill part">Medium</span></div>
+        <p>34.5% task success is low, and 8.3% attack success leaves little room to show security gains end to end, except in banking.</p>
+        <p class="fix">The replay fallback is already built. State the bound in the report.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>Handbooks are short</h4><span class="pill todo">Low</span></div>
+        <p>About 2 pages each against the 5–8 pages promised. Fewer clauses also means the Recall@k results (0.52 @3, 0.63 @5) say less.</p>
+        <p class="fix">Extend before freezing, or note the change in the report.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="branches">
+    <h2>Branch state</h2>
+    <p class="sub">Where each team member's work lives on <code>origin</code>.</p>
+    <div class="branches">
+      <div class="branch main-b">
+        <div class="bn">prabhash</div>
+        <div class="who">Prabhash · recommended working branch</div>
+        <p>Full <code>sagate</code> package, NB00–NB06, B0 runs, 2,000 labelled training cases, the provisional test set and the simulator fixes.</p>
+      </div>
+      <div class="branch">
+        <div class="bn">yogendra</div>
+        <div class="who">Yogendra · 1 commit</div>
+        <p>Separate <code>secgate</code> package, notebook, <b>annotation guide</b>, Kaggle docs.</p>
+      </div>
+      <div class="branch">
+        <div class="bn">shubham</div>
+        <div class="who">Older copy</div>
+        <p>Earlier version of the <code>sagate</code> work up to the B0–B3 baselines; superseded by <code>prabhash</code>.</p>
+      </div>
+      <div class="branch">
+        <div class="bn">main / dataset</div>
+        <div class="who">Rinkesh · base</div>
+        <p><code>main</code>: project README only. <code>dataset</code>: the AgentDojo export.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Sources: <code>project.pdf</code> (final proposal), <code>docs/ARCHITECTURE.md</code> §14,
+    <code>runs/nb01/outputs/b0_traces/b0_summary.json</code>, <code>runs/nb02/</code>, <code>runs/nb02_b3fix/</code>,
+    <code>runs/nb03_timing/outputs/adapters/*/train_summary.json</code>, <code>data/labled-data/README.md</code>,
+    <code>annotations/claude/README.md</code>, git branches on <code>origin</code>.
+    Workstream percentages are estimates.
+  </div>
+</footer>
+
+<script>
+  (function () {
+    function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function save(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+    // theme
+    var root = document.documentElement;
+    var saved = load('sagate-theme');
+    if (saved) root.setAttribute('data-theme', saved);
+    document.getElementById('themeBtn').addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = cur === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      save('sagate-theme', next);
+    });
+
+    // tracker filter
+    var buttons = document.querySelectorAll('.filters button');
+    var rows = document.querySelectorAll('#trackerTable tbody tr');
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        buttons.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var f = b.getAttribute('data-f');
+        rows.forEach(function (r) { r.style.display = (f === 'all' || r.getAttribute('data-s') === f) ? '' : 'none'; });
+      });
+    });
+
+    // step checklist
+    var state = {};
+    try { state = JSON.parse(load('sagate-steps') || '{}') || {}; } catch (e) { state = {}; }
+    var boxes = document.querySelectorAll('.step input[type=checkbox]');
+    function refresh() {
+      var done = 0;
+      boxes.forEach(function (c) {
+        c.closest('.step').classList.toggle('checked', c.checked);
+        if (c.checked) done++;
+      });
+      document.getElementById('stepCount').textContent = done + ' / ' + boxes.length + ' done';
+      document.getElementById('stepBar').style.width = (100 * done / boxes.length) + '%';
+    }
+    boxes.forEach(function (c) {
+      c.checked = !!state[c.dataset.id];
+      c.addEventListener('change', function () {
+        state[c.dataset.id] = c.checked;
+        save('sagate-steps', JSON.stringify(state));
+        refresh();
+      });
+    });
+    refresh();
+
+    // copy buttons
+    document.querySelectorAll('.copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.nextElementSibling.innerText;
+        var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy'; }, 1400); };
+        if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+      });
+    });
+  })();
+</script>
+</body>
+</html>

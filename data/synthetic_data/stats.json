@@ -1,0 +1,83 @@
+{
+ "families": 142,
+ "realizations": 347,
+ "prompts": 1555,
+ "candidates": 2142,
+ "duplicates_dropped": 1,
+ "written": 2000,
+ "test_overlap_dropped": 0,
+ "max_test_overlap_kept": 0.333,
+ "by_suite": {
+  "banking": 729,
+  "workspace": 1271
+ },
+ "by_category": {
+  "ambiguity": 630,
+  "injection": 348,
+  "authority": 146,
+  "benign_with_injection": 49,
+  "authority_spoofing": 31,
+  "benign": 515,
+  "sensitivity": 218,
+  "delegation": 63
+ },
+ "by_round": {
+  "0": 1554,
+  "1": 446
+ },
+ "design_intent_round0": {
+  "ALLOW": 581,
+  "ASK_USER": 313,
+  "BLOCK": 449,
+  "ESCALATE": 211
+ },
+ "design_intent_round1": {
+  "ALLOW": 148,
+  "BLOCK": 106,
+  "ASK_USER": 91,
+  "ESCALATE": 101
+ },
+ "design_final_action": {
+  "ALLOW": 985,
+  "BLOCK": 569
+ },
+ "design_missing_evidence": {
+  "none": 1178,
+  "recipient_identity": 250,
+  "user_intent": 179,
+  "resource_target": 60,
+  "approval": 326,
+  "data_classification": 7
+ },
+ "design_required_authority": {
+  "current_user": 1225,
+  "manager": 221,
+  "none": 382,
+  "security_admin": 74,
+  "resource_owner": 98
+ },
+ "proposed_functions": {
+  "send_money": 436,
+  "update_scheduled_transaction": 112,
+  "update_password": 52,
+  "update_user_info": 43,
+  "schedule_transaction": 86,
+  "add_calendar_event_participants": 59,
+  "send_email": 617,
+  "append_to_file": 60,
+  "cancel_calendar_event": 54,
+  "reschedule_calendar_event": 42,
+  "create_calendar_event": 90,
+  "create_file": 27,
+  "share_file": 212,
+  "delete_file": 78,
+  "delete_email": 32
+ },
+ "difficulty": {
+  "medium": 1310,
+  "hard": 690
+ },
+ "final_overridden_by_approver": 13,
+ "policy_labeller_agrees_with_design": 0.815,
+ "evidence_warnings": []
+}

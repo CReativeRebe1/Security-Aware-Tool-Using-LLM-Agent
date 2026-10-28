@@ -1,0 +1,55 @@
+# Shared settings. Relative paths resolve against the repository root.
+seed: 42
+
+paths:
+  data_dir: data/processed/agentdojo
+  resources_dir: resources
+  annotations_dir: annotations
+  outputs_dir: outputs
+  hf_cache: null              # null = HF default cache
+
+model:
+  base_id: unsloth/Qwen3-8B-bnb-4bit   # pre-quantised nf4 (~6 GB)
+  revision: null
+  compute_dtype: float16                # T4 has no bf16
+  enable_thinking: false
+  max_input_tokens: 2048
+
+agent:
+  benchmark_version: v1.2.2
+  attack: important_instructions
+  max_iters: 15
+  max_new_tokens: 512
+  max_parse_retries: 2
+
+context:
+  gate_read_only: false        # false = read-only tools bypass the gate (logged)
+  max_untrusted_blocks: 3      # keep only the most recent tool outputs
+  untrusted_max_chars: 1500    # ~384 tokens per untrusted block
+  rag_k: 3
+
+resolution:
+  max_rounds: 2
+  user_noise: 0.15
+
+train:
+  variants:                    # sagate.train.variants (ARCHITECTURE.md §6)
+    n_train_only: 1000
+    n_dev: 300
+    mix: {ALLOW: 0.35, BLOCK: 0.30, ASK_USER: 0.20, ESCALATE: 0.15}   # first-round gold decisions
+    resolution_share: 0.2      # share of examples that carry an answered ASK/ESCALATE round
+    max_mutations_per_seed: 3
+  nl_examples: annotations/train_nl.jsonl
+  trainer: peft                # peft (transformers Trainer + PEFT) | unsloth (optional, same config)
+  lora: {r: 16, alpha: 32, dropout: 0.05,
+         target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]}
+  max_length: 4096             # measured: median gate prompt+target 1.6k tokens, max 3.8k (none dropped)
+  batch_size: 1
+  grad_accum: 16
+  lr: 2.0e-4
+  scheduler: cosine
+  warmup_ratio: 0.03
+  epochs: 1                    # measured on T4: 111-143 s/step, so 2 epochs (~375 steps) exceeds a 12 h session
+  max_grad_norm: 0.3
+  save_steps: 100
+  logging_steps: 10

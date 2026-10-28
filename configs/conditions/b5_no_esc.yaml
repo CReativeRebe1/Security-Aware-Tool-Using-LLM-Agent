@@ -1,0 +1,6 @@
+name: b5_no_esc
+gate: {kind: llm, adapter: adapters/b5_no_esc}
+decision_space: [ALLOW, BLOCK, ASK_USER]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

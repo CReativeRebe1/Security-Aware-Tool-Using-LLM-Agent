@@ -1,0 +1,6 @@
+name: b5_no_auth
+gate: {kind: llm, adapter: adapters/b5_no_auth}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: false, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

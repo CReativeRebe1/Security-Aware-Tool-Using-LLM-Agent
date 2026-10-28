@@ -1,55 +1,176 @@
-# Security-Aware Tool-Using LLM Agent
+# Security-Aware Tool-Using LLM Agent — Dataset
 
-**Provenance- and authority-aware resolution of tool actions at runtime**
+Data for the CL3410 (Language Models and Agents, IIIT Hyderabad, Monsoon 2026) group project
+*Provenance- and authority-aware resolution of tool actions at runtime*.
 
-CL3410 · Language Models and Agents · IIIT Hyderabad · Monsoon 2026 · Group project (team Autobots)
+This branch holds the base data the project builds on: AgentDojo's **workspace** and **banking** suites,
+exported to flat JSON/JSONL, plus the logged AgentDojo agent runs we use as cached B0 traces. The
+human-annotated test set and the generated training variants will be added later.
 
-## What this project is
+## Where the data comes from
 
-Tool-using LLM agents send emails, move files and make payments. A proposed tool call can be unsafe because the
-instruction came from untrusted content (prompt injection), the requester lacks authority over the action, or
-sensitive data is flowing somewhere it shouldn't.
+| Source | Used for | Origin | Licence |
+|---|---|---|---|
+| AgentDojo task suites (v1.2.2) | User tasks, injection tasks, tools, environments, injection slots | [ethz-spylab/agentdojo](https://github.com/ethz-spylab/agentdojo) `src/agentdojo/default_suites`, `src/agentdojo/data/suites` | MIT |
+| AgentDojo run logs | Cached agent traces and per-call gate inputs | same repo, `runs/` | MIT |
+| Train/test split, provenance tags, heuristic flags | Derived by us | computed from the two sources above | — |
 
-We build a **runtime security gate** that sits between the agent and its tools. For every proposed tool call it
-combines provenance, authority, resource sensitivity and policy evidence, then decides:
+> E. Debenedetti et al. *AgentDojo: A Dynamic Environment to Evaluate Prompt Injection Attacks and Defenses for
+> LLM Agents.* NeurIPS 2024 Datasets & Benchmarks. arXiv:2406.13352.
 
-| Decision | Meaning |
-| --- | --- |
-| `ALLOW` | Enough trusted evidence; the action is authorized |
-| `BLOCK` | Evidence is sufficient and the action is prohibited |
-| `ASK_USER` | Evidence is missing and the current user can legitimately supply it |
-| `ESCALATE` | Stronger authority (e.g. a manager) is required |
+The export was produced statically (parsing the Python task definitions, YAML and JSON); no AgentDojo code
+was executed. The other works cited in the proposal (AutoDojo, PACT, Agent-Sentry, Progent, Fides, QLoRA, Qwen3) are
+papers/code we reference, not data sources, and are not in this repository.
 
-ASK_USER and ESCALATE collect one new piece of evidence and re-run the same gate (max 2 rounds; unresolved → BLOCK).
+## Contents and counts
 
-## Research questions
+All files are under [`data/processed/agentdojo/`](data/processed/agentdojo/).
 
-- **RQ1 — Evidence:** does provenance and authority evidence reduce unauthorized actions and unnecessary deferrals?
-- **RQ2 — Resolution space:** with the same model, traces and evidence, does a four-way gate beat the same learned
-  gate restricted to ALLOW / BLOCK once interaction cost is charged?
+| File | Rows | Workspace | Banking |
+|---|---|---|---|
+| `user_tasks.jsonl` | 56 | 40 | 16 |
+| `injection_tasks.jsonl` | 23 | 14 | 9 |
+| `injection_vectors.jsonl` | 20 | 16 | 4 |
+| `tools.jsonl` | 35 | 24 | 11 |
+| `scenarios.jsonl` | 760 | 600 | 160 |
+| `traces.jsonl.gz` | 23,602 | 16,640 | 6,962 |
+| `tool_call_proposals.jsonl.gz` | 61,152 | 42,096 | 19,056 |
+| `environments/{suite}_{template,default}.json` | 4 files | | |
+| `splits/scenario_split.json` | 1 file | | |
+| `summary.json` | counts | | |
 
-## Setup
+**Scenarios** = each user task run benignly (56) + each user task paired with every injection task whose
+injection slot it reaches (560 workspace + 144 banking = 704).
 
-| | |
-| --- | --- |
-| Environment | AgentDojo `workspace` + `banking` suites, split by scenario into train-source / test-source pools |
-| Models | Qwen3-8B, 4-bit, thinking off — task agent and gate |
-| Gates | B0 no gate · B1 rules · B2/B3 prompted binary/four-way · B4/B5 QLoRA binary/four-way |
-| Test set | ~240 human-labelled cases, two independent annotators, Krippendorff's α |
-| Success region | Unauthorized-action rate ≤ 5% and unnecessary-deferral rate ≤ 10% |
+**Traces** come from 29 model/defence pipelines (GPT-3.5/4/4o, Claude 3–3.7, Gemini 1.5/2.0, Llama 3/3.3,
+Command-R, Meta-SecAlign, plus GPT-4o with spotlighting, tool-filter, PI-detector and repeat-prompt defences).
 
-## Branches
+| Attack type | Traces |
+|---|---|
+| `important_instructions` | 12,626 |
+| `direct`, `ignore_previous` | 3,200 each |
+| `none` (benign) | 1,608 |
+| `important_instructions_*` variants, `injecagent`, `tool_knowledge` | 384 each |
+| `*_dos` variants | 56 each |
 
-| Branch | Contents |
-| --- | --- |
-| `main` | Project overview (this file) |
-| `dataset` | Processed AgentDojo data, splits and dataset documentation |
+Of the 21,994 attacked traces, 2,785 (12.7%) achieved the attacker's goal.
 
-## Team
+## Train / dev / test split
 
-| Member | Roll no. |
-| --- | --- |
-| Yogendra Patel | 2025201098 |
-| Rinkesh Verma | 2025201070 |
-| Shubham Kumar Sunny | 2025201025 |
-| Prabhash Padhan | 2025201089 |
+Fixed before any training data is generated (seed 42), as the proposal requires.
+
+- **User tasks:** 28 train / 6 dev / 22 test, stratified by suite × whether the task reaches an injection slot.
+  `dev` is part of the train-source pool (used for B4 threshold calibration).
+- **Injection tasks:** ~40% test per suite.
+- **Scenario split columns:** `user_task_split`, `injection_task_split`, and `strict_split`. `strict_split` is
+  `train` or `test` only when the user task and attacker goal fall on the same side; otherwise it is `excluded`.
+
+| `strict_split` | Benign | Injection | Total |
+|---|---|---|---|
+| train (incl. dev) | 34 | 242 | 276 |
+| test | 22 | 120 | 142 |
+| excluded | 0 | 342 | 342 |
+
+## Schema
+
+### `user_tasks.jsonl`
+| Field | Type | Notes |
+|---|---|---|
+| `suite` | str | `workspace` \| `banking` |
+| `id` | str | e.g. `user_task_0` |
+| `prompt` | str | what the user asks the agent |
+| `difficulty` | str \| null | `EASY` \| `MEDIUM` \| `HARD` |
+| `comment`, `ground_truth_output` | str \| null | from AgentDojo |
+| `ground_truth_calls` | list[{`function`, `args`}] | expected tool calls; runtime-computed values appear as `{"__expr__": "<source>"}` |
+| `ground_truth_static` | bool | all calls fully resolved (false for workspace 10, 13, 19, 31, 32, 34, 36, 37) |
+| `ground_truth_source` | str \| null | original Python `ground_truth` method |
+| `combined_from` | list[str] | only for combined tasks (two user tasks in one prompt) |
+| `benchmark_version`, `versions_available`, `defined_in` | | AgentDojo version bookkeeping |
+| `injection_vectors` | list[str] | injection slots this task's tool outputs expose |
+
+### `injection_tasks.jsonl`
+Same as above with `goal` (attacker instruction) instead of `prompt`, and no `injection_vectors`.
+
+### `injection_vectors.jsonl`
+`suite`, `vector_id`, `description`, `default` (benign text in the slot), `reached_by_user_tasks`.
+
+### `tools.jsonl`
+`suite`, `name`, `module`, `description`, `parameters` (list of `name`, `type`, `description`, `required`, `default`).
+
+### `scenarios.jsonl`
+`scenario_id` (`suite|user_task|injection_task-or-benign`), `suite`, `user_task_id`, `injection_task_id`,
+`type` (`benign` | `injection`), `injection_vectors`, `user_task_split`, `injection_task_split`, `strict_split`.
+
+### `traces.jsonl.gz`
+| Field | Notes |
+|---|---|
+| `trace_id` | `pipeline\|suite\|user_task\|attack\|injection_task` |
+| `pipeline`, `suite`, `user_task_id`, `injection_task_id`, `attack_type` | |
+| `injections` | slot → exact injected text |
+| `utility` | user task completed |
+| `attack_succeeded` | AgentDojo `security` flag; null for benign runs |
+| `tool_calls` | ordered list of `{function, args}` |
+| `messages` | full conversation (system, user, assistant, tool) |
+| `error`, `duration` | |
+
+### `tool_call_proposals.jsonl.gz` — one row per proposed tool call
+| Field | Notes |
+|---|---|
+| `proposal_id`, `trace_id`, `step`, `message_index` | link back to the trace |
+| `pipeline`, `suite`, `user_task_id`, `injection_task_id`, `attack_type` | |
+| `user_prompt`, `prior_calls`, `proposed_call` | gate input |
+| `arg_provenance` | per argument: any of `user_prompt`, `injection`, `tool_output`, `unknown`, `too_short` |
+| `injection_seen_before_call` | injected text already in context |
+| `matches_user_task_ground_truth`, `matches_injection_task_ground_truth` | loose heuristic (same function + a shared distinctive value such as an IBAN/email/filename) |
+| `trace_utility`, `trace_attack_succeeded` | outcome of the whole trace |
+
+`arg_provenance` is oracle-style: it uses the known injected strings, so it is an upper bound for the
+inferred-provenance condition. The `matches_*` flags are weak labels for analysis and variant generation —
+**not** gold ALLOW / BLOCK / ASK_USER / ESCALATE labels.
+
+## Caveats
+
+- Run logs have no benchmark-version field; some were produced against older task versions (v1.0–v1.1).
+- Provenance is substring matching; numbers, dates and short values are often `unknown`.
+- 468 injection-only runs (no user task) are not exported. Slack and travel suites are out of scope.
+- See [`data/processed/agentdojo/README.md`](data/processed/agentdojo/README.md) for additional notes.
+
+## Code (`src/sagate`)
+
+Implementation of [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): baselines (B0–B3), training (B4/B5 and the
+ablations), threshold calibration, end-to-end gated runs and the statistics report. Section 14 of the
+architecture lists what is built, what has run, and where it deviates from the plan.
+
+```bash
+pip install -e ".[dev]"                 # CPU parts: case building, B1, variants, SFT data, metrics, tests
+pip install -e ".[gpu,agentdojo]"       # + Qwen3 backend and the AgentDojo agent
+pip install -e ".[train]"               # + QLoRA training
+pytest -q
+```
+
+| Step | Command |
+|---|---|
+| Build gate cases from the logged runs | `python -m sagate.data.build_cases --pool test` (also `train`, `dev`) |
+| Export cases for annotation | `python -m sagate.data.annotation export --cases outputs/cases/test_candidates.jsonl --sample 160 --out annotations/batch1.csv` |
+| Agreement / gold file | `python -m sagate.data.annotation agreement annotations/batch1_*.csv` · `... gold annotations/batch1_adjudicated.csv --out annotations/gold.jsonl` |
+| Freeze the labelled case file | `python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.jsonl [annotations/test_nl.jsonl] --gold annotations/gold.jsonl --pool test --out annotations/test_cases.jsonl` |
+| B1 rules (CPU) | `python -m sagate.eval.run_gate --condition b1_rules --cases outputs/cases/test_candidates.jsonl` |
+| B2 / B3 prompted (GPU) | `python -m sagate.eval.run_gate --condition b3_prompt_4way --cases ... [--responses noisy]` |
+| Report | `python -m sagate.eval.report --cases ... --pred outputs/predictions/*.jsonl [--gold annotations/gold.jsonl --compare A B]` |
+| B0 Qwen traces (GPU) | `python -m sagate.agent.run_b0 --shard 0 --num-shards 2`, then `... run_b0 --merge <shards>` (traces.jsonl + B0 utility/ASR in b0_summary.json), then `python -m sagate.agent.extract_proposals` |
+| Smoke test / throughput | `python -m sagate.smoke [--model-id Qwen/Qwen3-0.6B]` |
+| Replay old-log executable cases in the pinned AgentDojo | `python -m sagate.agent.replay --cases outputs/cases/test_candidates.jsonl --out outputs/cases/test_candidates.replayed.jsonl --report ...` |
+| Training variants / generated dev pool (CPU) | `python -m sagate.train.variants --pool train_only` · `... --pool dev --out outputs/sft/dev_cases.jsonl` |
+| Check NL training examples | `python -m sagate.train.nl_examples check annotations/train_nl.jsonl [--test-cases annotations/test_cases.jsonl]` |
+| SFT data for all 8 trained conditions | `python -m sagate.train.build_sft --cases outputs/sft/train_only_variants.jsonl annotations/train_nl.jsonl` |
+| QLoRA (GPU) | `python -m sagate.train.train_qlora --condition b5_qlora_4way --sft outputs/sft/b5_qlora_4way.jsonl` |
+| Learned gates | `python -m sagate.eval.run_gate --condition b5_qlora_4way --cases annotations/test_cases.jsonl --adapter-dir outputs/adapters` |
+| B4 threshold (dev only) and matched test run | `python -m sagate.eval.pareto select --b4 dev/b4.jsonl --b5 dev/b5.jsonl --cases outputs/sft/dev_cases.jsonl --out t.json` · `... apply --pred test/b4.jsonl --threshold-file t.json --out test/b4_qlora_binary_matched.jsonl` |
+| End-to-end gated runs (GPU) | `python -m sagate.agent.run_e2e --condition b5_qlora_4way --adapter-dir outputs/adapters --shard 0 --num-shards 2`, then `... --merge <shards>` |
+| End-to-end metrics | `python -m sagate.eval.e2e_metrics --traces outputs/b0_traces/traces.jsonl outputs/e2e/b5_qlora_4way/traces.jsonl --json report/e2e.json` |
+| Statistics + report | `python -m sagate.eval.analysis --cases annotations/test_cases.jsonl --pred outputs/predictions/test/*.jsonl --e2e report/e2e.json --out report` |
+
+Kaggle: `bash kaggle/stage_code.sh`, then `kaggle datasets version -p build/sagate-code --dir-mode zip -m "<sha>"`
+(first time: `kaggle datasets create`), then `kaggle kernels push -p build/kernels/nb00_setup_smoke --accelerator
+NvidiaTeslaT4`. Kernels in `kaggle/`: NB00 (smoke), NB01 (B0 traces), NB02 (B1/B2/B3), NB03 (QLoRA, 8 adapters), NB04 (learned gates +
+B4 threshold), NB05 (end-to-end B0 vs B5), NB06 (statistics + report, CPU).

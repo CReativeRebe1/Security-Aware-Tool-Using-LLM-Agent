@@ -1,0 +1,15 @@
+{
+  "id": "__OWNER__/sagate-nb03-train-qlora",
+  "title": "sagate-nb03-train-qlora",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": ["__OWNER__/sagate-code"],
+  "kernel_sources": [],
+  "competition_sources": [],
+  "model_sources": []
+}

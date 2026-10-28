@@ -1,0 +1,4 @@
+# Overrides applied on Kaggle (detected via KAGGLE_KERNEL_RUN_TYPE). Code + data are unpacked to /kaggle/tmp.
+paths:
+  outputs_dir: /kaggle/working/outputs
+  hf_cache: /kaggle/tmp/hf
