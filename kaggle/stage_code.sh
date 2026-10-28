@@ -22,7 +22,7 @@ git -C "$ROOT" diff --quiet HEAD -- src configs resources || SHA="$SHA-dirty"
 echo "$SHA" > "$OUT/GIT_SHA"
 
 tar -czf "$OUT/sagate-code.tar.gz" --exclude='__pycache__' --exclude='*.pyc' \
-    -C "$ROOT" pyproject.toml configs resources src annotations data/processed \
+    -C "$ROOT" pyproject.toml configs resources src annotations data/processed data/labled-data/synthetic_nl.jsonl \
     -C "$OUT" GIT_SHA
 cp "$ROOT/kaggle/bootstrap.py" "$OUT/bootstrap.py"
 sed "s/__OWNER__/$OWNER/g" "$ROOT/kaggle/code-dataset/dataset-metadata.json" > "$OUT/dataset-metadata.json"

@@ -34,7 +34,12 @@ nl = os.path.join(root, "annotations", "train_nl.jsonl")
 if os.path.exists(nl):
     train_cases.append(nl)
 else:
-    print("note: annotations/train_nl.jsonl not staged; training on structured variants only", flush=True)
+    print("note: annotations/train_nl.jsonl not staged", flush=True)
+synthetic_nl = os.path.join(root, "data", "labled-data", "synthetic_nl.jsonl")   # 2,000 labelled synthetic cases
+if os.path.exists(synthetic_nl):
+    train_cases.append(synthetic_nl)
+else:
+    print("note: data/labled-data/synthetic_nl.jsonl not staged", flush=True)
 code = bootstrap.run([py, "-m", "sagate.train.build_sft", "--condition", *CONDITIONS, "--cases", *train_cases,
                       "--out", sft])
 if code:
