@@ -21,9 +21,8 @@ def find(pattern):
 
 root = bootstrap.setup()
 py = sys.executable
-adapters = os.path.dirname(find("adapters/b5_qlora_4way/adapter_config.json") or "")
-adapters = os.path.dirname(adapters) if adapters else None
-if not adapters:
+adapters = bootstrap.collect_adapters()        # every attached NB03 kernel; newest copy of each condition
+if not adapters or not os.path.exists(f"{adapters}/b5_qlora_4way"):
     sys.exit("NB03 adapters not attached (no adapters/b5_qlora_4way under /kaggle/input)")
 test = os.path.join(root, "annotations", "test_cases.jsonl")
 if not os.path.exists(test):

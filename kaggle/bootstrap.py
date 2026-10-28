@@ -6,6 +6,7 @@ version is visible in the log. run_on_gpus(): one subprocess per GPU with CUDA_V
 """
 
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -55,6 +56,31 @@ def setup(extras: str = "gpu,agentdojo") -> str:
     sys.path.insert(0, os.path.join(dest, "src"))
     os.environ.setdefault("HF_HOME", os.path.join(_tmp_root(), "hf"))
     subprocess.run(["nvidia-smi", "-L"], check=False)
+    return dest
+
+
+def collect_adapters(dest: str = os.path.join(WORK, "adapters")) -> str | None:
+    """One adapter dir for --adapter-dir out of every attached NB03 output (training may be split over several
+    kernels): adapters/<condition> is linked from the most recently trained copy (manifest "created")."""
+    best = {}
+    for cfg in glob.glob("/kaggle/input/**/adapters/*/adapter_config.json", recursive=True):
+        d = os.path.dirname(cfg)
+        try:
+            created = json.load(open(os.path.join(d, "manifest.json")))["created"]
+        except (OSError, ValueError, KeyError):
+            created = ""
+        name = os.path.basename(d)
+        if name not in best or created > best[name][0]:
+            best[name] = (created, d)
+    if not best:
+        return None
+    os.makedirs(dest, exist_ok=True)
+    for name, (created, d) in sorted(best.items()):
+        link = os.path.join(dest, name)
+        if os.path.lexists(link):
+            os.remove(link)
+        os.symlink(d, link)
+        print(f"adapter {name}: {d} (trained {created or '?'})", flush=True)
     return dest
 
 
