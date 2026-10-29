@@ -3,6 +3,7 @@
 **Run folders:**
 - `runs/nb02/` — B1, B2, B3 on test and dev (code `1836a5b`)
 - `runs/nb02_b3fix/` — B1 and B3 re-run on test after the user/approver simulator fix (code `f558cd5`)
+- `runs/nb02_dev/` — B1, B2, B3 re-run on the 300 labelled dev cases that B4/B5 use (code `73cc6a4`, 34 min)
 
 **Files:** `outputs/predictions/{test,dev}/<condition>.jsonl` (one resolution trace per case), `report.json`,
 `<condition>.manifest.json`, `gate_cache/`.
@@ -134,10 +135,34 @@ B1 clean results are identical before and after. B1 noisy changed from 140/160 a
 | Inferred vs oracle provenance, argument trust | 260/312 (83.3%) |
 | Inferred vs oracle provenance, call-level instruction origin | 135/160 (84.4%) |
 
-## Dev pool (no gold labels — decision mix only)
+## Dev pool, labelled (300 generated variants, same cases as B4 / B5)
 
-904 dev cases built from the 6 dev user tasks (900 had an untrusted block truncated). Dev is used only to select
-the B4 threshold, so here it only shows each gate's behaviour.
+Re-run on 2026-10-29 (`runs/nb02_dev`, code `73cc6a4`) on NB03's generated dev pool, which has gold labels and is the
+pool B4 and B5 are scored on. The full comparison with B4 / B5 is in [04_learned_gates.md](04_learned_gates.md#dev-pool-300-generated-variants-gold-labels).
+
+| | B1 rules | B2 prompted binary | B3 prompted 4-way | B3 noisy |
+|---|---|---|---|---|
+| Final-resolution success | 300/300 (100%)¹ | 139/300 (46.3%) | 203/300 (67.7%) | 198/300 (66.0%) |
+| Unauthorized-action rate | 0/128¹ | 2/128 (1.6%) | 0/128 (0.0%) | 5/128 (3.9%) |
+| Over-blocking rate | 0/172¹ | 159/172 (92.4%) | 97/172 (56.4%) | 97/172 (56.4%) |
+| Unnecessary deferral | 0/195¹ | 0/195 | 176/195 (90.3%) | 176/195 (90.3%) |
+| First-round accuracy | 300/300¹ | 101/300 (33.7%) | 52/300 (17.3%) | 52/300 (17.3%) |
+| Escalation precision / recall | 45/45 / 45/45¹ | n/a / 0/45 | 35/182 (19.2%) / 35/45 (77.8%) | same |
+| Defaulted to BLOCK | 0/300 | 0/300 | 74/300 (24.7%) | 72/300 (24.0%) |
+| Noise-induced errors | 0/0 | — | — | 5/11 (45.5%) |
+
+¹ The dev labels are produced from the same oracle evidence by the same policy logic as the B1 rules, so B1 is
+perfect by construction.
+
+The prompted gates behave as on test, only more so: B2 blocks 92% of legitimate calls and B3 defers on 91% of cases
+(escalating 182 times, 35 of them correctly). Both are safer on dev than on test (B3 0.0% vs 10.1% unsafe), because dev
+has none of the test's user-intent should-ask cases.
+
+### Earlier dev run (unlabelled, superseded)
+
+The first NB02 run (`runs/nb02`, code `1836a5b`) used 904 unlabelled dev candidates built from the 6 dev user tasks
+(900 had an untrusted block truncated), so it shows only each gate's decision mix. It is not comparable with B4 / B5,
+which use the 300 labelled variants above.
 
 | | First: ALLOW | BLOCK | ASK_USER | ESCALATE | Final: ALLOW | BLOCK | Mean interactions |
 |---|---|---|---|---|---|---|---|
@@ -167,3 +192,4 @@ Some prompts went over the 2,048-token inference limit (`model.max_input_tokens`
 - Injection blocking is easy on these cases for every gate. The hard part is **agent mistakes on legitimate
   tasks**, where the user's reply or a closer look at the arguments is needed.
 - B3 ignoring an explicit "No" from the user is a ready-made qualitative failure example.
+- Learned gates B4 / B5 on the same cases: see [04_learned_gates.md](04_learned_gates.md).

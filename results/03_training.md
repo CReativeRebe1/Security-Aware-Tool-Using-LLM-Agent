@@ -1,12 +1,15 @@
-# NB03 — Training data and QLoRA timing run
+# NB03 — Training data, QLoRA timing run, and full B4 / B5 training
 
-**Run folder:** `runs/nb03_timing/` (code `1836a5b`), with `outputs/sft/` (training files per condition) and
-`outputs/adapters/<condition>/` (`train_summary.json`, `manifest.json`, PEFT adapter).
-**Hardware:** Kaggle, 2 × T4, four conditions in sequence on each GPU.
+**Run folders:**
+- `runs/nb03_timing/` (code `1836a5b`): timing run, all 8 conditions for 20 optimizer steps each (~0.11 epoch)
+- `runs/nb03_v2/` (code `f558cd5`): first full attempt, **failed** (see §4)
+- `runs/nb03_v3/` (code `73cc6a4`): **full training of B4 and B5, 1 epoch each**, the adapters used in NB04
 
-This run was a **timing run**: each of the 8 conditions trained for 20 optimizer steps (~0.11 epoch) to measure
-speed and memory on the real 8B model and data. **No adapter is fully trained yet**, so there are no B4/B5 accuracy
-numbers.
+Each folder holds `outputs/sft/` (training files per condition) and `outputs/adapters/<condition>/`
+(`train_summary.json`, `manifest.json`, PEFT adapter).
+**Hardware:** Kaggle, 2 × T4, one condition per GPU.
+
+**B4 and B5 are fully trained** (§4). The 6 ablations have only the 20-step timing run, so they have no results yet.
 
 ## 1. Training data
 
@@ -72,8 +75,8 @@ Policy mutations applied to the 1,000 train variants (unmutated seeds: 426):
 | LoRA | r = 16, α = 32, dropout 0.05, on q/k/v/o/gate/up/down projections |
 | Batch | 1 × gradient accumulation 16 (effective 16) |
 | Learning rate | 2e-4, cosine, warm-up 3%, gradient clipping 0.3 |
-| Max length | 4,096 tokens (no example dropped) |
-| Epochs | 2 in the timing run's config; **changed to 1** afterwards (commit `e676c47`) |
+| Max length | 4,096 tokens in the timing run; **2,560** for the full run (commit `73cc6a4`, see §4) |
+| Epochs | 2 in the timing run's config; **1** for the full run (commit `e676c47`) |
 | Steps per epoch | 3,000 / 16 = 187.5 → ~188 |
 
 ## 3. Timing run results (20 steps per condition)
@@ -93,7 +96,8 @@ Epoch projections = 187.5 steps × measured s/step, and exclude model loading an
 
 Observations:
 
-- **All 8 conditions ran without out-of-memory errors at 4,096 tokens, and no example was dropped for length.**
+- All 8 conditions ran 20 steps without out-of-memory errors at 4,096 tokens. The full run later ran out of memory
+  at step 21 (§4): the longest examples come later in the shuffled order.
 - Step time is 111–143 s on a T4, which is about **150–180 training tokens/s**. The plan assumed 500–1,500 tok/s
   (architecture §9.2), so training is 3–10× slower than planned. The data is also 2.5× larger than planned (3,000
   examples instead of ~1,200). B5 and `b5_no_esc` are the slowest conditions; B5 has the longest examples.
@@ -105,9 +109,50 @@ Observations:
 - The loss values come from a 20-step run whose cosine schedule decayed to ~0 by step 20. They show that training
   runs and the loss falls, **not** how good the gates are.
 
+## 4. Full training run: B4 and B5 (`runs/nb03_v3`)
+
+### First attempt failed (`runs/nb03_v2`, 2026-10-28 21:11–22:01)
+
+1. **CUDA out of memory at step 21–22 on both GPUs.** Both conditions see the examples in the same shuffled order,
+   so both hit the same ~3.8k-token example at the same step. The backward pass needed ~0.6 GB more than a T4 has.
+   The 20-step timing run stopped just before this example.
+2. **Stale code.** Kaggle reported the new code upload as ready while it was still processing, so the run used
+   `f558cd5` (2 epochs, 376 steps) instead of the 1-epoch config. Since then, every push is preceded by downloading
+   `GIT_SHA` from the Kaggle dataset and checking that it matches.
+
+**Fix:** `train.max_length` 4,096 → **2,560** (commit `73cc6a4`). Examples longer than this are dropped, not
+truncated, and the dropped ids are recorded in `train_summary.json`.
+
+### Result (2026-10-28 22:13 → 2026-10-29 04:14, code `73cc6a4`)
+
+| | B5 `b5_qlora_4way` | B4 `b4_qlora_binary` |
+|---|---|---|
+| Optimizer steps | 187 / 187 (1 epoch) | 187 / 187 (1 epoch) |
+| Examples kept / dropped (> 2,560 tokens) | 2,985 / **15** (0.5%) | 2,992 / **8** (0.3%) |
+| Median / max tokens before the cut | 1,244 / 3,825 | 1,168.5 / 3,751 |
+| Training tokens | 3,919,312 | 3,714,636 |
+| Training time | 21,043 s (5 h 51 min), 112.5 s/step | 20,953 s (5 h 49 min), 112.0 s/step |
+| Mean training loss | 0.0473 | 0.0493 |
+| Adapter size | 167 MB | 167 MB |
+
+All dropped examples are generated variants, mostly workspace `user_task_19` (long e-mail and file contexts);
+none is a hand-authored synthetic case. The 8 B4 drops are a subset of the 15 B5 drops (B4's target is shorter).
+
+**Loss curve** (every 10 steps):
+
+| Step | 10 | 20 | 30 | 40 | 50 | 60 | 70 | 80 | 90 | 100 | 110 | 120 | 130 | 140 | 150 | 160 | 170 | 180 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| B5 | 0.440 | 0.069 | 0.051 | 0.053 | 0.035 | 0.036 | 0.029 | 0.027 | 0.010 | 0.024 | 0.017 | 0.016 | 0.009 | 0.010 | 0.018 | 0.011 | 0.010 | 0.016 |
+| B4 | 0.386 | 0.084 | 0.078 | 0.049 | 0.032 | 0.035 | 0.027 | 0.025 | 0.029 | 0.028 | 0.021 | 0.021 | 0.018 | 0.019 | 0.024 | 0.013 | 0.013 | 0.013 |
+
+The loss falls within the first 20 steps and then flattens out at 0.01–0.02. A low loss is expected: the target
+is a short JSON object whose fields are mostly predictable from the evidence. It says nothing about
+generalisation; the NB04 test results do ([04_learned_gates.md](04_learned_gates.md)).
+
 ## Takeaways for the report
 
-- Deviation from the proposal: **1 epoch instead of 2**, because of the measured T4 cost. Report this.
+- Deviations from the proposal: **1 epoch instead of 2** (measured T4 cost) and **max length 2,560 instead of
+  4,096** (T4 memory; drops 15 / 8 of 3,000 examples). Report both.
 - B4 and B5 see exactly the same 3,000 examples. They differ only in label space (and the resolution loop at
   inference), which keeps the H1 comparison clean.
 - The training labels are not two-annotator human labels: the 1,000 variants are rule-labelled, and the 2,000

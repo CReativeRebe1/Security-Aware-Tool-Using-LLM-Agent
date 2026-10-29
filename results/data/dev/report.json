@@ -1,0 +1,320 @@
+{
+ "b1_rules": {
+  "n": 300,
+  "final_resolution_success": "300/300 (100.0%)",
+  "unauthorized_action_rate": "0/128 (0.0%)",
+  "over_blocking_rate": "0/172 (0.0%)",
+  "unnecessary_deferral_rate": "0/195 (0.0%)",
+  "raw_deferral_rate": "105/300 (35.0%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 0.3566666666666667,
+  "first_round_accuracy": "300/300 (100.0%)",
+  "clarification_success": "60/60 (100.0%)",
+  "escalation_precision": "45/45 (100.0%)",
+  "escalation_recall": "45/45 (100.0%)",
+  "defaulted_to_block": "0/300 (0.0%)",
+  "binary_success": "233/300 (77.7%)",
+  "binary_unauthorized_rate": "0/128 (0.0%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 1.0,
+  "macro_f1_required_authority": 1.0,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->BLOCK": 90,
+   "ALLOW->ALLOW": 105,
+   "ASK_USER->ASK_USER": 60,
+   "ESCALATE->ESCALATE": 45
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "300/300 (100.0%)",
+    "unauthorized_action_rate": "0/128 (0.0%)"
+   }
+  }
+ },
+ "b1_rules_noisy": {
+  "n": 300,
+  "final_resolution_success": "300/300 (100.0%)",
+  "unauthorized_action_rate": "0/128 (0.0%)",
+  "over_blocking_rate": "0/172 (0.0%)",
+  "unnecessary_deferral_rate": "0/195 (0.0%)",
+  "raw_deferral_rate": "105/300 (35.0%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 0.3566666666666667,
+  "first_round_accuracy": "300/300 (100.0%)",
+  "clarification_success": "60/60 (100.0%)",
+  "escalation_precision": "45/45 (100.0%)",
+  "escalation_recall": "45/45 (100.0%)",
+  "defaulted_to_block": "0/300 (0.0%)",
+  "binary_success": "233/300 (77.7%)",
+  "binary_unauthorized_rate": "0/128 (0.0%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 1.0,
+  "macro_f1_required_authority": 1.0,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->BLOCK": 90,
+   "ALLOW->ALLOW": 105,
+   "ASK_USER->ASK_USER": 60,
+   "ESCALATE->ESCALATE": 45
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "300/300 (100.0%)",
+    "unauthorized_action_rate": "0/128 (0.0%)"
+   }
+  },
+  "noise_induced_error_rate": "0/0 (n/a)"
+ },
+ "b2_prompt_binary": {
+  "n": 300,
+  "final_resolution_success": "139/300 (46.3%)",
+  "unauthorized_action_rate": "2/128 (1.6%)",
+  "over_blocking_rate": "159/172 (92.4%)",
+  "unnecessary_deferral_rate": "0/195 (0.0%)",
+  "raw_deferral_rate": "0/300 (0.0%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 0.0,
+  "first_round_accuracy": "101/300 (33.7%)",
+  "clarification_success": "0/60 (0.0%)",
+  "escalation_precision": "0/0 (n/a)",
+  "escalation_recall": "0/45 (0.0%)",
+  "defaulted_to_block": "0/300 (0.0%)",
+  "binary_success": "139/300 (46.3%)",
+  "binary_unauthorized_rate": "2/128 (1.6%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 0.21701927268198518,
+  "macro_f1_required_authority": 0.32402944777045495,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->BLOCK": 88,
+   "ALLOW->BLOCK": 92,
+   "ASK_USER->BLOCK": 60,
+   "ALLOW->ALLOW": 13,
+   "ESCALATE->BLOCK": 45,
+   "BLOCK->ALLOW": 2
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "139/300 (46.3%)",
+    "unauthorized_action_rate": "2/128 (1.6%)"
+   }
+  }
+ },
+ "b3_prompt_4way": {
+  "n": 300,
+  "final_resolution_success": "203/300 (67.7%)",
+  "unauthorized_action_rate": "0/128 (0.0%)",
+  "over_blocking_rate": "97/172 (56.4%)",
+  "unnecessary_deferral_rate": "176/195 (90.3%)",
+  "raw_deferral_rate": "274/300 (91.3%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 1.1966666666666668,
+  "first_round_accuracy": "52/300 (17.3%)",
+  "clarification_success": "3/60 (5.0%)",
+  "escalation_precision": "35/182 (19.2%)",
+  "escalation_recall": "35/45 (77.8%)",
+  "defaulted_to_block": "74/300 (24.7%)",
+  "binary_success": "135/300 (45.0%)",
+  "binary_unauthorized_rate": "0/128 (0.0%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 0.2298601108983186,
+  "macro_f1_required_authority": 0.3087211625325865,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->ESCALATE": 43,
+   "BLOCK->ASK_USER": 41,
+   "ALLOW->BLOCK": 6,
+   "BLOCK->BLOCK": 6,
+   "ALLOW->ASK_USER": 44,
+   "ALLOW->ESCALATE": 48,
+   "ASK_USER->ESCALATE": 56,
+   "ASK_USER->ASK_USER": 4,
+   "ALLOW->ALLOW": 7,
+   "ESCALATE->BLOCK": 7,
+   "ESCALATE->ESCALATE": 35,
+   "ESCALATE->ASK_USER": 3
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "203/300 (67.7%)",
+    "unauthorized_action_rate": "0/128 (0.0%)"
+   }
+  }
+ },
+ "b3_prompt_4way_noisy": {
+  "n": 300,
+  "final_resolution_success": "198/300 (66.0%)",
+  "unauthorized_action_rate": "5/128 (3.9%)",
+  "over_blocking_rate": "97/172 (56.4%)",
+  "unnecessary_deferral_rate": "176/195 (90.3%)",
+  "raw_deferral_rate": "274/300 (91.3%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 1.1966666666666668,
+  "first_round_accuracy": "52/300 (17.3%)",
+  "clarification_success": "3/60 (5.0%)",
+  "escalation_precision": "35/182 (19.2%)",
+  "escalation_recall": "35/45 (77.8%)",
+  "defaulted_to_block": "72/300 (24.0%)",
+  "binary_success": "135/300 (45.0%)",
+  "binary_unauthorized_rate": "0/128 (0.0%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 0.2298601108983186,
+  "macro_f1_required_authority": 0.3087211625325865,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->ESCALATE": 43,
+   "BLOCK->ASK_USER": 41,
+   "ALLOW->BLOCK": 6,
+   "BLOCK->BLOCK": 6,
+   "ALLOW->ASK_USER": 44,
+   "ALLOW->ESCALATE": 48,
+   "ASK_USER->ESCALATE": 56,
+   "ASK_USER->ASK_USER": 4,
+   "ALLOW->ALLOW": 7,
+   "ESCALATE->BLOCK": 7,
+   "ESCALATE->ESCALATE": 35,
+   "ESCALATE->ASK_USER": 3
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "198/300 (66.0%)",
+    "unauthorized_action_rate": "5/128 (3.9%)"
+   }
+  },
+  "noise_induced_error_rate": "5/11 (45.5%)"
+ },
+ "b4_qlora_binary": {
+  "n": 300,
+  "final_resolution_success": "253/300 (84.3%)",
+  "unauthorized_action_rate": "27/128 (21.1%)",
+  "over_blocking_rate": "20/172 (11.6%)",
+  "unnecessary_deferral_rate": "0/195 (0.0%)",
+  "raw_deferral_rate": "0/300 (0.0%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 0.0,
+  "first_round_accuracy": "171/300 (57.0%)",
+  "clarification_success": "0/60 (0.0%)",
+  "escalation_precision": "0/0 (n/a)",
+  "escalation_recall": "0/45 (0.0%)",
+  "defaulted_to_block": "0/300 (0.0%)",
+  "binary_success": "253/300 (84.3%)",
+  "binary_unauthorized_rate": "27/128 (21.1%)",
+  "authority_spoofing_success": "10/12 (83.3%)",
+  "macro_f1_missing_evidence": 0.6161207531588849,
+  "macro_f1_required_authority": 0.9363649213832556,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->BLOCK": 84,
+   "ALLOW->BLOCK": 18,
+   "ALLOW->ALLOW": 87,
+   "ASK_USER->BLOCK": 7,
+   "ASK_USER->ALLOW": 53,
+   "ESCALATE->ALLOW": 33,
+   "ESCALATE->BLOCK": 12,
+   "BLOCK->ALLOW": 6
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "253/300 (84.3%)",
+    "unauthorized_action_rate": "27/128 (21.1%)"
+   }
+  }
+ },
+ "b5_qlora_4way": {
+  "n": 300,
+  "final_resolution_success": "277/300 (92.3%)",
+  "unauthorized_action_rate": "7/128 (5.5%)",
+  "over_blocking_rate": "16/172 (9.3%)",
+  "unnecessary_deferral_rate": "4/195 (2.1%)",
+  "raw_deferral_rate": "100/300 (33.3%)",
+  "gold_deferral_prevalence": "105/300 (35.0%)",
+  "mean_interactions": 0.3433333333333333,
+  "first_round_accuracy": "263/300 (87.7%)",
+  "clarification_success": "51/60 (85.0%)",
+  "escalation_precision": "40/42 (95.2%)",
+  "escalation_recall": "40/45 (88.9%)",
+  "defaulted_to_block": "0/300 (0.0%)",
+  "binary_success": "214/300 (71.3%)",
+  "binary_unauthorized_rate": "7/128 (5.5%)",
+  "authority_spoofing_success": "0/12 (0.0%)",
+  "macro_f1_missing_evidence": 0.9296008093153009,
+  "macro_f1_required_authority": 0.9298225200603717,
+  "recall@3": 0.247008547008547,
+  "recall@5": 0.38974358974358975,
+  "provenance_attribution_accuracy": "569/701 (81.2%)",
+  "instruction_origin_accuracy": "220/300 (73.3%)",
+  "confusion_first_round": {
+   "BLOCK->BLOCK": 82,
+   "ALLOW->BLOCK": 13,
+   "ALLOW->ALLOW": 90,
+   "ASK_USER->ASK_USER": 51,
+   "ASK_USER->ALLOW": 4,
+   "ESCALATE->ESCALATE": 40,
+   "ASK_USER->BLOCK": 5,
+   "BLOCK->ALLOW": 6,
+   "ESCALATE->ASK_USER": 5,
+   "BLOCK->ESCALATE": 2,
+   "ALLOW->ASK_USER": 2
+  },
+  "gold_final_mix": {
+   "BLOCK": 128,
+   "ALLOW": 172
+  },
+  "by_subset": {
+   "variant": {
+    "n": 300,
+    "final_resolution_success": "277/300 (92.3%)",
+    "unauthorized_action_rate": "7/128 (5.5%)"
+   }
+  }
+ }
+}
