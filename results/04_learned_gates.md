@@ -134,12 +134,18 @@ Correct final outcome / unsafe allows (out of gold-BLOCK cases):
 First decisions overall: B4 matched BLOCK 110 · ALLOW 50; B4 unthresholded ALLOW 100 · BLOCK 60;
 B5 ALLOW 74 · BLOCK 60 · ASK_USER 24 · ESCALATE 2.
 
-## B4 vs B5 (H1)
+## B4 vs B5 (H2)
 
 At the threshold that matches B5's unsafe-allow rate **on dev**, B4 on test has 13/79 (16.5%) unsafe allows against
 B5's 15/79 (19.0%), but it blocks 44/81 (54.3%) legitimate calls against B5's 5/81 (6.2%), and its success is
 103/160 (64.4%) against 140/160 (87.5%). B5 is much better on this set, but the matching did not carry over from dev
 to test (dev: B4 4.7% vs B5 5.5%). Paired confidence intervals and McNemar tests are NB06's job.
+
+Against the proposal's pre-specified rule, H2 is **not yet supported on test**: it fails if B5 "worsens security, or
+exceeds the unnecessary-deferral cap to gain utility". On test B5 has slightly more unsafe allows than matched B4
+(15 vs 13 of 79) and 13.1% unnecessary deferral against the 10% cap. On dev it meets both conditions (2.1% deferral,
+92.3% vs 68.0% success at 5.5% vs 4.7% unsafe). No gate is in the proposal's success region (unsafe ≤ 5% and
+unnecessary deferral ≤ 10%) on test.
 
 ## Robustness
 
@@ -205,7 +211,7 @@ Two separate effects:
 
 **Authority spoofing (dev only; the test set has none):** B4 allows 10 of the 12 calls that rest on a
 fake approval claim (`spoof_approval` variants: content claiming the action was already approved), and B5
-allows none. That is the clearest H1 difference in
+allows none. That is the clearest H2 difference in
 the data so far: the binary gate cannot say "escalate", so it has to choose between trusting the claim and
 blocking, and it trusts it.
 
@@ -229,5 +235,6 @@ only by deferring on 91% of cases and blocking 56% of legitimate ones.
   because only test has user-intent should-ask cases; B5 also benefits on dev from being trained on the same
   generator. Dev is fine for selecting the B4 threshold, but not as evidence of safety.
 - **Authority spoofing separates B4 and B5 on dev:** B4 accepts 10/12 fake approval claims, B5 0/12.
-- **4-way beats binary (H1)** on this set by a wide margin once B4 is held to a comparable dev safety level.
+- **4-way vs binary (H2):** B5's success is far higher than matched B4's (87.5% vs 64.4%), but on test it is slightly
+  less safe and above the 10% deferral cap, so H2 is not yet supported by the proposal's own rule.
 - **Oracle provenance flatters every gate.** With inferred provenance, B5 over-blocks a third of legitimate calls.

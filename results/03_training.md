@@ -154,6 +154,6 @@ generalisation; the NB04 test results do ([04_learned_gates.md](04_learned_gates
 - Deviations from the proposal: **1 epoch instead of 2** (measured T4 cost) and **max length 2,560 instead of
   4,096** (T4 memory; drops 15 / 8 of 3,000 examples). Report both.
 - B4 and B5 see exactly the same 3,000 examples. They differ only in label space (and the resolution loop at
-  inference), which keeps the H1 comparison clean.
+  inference), which keeps the H2 comparison (B4 vs B5) clean.
 - The training labels are not two-annotator human labels: the 1,000 variants are rule-labelled, and the 2,000
   synthetic cases are author-labelled and reviewed by Claude. A teammate still has to spot-check them.
