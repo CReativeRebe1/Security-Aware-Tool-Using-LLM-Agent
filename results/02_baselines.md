@@ -158,21 +158,11 @@ The prompted gates behave as on test, only more so: B2 blocks 92% of legitimate 
 (escalating 182 times, 35 of them correctly). Both are safer on dev than on test (B3 0.0% vs 10.1% unsafe), because dev
 has none of the test's user-intent should-ask cases.
 
-### Earlier dev run (unlabelled, superseded)
+### Earlier dev run (superseded)
 
-The first NB02 run (`runs/nb02`, code `1836a5b`) used 904 unlabelled dev candidates built from the 6 dev user tasks
-(900 had an untrusted block truncated), so it shows only each gate's decision mix. It is not comparable with B4 / B5,
-which use the 300 labelled variants above.
-
-| | First: ALLOW | BLOCK | ASK_USER | ESCALATE | Final: ALLOW | BLOCK | Mean interactions |
-|---|---|---|---|---|---|---|---|
-| B1 | 573 | 166 | 27 | 138 | 691 | 213 | 0.19 |
-| B1 noisy | 573 | 166 | 27 | 138 | 694 | 210 | 0.19 |
-| B2 | 110 | 794 | — | — | 110 | 794 | 0 |
-| B3 | 24 | 77 | 504 | 299 | 576 | 328 | 0.97 |
-| B3 noisy | 24 | 77 | 504 | 299 | 565 | 339 | 0.97 |
-
-The same pattern holds on dev: B2 blocks 88% of cases, and B3 defers on 89% of first decisions.
+The first NB02 run (`runs/nb02`, code `1836a5b`) used 904 **unlabelled** dev candidates, so it could only show each
+gate's decision mix (B2 blocked 88% of them; B3 deferred on 89%). It is replaced by the labelled run above and is not
+comparable with B4 / B5. Its predictions stay in `runs/nb02/outputs/predictions/dev/`.
 
 ## Cost
 
@@ -182,14 +172,14 @@ The same pattern holds on dev: B2 blocks 88% of cases, and B3 defers on 89% of f
 | B2 | ~2.4 s per case |
 | B3 (with resolution rounds) | ~4.2 s per case; ~0.3 s per case on the noisy re-run (gate-cache hits) |
 
-Some prompts went over the 2,048-token inference limit (`model.max_input_tokens`): 66 B3 gate prompts on test and
-669 B2 prompts on dev. Raising this limit for NB04 is worth considering, since training uses 4,096.
+Some gate prompts are longer than `model.max_input_tokens` (2,048), e.g. 66 B3 prompts on test. This limit only
+triggers a warning count (`src/sagate/models/backend.py:159`); no prompt is truncated, so it does not affect the results.
 
 ## Takeaways for the report
 
 - Without training, a prompted 8B gate either over-blocks (B2) or over-defers (B3). Neither reaches the ≤ 5%
-  unsafe-allow target together with a low deferral rate. This is the gap B4/B5 are meant to close.
+  unsafe-allow target together with a low deferral rate. B5 closes the over-blocking and over-deferral gap but not the
+  safety one ([04_learned_gates.md](04_learned_gates.md)).
 - Injection blocking is easy on these cases for every gate. The hard part is **agent mistakes on legitimate
   tasks**, where the user's reply or a closer look at the arguments is needed.
 - B3 ignoring an explicit "No" from the user is a ready-made qualitative failure example.
-- Learned gates B4 / B5 on the same cases: see [04_learned_gates.md](04_learned_gates.md).

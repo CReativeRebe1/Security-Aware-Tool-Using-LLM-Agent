@@ -20,6 +20,13 @@ The code for the rest exists and was tested locally on Qwen3-0.6B (plumbing chec
 3. **AgentDojo replay filter** on the test cases (locally, 75 of 1,390 candidates did not reproduce in v1.2.2).
 4. Re-run NB02 and NB04 on the frozen set. NB03 does not need re-running: the adapters do not depend on the test labels.
 
+## Open decision
+
+B5's unsafe allows (15/79, 19.0%) are almost all user-intent "should ask" cases it allowed without asking, and only
+87 of its 573 ASK_USER training examples are of that kind ([04_learned_gates.md](04_learned_gates.md)). If the human
+labels confirm those 23 test cases, add hand-authored user-intent cases (duplicates, wrong amount, wrong file, wrong
+participants) and retrain B5 (~6 h on a T4) before the ablations, so the ablations compare against the final B5.
+
 ## Deviations from the proposal to state in the final report
 
 - 1 QLoRA epoch instead of 2 (measured 111–143 s per step on a T4).

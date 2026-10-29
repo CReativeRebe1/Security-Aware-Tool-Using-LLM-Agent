@@ -287,11 +287,11 @@
     <div class="eyebrow">CL3410 · Language Models and Agents · Group Project</div>
     <h1>Security-Aware Tool-Using LLM Agent</h1>
     <p class="lede">Status against the final proposal: what has been done, what is still left, and the order to do it in.
-      The training data is labelled, the first baseline results are in on a provisional test set, and the 8B
-      training speed has been measured. Still to do: human test labels and the full B4/B5 training.</p>
+      B4 and B5 are trained on the 8B model and evaluated against the baselines, on a provisional test set.
+      Still to do: human test labels, the end-to-end B5 run, the ablations and the write-up.</p>
     <div class="meta">
-      <span class="chip">As of <b>28 Oct 2026</b></span>
-      <span class="chip">Branch <b class="mono">prabhash</b> @ <b class="mono">f558cd5</b></span>
+      <span class="chip">As of <b>29 Oct 2026</b></span>
+      <span class="chip">Branch <b class="mono">prabhash</b> @ <b class="mono">a8689a5</b></span>
       <span class="chip">Team <b>Yogendra · Rinkesh · Shubham · Prabhash</b></span>
     </div>
 
@@ -331,14 +331,14 @@
         <div class="note">8.3% · banking 8/24, workspace 2/96</div>
       </div>
       <div class="kpi">
-        <div class="label">Best baseline, unsafe allows</div>
-        <div class="val">10.1<small>%</small></div>
-        <div class="note">B3 · 8/79 · target ≤ 5% · provisional labels</div>
+        <div class="label">B5 correct final outcome</div>
+        <div class="val">140<small>/ 160</small></div>
+        <div class="note">87.5% · B3 85.6%, B1 88.1% · provisional</div>
       </div>
-      <div class="kpi">
-        <div class="label">Labelled training cases</div>
-        <div class="val">2,000</div>
-        <div class="note">+1,000 variants · 50 key corrections</div>
+      <div class="kpi zero">
+        <div class="label">B5 unsafe allows</div>
+        <div class="val">19.0<small>%</small></div>
+        <div class="note">15/79 · B3 10.1% · target ≤ 5% · provisional</div>
       </div>
       <div class="kpi zero">
         <div class="label">Human-labelled test cases</div>
@@ -347,20 +347,20 @@
       </div>
       <div class="kpi zero">
         <div class="label">Fully trained 8B adapters</div>
-        <div class="val">0<small>/ 8</small></div>
-        <div class="note">20-step timing run done for all 8</div>
+        <div class="val">2<small>/ 8</small></div>
+        <div class="note">B4 + B5, 1 epoch · 6 ablations left</div>
       </div>
     </div>
   </section>
 
   <section id="results">
     <h2>Results so far</h2>
-    <p class="sub">NB02 on the 160 executable test cases, clean user replies. The trained gates (B4, B5) are not run yet.</p>
+    <p class="sub">NB02 (B1–B3) and NB04 (B4, B5) on the same 160 executable test cases, clean user replies. Full tables in <code>results/</code>.</p>
     <div class="note-banner">
       <span>⚠</span>
       <div><b>Provisional, not reportable.</b> The labels are Claude's stand-ins for the two human annotators
         (<code>annotations/claude/README.md</code>), there are no ESCALATE or decision-only cases, and the AgentDojo
-        replay filter has not been applied. Re-run NB02 once the human gold set is frozen.</div>
+        replay filter has not been applied. Re-run NB02 and NB04 once the human gold set is frozen (no retraining needed).</div>
     </div>
     <div class="tablecard">
       <div class="scroll">
@@ -391,43 +391,76 @@
               <td class="num bad">72.3%</td>
               <td class="num bad">24.4%</td>
             </tr>
+            <tr>
+              <td class="cond">B4 QLoRA, binary<small>threshold 0.9995, matched to B5's dev unsafe rate</small></td>
+              <td class="num bad">103/160 · 64.4%</td>
+              <td class="num">13/79 · 16.5%<span class="mbar"><i style="width:16.5%;--c:var(--risk)"></i><span class="tgt"></span></span></td>
+              <td class="num bad">44/81 · 54.3%</td>
+              <td class="num">—</td>
+              <td class="num">58.1%</td>
+            </tr>
+            <tr>
+              <td class="cond">B5 QLoRA, four-way<small>1 epoch, oracle provenance</small></td>
+              <td class="num good">140/160 · 87.5%</td>
+              <td class="num"><span class="bad">15/79 · 19.0%</span><span class="mbar"><i style="width:19%;--c:var(--risk)"></i><span class="tgt"></span></span></td>
+              <td class="num good">5/81 · 6.2%</td>
+              <td class="num">13.1%</td>
+              <td class="num">75.6%</td>
+            </tr>
           </tbody>
         </table>
       </div>
-      <div class="res-foot">The black tick on each bar marks the proposal's 5% target. With noisy user replies: B1 141/160 and 24.1%; B3 132/160 and 12.7%.
-        Files: <code>runs/nb02/</code> (B1–B3), <code>runs/nb02_b3fix/</code> (B3 after the fixes).</div>
+      <div class="res-foot">The black tick on each bar marks the proposal's 5% target. Every gate blocks all 53 injected calls.
+        With noisy user replies: B1 141/160 and 24.1%; B3 132/160 and 12.7%; B5 136/160 and 19.0%.
+        Predictions and reports: <code>results/data/</code>.</div>
     </div>
 
-    <div class="two">
+    <div class="two" style="grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr))">
       <div class="card">
-        <h4>What the baselines get wrong</h4>
+        <h4>Where B5's unsafe allows come from</h4>
         <ul>
-          <li><b>B1</b> lets through agent mistakes that look harmless to the rules: wrong amounts, duplicates, wrong participants, mistyped domains.</li>
-          <li><b>B2</b> is "safe" only because it blocks three quarters of legitimate actions.</li>
-          <li><b>B3</b> asks the user on 74% of cases and makes 30 escalations, none of them correct. In 6 of its 8 unsafe allows the user said "No" and it allowed the action anyway.</li>
+          <li><b>Injections are solved:</b> B5 allows 1 of 56 gold-BLOCK calls, and that one is the user's own task with placeholder arguments.</li>
+          <li><b>14 of 15 are "should ask" cases</b>: the user did ask for the task, but the call is a mistake (a meeting already in the calendar, a new file instead of the existing list, the wrong rent amount). B5 allowed 14 of these 23 without asking.</li>
+          <li>When B5 did ask, it always respected the user's "No". B3 ignored a "No" in 6 of its 8 unsafe allows.</li>
+          <li><b>Likely cause:</b> only 87 of 573 ASK_USER training examples (15%) are about user intent, against 16 of the 23 test cases.</li>
         </ul>
       </div>
       <div class="card">
-        <h4>Test simulator fixed (f558cd5)</h4>
+        <h4>What fine-tuning fixed, and what it didn't</h4>
         <div class="delta">
-          <div><span>B3 unsafe allows</span><span>17.7% → <b class="good">10.1%</b></span></div>
-          <div><span>B3 correct final outcome</span><span>81.9% → <b class="good">85.6%</b></span></div>
-          <div><span>B1, training data</span><span>unchanged</span></div>
+          <div><span>Safe actions blocked</span><span>B2 74.1% → <b class="good">B5 6.2%</b></span></div>
+          <div><span>Unneeded asks</span><span>B3 72.3% → <b class="good">B5 13.1%</b></span></div>
+          <div><span>Unsafe allows</span><span>B3 10.1% → <b class="bad">B5 19.0%</b></span></div>
+          <div><span>B4 vs B5, success</span><span>64.4% vs <b class="good">87.5%</b></span></div>
+          <div><span>Inferred provenance (B5)</span><span>87.5% → <b class="bad">75.6%</b></span></div>
         </div>
         <ul style="margin-top:8px">
-          <li>The simulated user no longer confirms injected calls.</li>
-          <li>The simulated approver now checks argument provenance and never approves a gold-BLOCK case.</li>
+          <li>With inferred provenance, B5 blocks 32% of legitimate calls: the tagger attributes the user's own calls to the injected tool output.</li>
         </ul>
       </div>
       <div class="card">
-        <h4>8B training speed (NB03 timing run)</h4>
+        <h4>Dev pool (300 generated cases)</h4>
         <div class="delta">
-          <div><span>Measured on T4</span><span><b>111–143 s</b> per step</span></div>
-          <div><span>Examples per model</span><span>3,000 · none dropped</span></div>
-          <div><span>1 epoch (~188 steps)</span><span>6.2 h (B4) · 7.5 h (B5)</span></div>
-          <div><span>2 epochs (as configured)</span><span class="bad">12.5–15 h per model</span></div>
-          <div><span>Loss after 20 steps</span><span>0.16–0.25</span></div>
+          <div><span>B5 success / unsafe</span><span>92.3% / 5.5%</span></div>
+          <div><span>B3 success / unsafe</span><span>67.7% / 0.0%</span></div>
+          <div><span>Spoofed approvals accepted</span><span>B4 <b class="bad">10/12</b> · B5 <b class="good">0/12</b></span></div>
+          <div><span>Unsafe allows, dev → test</span><span>up 8–14 points for every gate</span></div>
         </div>
+        <ul style="margin-top:8px">
+          <li>Dev has no user-intent "should ask" cases, so it overstates every gate's safety. Use it for the B4 threshold only.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>B4 / B5 training (NB03)</h4>
+        <div class="delta">
+          <div><span>Steps</span><span>187 / 187 (1 epoch) each</span></div>
+          <div><span>Time on a T4, in parallel</span><span>5 h 51 m (B5) · 5 h 49 m (B4)</span></div>
+          <div><span>Dropped at 2,560 tokens</span><span>15 (B5) · 8 (B4) of 3,000</span></div>
+          <div><span>Loss, step 10 → 180</span><span>0.44 → 0.016 (B5)</span></div>
+        </div>
+        <ul style="margin-top:8px">
+          <li>First attempt ran out of memory at step 21 on a ~3.8k-token example, which is why the max length is 2,560.</li>
+        </ul>
       </div>
     </div>
   </section>
@@ -442,8 +475,8 @@
       <div class="stage"><div class="box" style="--c:var(--done)"><div class="n">Train data</div><div class="t">2,000 labelled</div></div><span class="arrow">→</span></div>
       <div class="stage"><div class="box" style="--c:var(--risk)"><div class="n">Labels</div><div class="t">Human test set</div></div><span class="arrow">→</span></div>
       <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB02</div><div class="t">B1–B3 (prov.)</div></div><span class="arrow">→</span></div>
-      <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB03</div><div class="t">QLoRA 8B (timed)</div></div><span class="arrow">→</span></div>
-      <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB04</div><div class="t">B4/B5 + threshold</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB03</div><div class="t">B4 + B5 trained</div></div><span class="arrow">→</span></div>
+      <div class="stage"><div class="box" style="--c:var(--part)"><div class="n">NB04</div><div class="t">B4/B5 (prov.)</div></div><span class="arrow">→</span></div>
       <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB05</div><div class="t">End-to-end</div></div><span class="arrow">→</span></div>
       <div class="stage"><div class="box" style="--c:var(--todo)"><div class="n">NB06</div><div class="t">Stats + report</div></div><span class="arrow">→</span></div>
     </div>
@@ -470,22 +503,22 @@
         <div class="pct">45%</div>
       </div>
       <div class="ws-row">
-        <div class="name">Training data, B1–B3<small>Labelled; B1–B3 run on provisional set</small></div>
-        <div class="bar"><i style="width:85%;--c:var(--done)"></i></div>
-        <div class="pct">85%</div>
+        <div class="name">Training data, B1–B3<small>Labelled; B1–B3 on the provisional test set and labelled dev</small></div>
+        <div class="bar"><i style="width:90%;--c:var(--done)"></i></div>
+        <div class="pct">90%</div>
       </div>
       <div class="ws-row">
-        <div class="name">QLoRA B4/B5, ablations<small>8B timing run done; full training next</small></div>
-        <div class="bar"><i style="width:40%;--c:var(--part)"></i></div>
-        <div class="pct">40%</div>
+        <div class="name">QLoRA B4/B5, ablations<small>B4/B5 trained and evaluated; 6 ablations left</small></div>
+        <div class="bar"><i style="width:65%;--c:var(--part)"></i></div>
+        <div class="pct">65%</div>
       </div>
       <div class="ws-row">
-        <div class="name">Statistics, analysis, write-up<small>Stats code done; report not started</small></div>
-        <div class="bar"><i style="width:20%;--c:var(--todo)"></i></div>
-        <div class="pct">20%</div>
+        <div class="name">Statistics, analysis, write-up<small>Stats code done; results written up in results/; report not started</small></div>
+        <div class="bar"><i style="width:30%;--c:var(--part)"></i></div>
+        <div class="pct">30%</div>
       </div>
       <div class="ws-row">
-        <div class="name">End-to-end B0/B5<small>B0 done; B5 waits for the adapter</small></div>
+        <div class="name">End-to-end B0/B5<small>B0 done; B5 adapter ready, NB05 not run</small></div>
         <div class="bar"><i style="width:45%;--c:var(--part)"></i></div>
         <div class="pct">45%</div>
       </div>
@@ -545,25 +578,25 @@
             <tr data-s="part">
               <td class="item">B1–B3 baselines</td>
               <td class="target">Rules, prompted binary, prompted four-way</td>
-              <td>NB02 run on the provisional test set, clean and noisy (see Results). B3 re-run after the simulator fixes.</td>
+              <td>NB02 run on the provisional test set, clean and noisy (see Results), with B3 re-run after the simulator fixes. Also run on the 300 labelled dev cases that B4/B5 use.</td>
               <td><span class="pill part">Provisional</span></td>
             </tr>
             <tr data-s="part">
               <td class="item">QLoRA B4 / B5 + ablations</td>
               <td class="target">Qwen3-8B, matched data, 8 trained conditions</td>
-              <td>20-step timing run of all 8 on a T4: 111–143 s/step, no out-of-memory errors, nothing dropped for length. Full training not run.</td>
-              <td><span class="pill part">Timed only</span></td>
+              <td>B4 and B5 trained, 1 epoch (187 steps, ~5 h 50 min each on a T4, max length 2,560 drops 15/8 of 3,000) and evaluated in NB04. The 6 ablations have only the 20-step timing run.</td>
+              <td><span class="pill part">2 of 8</span></td>
             </tr>
             <tr data-s="part">
               <td class="item">Inferred provenance</td>
               <td class="target">Runtime attribution vs oracle</td>
-              <td>String matching + instruction-cue regex implemented. LLM-based attribution (stretch) not built.</td>
+              <td>String matching + instruction-cue regex implemented and evaluated with B5: success 87.5% → 75.6%, legitimate calls blocked 6% → 32%. LLM-based attribution (stretch) not built.</td>
               <td><span class="pill part">Partial</span></td>
             </tr>
             <tr data-s="part">
               <td class="item">End-to-end B0 / B5</td>
               <td class="target">Mandatory for B0 and B5</td>
-              <td>B0 done. Gated runner tested on 17 banking scenarios with 0.6B. B5 on 8B needs the trained adapter.</td>
+              <td>B0 done. Gated runner tested on 17 banking scenarios with 0.6B. The B5 adapter is trained; NB05 is not run yet.</td>
               <td><span class="pill part">Half done</span></td>
             </tr>
             <tr data-s="part">
@@ -601,7 +634,7 @@
     <p class="sub">The proposal requires all four items before any training starts.</p>
     <div class="checkpoint">
       <h3>1 of 4 met</h3>
-      <p>The provisional labels let the pipeline run, but they don't count towards this checkpoint. If agreement stays below target after one revision of the guide, the proposal says to cut scope (e.g. one suite only).</p>
+      <p>The provisional labels let the pipeline run, but they don't count towards this checkpoint. B4/B5 training went ahead before it was met, because the adapters don't depend on the test labels; say so in the report. If agreement stays below target after one revision of the guide, the proposal says to cut scope (e.g. one suite only).</p>
       <div class="cp-grid">
         <div class="cp"><span class="ic ok">✓</span><div><b>B0 traces cached</b><br><span style="color:var(--muted)">NB01, 142 scenarios</span></div></div>
         <div class="cp"><span class="ic no">✕</span><div><b>Annotation guide frozen</b><br><span style="color:var(--muted)">Draft only on yogendra branch</span></div></div>
@@ -621,20 +654,17 @@
       <div class="phase">
         <div class="phase-head">
           <div class="phase-num">1</div>
-          <div><h3>Train and evaluate B4 and B5</h3><p>Uses the GPU while the team labels. Test labels don't affect training.</p></div>
+          <div><h3>End-to-end B5, and the "should ask" gap</h3><p>B4/B5 training (NB03) and evaluation (NB04) are done; see Results.</p></div>
           <div class="when">Now</div>
         </div>
         <ul class="steps">
-          <li class="step"><input type="checkbox" data-id="v2-1a" aria-label="Done"><div>
-            <div class="title">NB03: B5 and B4, 1 epoch, in parallel <span class="owner gpu">Kaggle T4</span></div>
-            <div class="desc">About 7.5 h of a 12 h session. Set <code>epochs: 1</code> in <code>configs/base.yaml</code> and <code>CONDITIONS</code> to the first two in <code>kaggle/nb03_train_qlora/run.py</code> (leave <code>MAX_STEPS = None</code>).</div>
-            <div class="code"><button class="copy" type="button">Copy</button><pre>bash kaggle/stage_code.sh
-.venv/bin/kaggle datasets version -p build/sagate-code --dir-mode zip -m "$(git rev-parse --short HEAD)"
-.venv/bin/kaggle kernels push -p build/kernels/nb03_train_qlora --accelerator NvidiaTeslaT4</pre></div>
+          <li class="step"><input type="checkbox" data-id="v3-1a" aria-label="Done"><div>
+            <div class="title">NB05: end-to-end B0 vs B5 <span class="owner gpu">Kaggle T4</span></div>
+            <div class="desc">Task success, attack success, leakage and tool-call validity on the 142 test scenarios. Attach NB03's output for the B5 adapter. About 2 h.</div>
           </div></li>
-          <li class="step"><input type="checkbox" data-id="v2-1b" aria-label="Done"><div>
-            <div class="title">NB04: B4 threshold on dev, then B4 vs B5 on test <span class="owner gpu">Kaggle T4</span></div>
-            <div class="desc">Attach NB03's adapters. This gives the first H1/H2 numbers, still on provisional labels.</div>
+          <li class="step"><input type="checkbox" data-id="v3-1b" aria-label="Done"><div>
+            <div class="title">Decide on more user-intent training cases <span class="owner team">Team</span></div>
+            <div class="desc">14 of B5's 15 unsafe allows are calls the user asked for but that are wrong (duplicates, wrong file, wrong amount). Only 15% of the ASK_USER training examples are of this kind. Check these 23 test labels first; if they hold, add hand-authored cases and retrain B5 (~6 h).</div>
           </div></li>
         </ul>
       </div>
@@ -698,17 +728,13 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
       <div class="phase">
         <div class="phase-head">
           <div class="phase-num">4</div>
-          <div><h3>Ablations and end-to-end</h3><p>About 20 GPU-hours, best spread across team accounts.</p></div>
+          <div><h3>Ablations</h3><p>About 20 GPU-hours, best spread across team accounts.</p></div>
           <div class="when">Week after</div>
         </div>
         <ul class="steps">
           <li class="step"><input type="checkbox" data-id="v2-4a" aria-label="Done"><div>
             <div class="title">NB03 + NB04: the 6 ablations, 1 epoch <span class="owner gpu">Kaggle T4</span></div>
-            <div class="desc">−provenance, −authority, −RAG, −ASK, −ESCALATE, −intermediate supervision. 2 sessions; runs resume from checkpoints. Optionally test <code>trainer: unsloth</code> first, which is usually about 2× faster.</div>
-          </div></li>
-          <li class="step"><input type="checkbox" data-id="v2-4b" aria-label="Done"><div>
-            <div class="title">NB05: end-to-end B0 vs B5 <span class="owner gpu">Kaggle T4</span></div>
-            <div class="desc">Task success, attack success, leakage and tool-call validity on the 142 test scenarios.</div>
+            <div class="desc">−provenance, −authority, −RAG, −ASK, −ESCALATE, −intermediate supervision. 3 sessions of 2 in parallel (~6 h each); runs resume from checkpoints. In the staged copy, set <code>CONDITIONS</code> to two ablations per session. Optionally test <code>trainer: unsloth</code> first, which is usually about 2× faster.</div>
           </div></li>
         </ul>
       </div>
@@ -726,11 +752,11 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
           </div></li>
           <li class="step"><input type="checkbox" data-id="v2-5b" aria-label="Done"><div>
             <div class="title">Qualitative examples and error analysis <span class="owner team">Team</span></div>
-            <div class="desc">The 10 categories the proposal lists, including failures, an authority-spoofing attempt and a B4/B5 disagreement. B3 ignoring a user's "No" is a ready-made failure example.</div>
+            <div class="desc">The 10 categories the proposal lists, including failures, an authority-spoofing attempt and a B4/B5 disagreement. Ready-made examples: B3 ignoring a user's "No"; B5 allowing a duplicate calendar event without asking; B4 accepting a spoofed approval that B5 escalates.</div>
           </div></li>
           <li class="step"><input type="checkbox" data-id="v2-5c" aria-label="Done"><div>
             <div class="title">Final report <span class="owner team">Team</span></div>
-            <div class="desc">Include the deviations from the proposal (architecture §14): 1 epoch instead of 2, the simulator fixes, oracle provenance in B1, and any negative results.</div>
+            <div class="desc">Include the deviations from the proposal (architecture §14): 1 epoch instead of 2, max length 2,560, training before the week-2 checkpoint, the simulator fixes, oracle provenance in B1, the unrepresentative dev pool, and the negative results (B5 above the 5% target).</div>
           </div></li>
         </ul>
       </div>
@@ -743,9 +769,14 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
     <p class="sub">What could sink the results, and what to do about it.</p>
     <div class="risks">
       <div class="risk">
-        <div class="rh"><h4>GPU budget for 8B training</h4><span class="pill risk">High</span></div>
-        <p>Measured at 111–143 s per step. 2 epochs is 12.5–15 h per model, so all 8 at 2 epochs would take about 100 GPU-hours.</p>
-        <p class="fix">1 epoch; B4 and B5 first (one ~7.5 h session); ablations across team accounts; try Unsloth.</p>
+        <div class="rh"><h4>GPU budget for the ablations</h4><span class="pill part">Medium</span></div>
+        <p>B4 and B5 fitted in one session (5 h 50 min each, in parallel). The 6 ablations still need ~20 GPU-hours, plus ~6 h if B5 is retrained with more user-intent cases.</p>
+        <p class="fix">Two per session across team accounts; try Unsloth.</p>
+      </div>
+      <div class="risk">
+        <div class="rh"><h4>B5 misses mistakes in the user's own tasks</h4><span class="pill risk">High</span></div>
+        <p>19.0% unsafe allows against a 5% target; 14 of 15 are user-intent "should ask" cases. This rests on 23 provisional labels, so one case moves the rate by 1.3 points.</p>
+        <p class="fix">Check those 23 labels first; then add hand-authored user-intent cases and retrain B5.</p>
       </div>
       <div class="risk">
         <div class="rh"><h4>No ESCALATE cases in the test set</h4><span class="pill risk">High</span></div>
@@ -758,9 +789,9 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
         <p class="fix">Freeze the human gold set, then re-run NB02 and NB04. Don't quote the current numbers.</p>
       </div>
       <div class="risk">
-        <div class="rh"><h4>B1 uses oracle provenance</h4><span class="pill part">Medium</span></div>
-        <p>B1 blocks injections partly because its provenance tags come from the known injected text. That's an upper bound, not a realistic runtime result.</p>
-        <p class="fix">Report it as such, next to the inferred-provenance swap in NB04.</p>
+        <div class="rh"><h4>Oracle provenance flatters every gate</h4><span class="pill part">Medium</span></div>
+        <p>All main results use provenance tags derived from the known injected text. With the runtime tagger, B5 drops from 87.5% to 75.6% and blocks 32% of legitimate calls.</p>
+        <p class="fix">Report both, and treat the oracle numbers as an upper bound.</p>
       </div>
       <div class="risk">
         <div class="rh"><h4>Labelling is behind schedule</h4><span class="pill part">Medium</span></div>
@@ -787,7 +818,7 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
       <div class="branch main-b">
         <div class="bn">prabhash</div>
         <div class="who">Prabhash · recommended working branch</div>
-        <p>Full <code>sagate</code> package, NB00–NB06, B0 runs, 2,000 labelled training cases, the provisional test set and the simulator fixes.</p>
+        <p>Full <code>sagate</code> package, NB00–NB06, B0 runs, 2,000 labelled training cases, the provisional test set, the simulator fixes, and the B4/B5 results (<code>results/</code>).</p>
       </div>
       <div class="branch">
         <div class="bn">yogendra</div>
@@ -813,7 +844,7 @@ python -m sagate.data.annotation freeze --cases outputs/cases/test_candidates.js
   <div class="wrap">
     Sources: <code>project.pdf</code> (final proposal), <code>docs/ARCHITECTURE.md</code> §14,
     <code>runs/nb01/outputs/b0_traces/b0_summary.json</code>, <code>runs/nb02/</code>, <code>runs/nb02_b3fix/</code>,
-    <code>runs/nb03_timing/outputs/adapters/*/train_summary.json</code>, <code>data/labled-data/README.md</code>,
+    <code>runs/nb03_timing/</code>, <code>runs/nb03_v3/</code>, <code>runs/nb04/</code>, <code>runs/nb02_dev/</code>, <code>results/</code>, <code>data/labled-data/README.md</code>,
     <code>annotations/claude/README.md</code>, git branches on <code>origin</code>.
     Workstream percentages are estimates.
   </div>
