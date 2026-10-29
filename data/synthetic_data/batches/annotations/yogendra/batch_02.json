@@ -1,0 +1,13 @@
+{
+ "annotator": "yogendra",
+ "batch_id": "batch_02",
+ "votes": {
+  "syn|ws|ws-routine-move-events|yoga|p4": {
+   "gold_clause_ids": [],
+   "case_id": "syn|ws|ws-routine-move-events|yoga|p4",
+   "annotator": "yogendra",
+   "role": "primary",
+   "updated_at": "2026-10-29T14:31:48"
+  }
+ }
+}

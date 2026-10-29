@@ -4,118 +4,204 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gate Labelling</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236366f1' d='M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header id="top">
-    <span class="brand">Gate Labelling</span>
-    <span id="who" class="who" title="Your votes are saved under this name">—</span>
-    <button id="btnWho" class="link">change</button>
-    <span class="sep"></span>
-    <select id="batchSelect" title="Batch"></select>
-    <span id="roleChip" class="chip"></span>
-    <span class="sep"></span>
-    <button id="btnPrev" class="nav" title="Previous (←)">◀</button>
-    <span id="pos" class="pos">—</span>
-    <button id="btnNext" class="nav" title="Next (→ or Enter)">▶</button>
-    <button id="btnUnlabeled" title="Next incomplete (U)">next incomplete</button>
-    <span class="grow"></span>
-    <button id="btnRaw" title="Show the case as plain text (R)">raw text</button>
-    <span id="saveState" class="save">—</span>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" data-icon="shield"></span>
+      <div class="brand-text"><b>Gate Labelling</b><small>security-gate annotation</small></div>
+    </div>
+
+    <div class="batch-picker">
+      <button id="batchBtn" class="batch-btn" title="Switch batch (B)">
+        <span class="batch-name" id="batchName">—</span>
+        <span id="roleChip" class="role"></span>
+        <span class="chev" data-icon="chevron"></span>
+      </button>
+      <div id="batchMenu" class="popover hidden"></div>
+    </div>
+
+    <div class="navigator">
+      <button id="btnPrev" class="icon-btn" title="Previous (←)" data-icon="left"></button>
+      <div class="pos-wrap">
+        <svg class="ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle id="ring" class="ring-fg" cx="18" cy="18" r="15.5"/></svg>
+        <div class="pos-text"><b id="pos">—</b><small id="progress">—</small></div>
+      </div>
+      <button id="btnNext" class="icon-btn" title="Next (→ or Enter)" data-icon="right"></button>
+      <button id="btnUnlabeled" class="ghost-btn" title="Next incomplete (U)"><span data-icon="skip"></span>Next incomplete</button>
+    </div>
+
+    <div class="top-right">
+      <span id="saveState" class="save"><i></i><span>—</span></span>
+      <button id="btnPolicy" class="ghost-btn" title="Policy search (/)"><span data-icon="book"></span>Policies</button>
+      <button id="btnRaw" class="icon-btn" title="Raw text (R)" data-icon="code"></button>
+      <button id="btnTheme" class="icon-btn" title="Dark / light (D)" data-icon="moon"></button>
+      <button id="btnHelp" class="icon-btn" title="Shortcuts (?)" data-icon="help"></button>
+      <button id="btnWho" class="avatar-btn" title="Switch annotator">
+        <span id="avatar" class="avatar">?</span><span id="who" class="who">—</span>
+      </button>
+    </div>
   </header>
-  <div id="progressBar"><div id="progressFill"></div><span id="progress">—</span></div>
+  <div class="topline"><div id="progressFill"></div></div>
 
   <main id="main">
+    <!-- column 1: the case -->
     <section id="colCase" class="col">
       <div id="caseMeta" class="meta"></div>
-      <div class="card c-request"><h3>Request</h3><div id="request"></div></div>
-      <div class="card c-call"><h3>Proposed call</h3><div id="call"></div></div>
-      <div id="priorWrap" class="card c-prior"><h3>Prior calls</h3><div id="prior"></div></div>
-      <div id="resWrap" class="card c-res"><h3>Resolution history</h3><div id="resolution"></div></div>
+      <article class="card tone-blue">
+        <header><span data-icon="user"></span>User request</header>
+        <div id="request" class="request"></div>
+      </article>
+      <article class="card tone-indigo shrink-card">
+        <header><span data-icon="terminal"></span>Proposed tool call</header>
+        <div id="call" class="scroll"></div>
+      </article>
+      <article id="priorWrap" class="card tone-slate shrink-card">
+        <header><span data-icon="list"></span>Prior calls</header>
+        <div id="prior" class="scroll"></div>
+      </article>
+      <article id="resWrap" class="card tone-violet shrink-card">
+        <header><span data-icon="history"></span>Resolution history</header>
+        <div id="resolution" class="scroll"></div>
+      </article>
     </section>
 
+    <!-- column 2: evidence -->
     <section id="colEvidence" class="col">
-      <div class="card c-auth"><h3>Authority</h3><div id="authority"></div></div>
-      <div class="row2">
-        <div class="card c-sens"><h3>Sensitivity</h3><div id="sensitivity"></div></div>
-        <div class="card c-origin"><h3>Instruction origin</h3><div id="origin"></div></div>
+      <article class="card tone-purple">
+        <header><span data-icon="key"></span>Authority</header>
+        <div id="authority"></div>
+      </article>
+      <div class="duo">
+        <article class="card tone-teal">
+          <header><span data-icon="layers"></span>Sensitivity</header>
+          <div id="sensitivity"></div>
+        </article>
+        <article id="originCard" class="card tone-green">
+          <header><span data-icon="compass"></span>Instruction origin</header>
+          <div id="origin"></div>
+        </article>
       </div>
-      <div class="card c-untrusted"><h3>Untrusted content <span id="untrustedCount" class="count"></span></h3><div id="untrusted"></div></div>
-      <div class="card c-policy"><h3>Retrieved policy <span class="hint">click a clause to expand</span></h3><div id="retrieved"></div></div>
+      <article id="untrustedCard" class="card tone-amber grow-card">
+        <header><span data-icon="alert"></span>Untrusted content <em id="untrustedCount"></em></header>
+        <div id="untrusted" class="scroll"></div>
+      </article>
+      <article class="card tone-slate shrink-card">
+        <header><span data-icon="book"></span>Retrieved policy <em>click to expand</em></header>
+        <div id="retrieved" class="scroll"></div>
+      </article>
     </section>
 
-    <section id="colRaw" class="col hidden"><pre id="rawText"></pre></section>
+    <section id="colRaw" class="col hidden">
+      <article class="card tone-slate raw"><header><span data-icon="code"></span>Case as plain text</header><pre id="rawText"></pre></article>
+    </section>
 
+    <!-- column 3: the vote -->
     <section id="colVote" class="col">
-      <div id="othersWrap" class="card c-others hidden">
-        <h3>Primary votes (read-only)</h3>
+      <article id="othersWrap" class="card tone-amber hidden">
+        <header><span data-icon="users"></span>Primary votes <em>read-only</em></header>
         <div id="others"></div>
-      </div>
+      </article>
 
-      <div class="card c-vote">
-        <h3>Your vote <span id="voteState" class="state"></span></h3>
+      <article class="card vote-card">
+        <header><span data-icon="check"></span>Your vote <span id="voteState" class="state"></span></header>
         <div class="decisions" id="decisionRow">
-          <button data-decision="ALLOW" title="Enough trusted evidence; authorized"><kbd>1</kbd>ALLOW</button>
-          <button data-decision="BLOCK" title="Prohibited, injected, or declined/denied"><kbd>2</kbd>BLOCK</button>
-          <button data-decision="ASK_USER" title="The user can supply what is missing"><kbd>3</kbd>ASK_USER</button>
-          <button data-decision="ESCALATE" title="Needs a role the user does not hold"><kbd>4</kbd>ESCALATE</button>
+          <button data-decision="ALLOW"><span class="d-ico" data-icon="check"></span><span class="d-txt"><b>Allow</b><small>trusted &amp; authorized</small></span><kbd>1</kbd></button>
+          <button data-decision="BLOCK"><span class="d-ico" data-icon="x"></span><span class="d-txt"><b>Block</b><small>prohibited or injected</small></span><kbd>2</kbd></button>
+          <button data-decision="ASK_USER"><span class="d-ico" data-icon="message"></span><span class="d-txt"><b>Ask user</b><small>user can supply it</small></span><kbd>3</kbd></button>
+          <button data-decision="ESCALATE"><span class="d-ico" data-icon="up"></span><span class="d-txt"><b>Escalate</b><small>needs higher role</small></span><kbd>4</kbd></button>
         </div>
-        <div class="field">Final action
-          <span class="seg" id="finalRow">
-            <button data-final="ALLOW">ALLOW</button><button data-final="BLOCK">BLOCK</button>
-          </span>
+
+        <div class="field-row">
+          <span class="label">Final action</span>
+          <div class="switch" id="finalRow">
+            <span class="thumb"></span>
+            <button data-final="ALLOW">Allow</button><button data-final="BLOCK">Block</button>
+          </div>
         </div>
-        <div class="two">
-          <label class="field">Missing evidence <select id="missing"></select></label>
-          <label class="field">Required authority <select id="authorityReq"></select></label>
-        </div>
+        <div class="field"><span class="label">Missing evidence</span><div id="missing" class="chips"></div></div>
+        <div class="field"><span class="label">Required authority</span><div id="authorityReq" class="chips"></div></div>
+
         <div id="userReply" class="reply hidden">
-          <label class="field">User reply <input id="replyText" placeholder="What the user answers"></label>
-          <div class="line">confirms?
-            <label><input type="radio" name="confirmed" value="yes"> yes</label>
-            <label><input type="radio" name="confirmed" value="no"> no</label>
-            <span class="grow"></span>
-            <label><input type="checkbox" id="noisyOn"> noisy variant</label>
+          <div class="bubble"><span data-icon="message"></span><input id="replyText" placeholder="What does the user answer?"></div>
+          <div class="reply-row">
+            <span class="label">Confirms?</span>
+            <div class="pills" data-name="confirmed">
+              <button data-v="yes">Yes</button><button data-v="no">No</button>
+            </div>
+            <label class="toggle"><input type="checkbox" id="noisyOn"><span></span>noisy variant</label>
           </div>
           <div id="noisyWrap" class="hidden">
-            <label class="field">Noisy reply <input id="noisyText" placeholder="Wrong or unhelpful answer"></label>
-            <div class="line">noisy confirms?
-              <label><input type="radio" name="noisyConfirmed" value="yes"> yes</label>
-              <label><input type="radio" name="noisyConfirmed" value="no"> no</label>
-              <label><input type="radio" name="noisyConfirmed" value="none"> unclear</label>
+            <div class="bubble noisy"><span data-icon="shuffle"></span><input id="noisyText" placeholder="Wrong or unhelpful answer"></div>
+            <div class="reply-row">
+              <span class="label">Noisy confirms?</span>
+              <div class="pills" data-name="noisyConfirmed">
+                <button data-v="yes">Yes</button><button data-v="no">No</button><button data-v="none">Unclear</button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="field">Cited clauses <span id="cited"></span></div>
-        <label class="field">Notes <textarea id="notes" rows="2" placeholder="Optional rationale"></textarea></label>
-        <div class="line"><span class="grow"></span><button id="btnClear" class="link danger">clear my vote</button></div>
-      </div>
 
-      <div id="tabs">
-        <button data-tab="grid" class="on">cases</button>
-        <button data-tab="search">policy search <kbd>/</kbd></button>
-      </div>
-      <div id="tabGrid" class="tab">
-        <div id="grid"></div>
-        <div class="legend">
-          <span><i class="sw sw-allow"></i>ALLOW</span><span><i class="sw sw-block"></i>BLOCK</span>
-          <span><i class="sw sw-ask"></i>ASK</span><span><i class="sw sw-esc"></i>ESCALATE</span>
-          <span><i class="sw sw-part"></i>incomplete</span>
+        <div class="field"><span class="label">Cited clauses</span><div id="cited" class="cited"></div></div>
+        <div class="notes-row">
+          <textarea id="notes" rows="1" placeholder="Notes (optional)"></textarea>
+          <button id="btnClear" class="icon-btn danger" title="Clear my vote" data-icon="trash"></button>
         </div>
-      </div>
-      <div id="tabSearch" class="tab hidden">
-        <input id="q" placeholder="Search policy clauses by id, title or text">
-        <div id="results"></div>
-      </div>
+      </article>
+
+      <article class="card nav-card tone-indigo">
+        <header><span data-icon="grid"></span>Cases <em>click to jump</em></header>
+        <div id="grid"></div>
+        <div id="mix" class="mix"></div>
+      </article>
+
     </section>
   </main>
 
+
+  <div id="drawer" class="drawer-wrap hidden">
+    <aside class="drawer">
+      <header>
+        <span class="logo" data-icon="book"></span>
+        <div><b>Policy documents</b><small id="policyCount"></small></div>
+        <button id="btnCloseDrawer" class="icon-btn" title="Close (Esc)" data-icon="x"></button>
+      </header>
+      <div class="search"><span data-icon="search"></span><input id="q" placeholder="Search clauses by id, title or text"></div>
+      <div id="results" class="drawer-body"></div>
+    </aside>
+  </div>
+
+  <div id="toasts"></div>
+
   <div id="whoDialog" class="overlay hidden">
-    <div class="box">
+    <div class="modal">
+      <span class="logo big" data-icon="shield"></span>
       <h2>Who is labelling?</h2>
-      <p>Your votes are saved under this name and only you can change them.</p>
-      <div id="whoNames"></div>
+      <p>Your votes are saved under your name. Nobody else can change them, and you cannot change theirs.</p>
+      <div id="whoNames" class="people"></div>
+    </div>
+  </div>
+
+  <div id="helpDialog" class="overlay hidden">
+    <div class="modal help">
+      <h2>Keyboard shortcuts</h2>
+      <div class="keys">
+        <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></span><span>Allow · Block · Ask user · Escalate</span>
+        <span><kbd>→</kbd> / <kbd>Enter</kbd></span><span>Next case</span>
+        <span><kbd>←</kbd></span><span>Previous case</span>
+        <span><kbd>U</kbd></span><span>Next incomplete case</span>
+        <span><kbd>B</kbd></span><span>Switch batch</span>
+        <span><kbd>/</kbd></span><span>Policy documents &amp; search</span>
+        <span><kbd>R</kbd></span><span>Raw text</span>
+        <span><kbd>D</kbd></span><span>Dark / light</span>
+        <span><kbd>Esc</kbd></span><span>Leave a text field / close</span>
+      </div>
+      <p class="muted">Every change is saved immediately — first in this browser, then to your own vote file.</p>
     </div>
   </div>
 

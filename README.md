@@ -67,7 +67,8 @@ batch menu (only your batches are selectable, each shows your role and progress)
 
 - **Every change saves immediately** — to your browser first and then to your vote file. If the server is not
   running, changes wait in the browser and are sent on the next load. The status at the top right shows the state.
-- Move with **◀ ▶**, the 1–100 grid (grey = complete, yellow = started), or *next incomplete*.
+- Move with **◀ ▶**, the *Cases* grid (coloured by your decision, amber = started but incomplete), or *Next incomplete*.
+  Switch batch from the batch menu at the top left (`B`); each batch shows your role and progress.
 - A vote is **complete** when decision, final action, missing evidence and required authority are set; for
   ASK_USER also the user's reply and whether it confirms. Optionally add a noisy reply variant (about 15% of
   ASK_USER cases), cited clauses and notes.
@@ -79,17 +80,21 @@ batch menu (only your batches are selectable, each shows your role and progress)
 | missing evidence | `none`, `user_intent`, `recipient_identity`, `resource_target`, `approval`, `data_classification` |
 | required authority | `none`, `current_user`, `resource_owner`, `manager`, `security_admin` |
 | user reply | ASK_USER only: one or two sentences in the user's voice, and whether it confirms; a reply can never grant authority |
-- **Policy search** (right-hand tab, or `/`) searches every clause in `resources/handbooks/*.md`; *cite* adds a
-  clause to your vote.
+
+- **Policies** (top bar, or `/`) opens the policy documents: browse every clause in `resources/handbooks/*.md`
+  or search them; *cite* adds a clause to your vote. Hovering an argument highlights the tool output it came from.
 
 | Key | Action |
 |---|---|
 | `1` `2` `3` `4` | ALLOW / BLOCK / ASK_USER / ESCALATE |
 | `→` or `Enter`, `←` | next / previous case |
 | `U` | next incomplete case |
-| `/` | policy search |
+| `/` | policy documents and search |
+| `B` | switch batch |
 | `R` | case as plain text |
-| `Esc` | leave a text field (then the keys above work again) |
+| `D` | dark / light theme |
+| `?` | all shortcuts |
+| `Esc` | leave a text field, close a menu or panel |
 
 ## Sending your labels back
 
