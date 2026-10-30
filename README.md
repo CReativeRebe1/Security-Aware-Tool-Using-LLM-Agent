@@ -62,16 +62,21 @@ git checkout labling && git pull
 python labeling_app/server.py          # Python 3.10+, no extra packages
 ```
 
-Open **http://localhost:8080**, pick your name once (it is remembered; *change* asks first), choose a batch from the
-batch menu (only your batches are selectable, each shows your role and progress), and label.
+Open **http://localhost:8080**, pick your name once (it is remembered; click your name to switch, it asks
+first), choose a batch from the batch menu (only your batches are listed, each with your role and progress), and
+label one case at a time.
 
+- **The card** shows what the user asked, what the agent wants to do (arguments copied from content are outlined
+  amber, injected ones red) and four signals: origin, authority, data flow and arguments. `E` opens the full
+  evidence: tool outputs and the retrieved policy clauses.
+- **Decide** with the dock or `1`–`4`. ALLOW / BLOCK are done at once and move to the next unlabelled case.
+  ASK_USER / ESCALATE open a sheet for the outcome, the missing evidence, who decides and (ASK_USER) the user's
+  reply; *Done · next* (`Enter`) unlocks when the vote is complete. Your previous answers stay when you change
+  your mind.
 - **Every change saves immediately** — to your browser first and then to your vote file. If the server is not
-  running, changes wait in the browser and are sent on the next load. The status at the top right shows the state.
-- Move with **◀ ▶**, the *Cases* grid (coloured by your decision, amber = started but incomplete), or *Next incomplete*.
-  Switch batch from the batch menu at the top left (`B`); each batch shows your role and progress.
-- A vote is **complete** when decision, final action, missing evidence and required authority are set; for
-  ASK_USER also the user's reply and whether it confirms. Optionally add a noisy reply variant (about 15% of
-  ASK_USER cases), cited clauses and notes.
+  running, changes wait in the browser and are sent on the next load. The dot at the top right shows the state.
+- The strip of ticks under the top bar is the batch: coloured by your decision, amber = started; click to jump.
+- Tie-breakers see only the disputed cases, with both primary votes on the card.
 
 | Field | Meaning |
 |---|---|
@@ -81,20 +86,19 @@ batch menu (only your batches are selectable, each shows your role and progress)
 | required authority | `none`, `current_user`, `resource_owner`, `manager`, `security_admin` |
 | user reply | ASK_USER only: one or two sentences in the user's voice, and whether it confirms; a reply can never grant authority |
 
-- **Policies** (top bar, or `/`) opens the policy documents: browse every clause in `resources/handbooks/*.md`
-  or search them; *cite* adds a clause to your vote. Hovering an argument highlights the tool output it came from.
+- **Policies** (top bar, or `/`) opens the policy documents: browse every clause in `resources/handbooks/*.md` or
+  search them. *cite* (there or in the evidence) adds a clause to your vote; cited clauses and an optional note sit
+  at the bottom of the card. ASK_USER has an optional *noisy* reply variant (about 15% of ASK_USER cases).
 
 | Key | Action |
 |---|---|
 | `1` `2` `3` `4` | ALLOW / BLOCK / ASK_USER / ESCALATE |
-| `→` or `Enter`, `←` | next / previous case |
-| `U` | next incomplete case |
+| `Enter` | done, next (when the vote is complete) |
+| `→` `←` | next / previous case |
+| `U` | next unlabelled case |
+| `E` | show / hide the evidence |
 | `/` | policy documents and search |
-| `B` | switch batch |
-| `R` | case as plain text |
-| `D` | dark / light theme |
-| `?` | all shortcuts |
-| `Esc` | leave a text field, close a menu or panel |
+| `Esc` | leave a text field, close the policy panel |
 
 ## Sending your labels back
 

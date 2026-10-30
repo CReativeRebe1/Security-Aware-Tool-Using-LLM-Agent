@@ -1,210 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gate Labelling</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236366f1' d='M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="app.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gate · Focus</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='%23a78bfa'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo" data-icon="shield"></span>
-      <div class="brand-text"><b>Gate Labelling</b><small>security-gate annotation</small></div>
-    </div>
+<div class="aurora"><i></i><i></i><i></i></div>
 
-    <div class="batch-picker">
-      <button id="batchBtn" class="batch-btn" title="Switch batch (B)">
-        <span class="batch-name" id="batchName">—</span>
-        <span id="roleChip" class="role"></span>
-        <span class="chev" data-icon="chevron"></span>
-      </button>
-      <div id="batchMenu" class="popover hidden"></div>
-    </div>
+<div class="top">
+  <div class="logo"><b></b>Gate<span style="color:var(--dim);font-weight:600">focus</span></div>
+  <div class="pill"><select id="batch" title="Batch"></select><span id="role" class="role"></span></div>
+  <button class="ghost" id="btnPolicy" title="Policy documents (/)">Policies</button>
+  <div class="spacer"></div>
+  <span class="save" id="save"><i></i><span>—</span></span>
+  <div class="count"><span id="pos">–</span> <small id="done"></small></div>
+  <div class="me" id="me" title="Switch annotator"><span id="avatar">?</span><b id="who">–</b></div>
+</div>
+<div class="ticks" id="ticks"></div>
 
-    <div class="navigator">
-      <button id="btnPrev" class="icon-btn" title="Previous (←)" data-icon="left"></button>
-      <div class="pos-wrap">
-        <svg class="ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle id="ring" class="ring-fg" cx="18" cy="18" r="15.5"/></svg>
-        <div class="pos-text"><b id="pos">—</b><small id="progress">—</small></div>
-      </div>
-      <button id="btnNext" class="icon-btn" title="Next (→ or Enter)" data-icon="right"></button>
-      <button id="btnUnlabeled" class="ghost-btn" title="Next incomplete (U)"><span data-icon="skip"></span>Next incomplete</button>
-    </div>
+<div class="stage">
+  <button class="nav prev" id="prev" title="Previous (←)">‹</button>
+  <article class="card" id="card"></article>
+  <button class="nav next" id="next" title="Next (→)">›</button>
+</div>
 
-    <div class="top-right">
-      <span id="saveState" class="save"><i></i><span>—</span></span>
-      <button id="btnPolicy" class="ghost-btn" title="Policy search (/)"><span data-icon="book"></span>Policies</button>
-      <button id="btnRaw" class="icon-btn" title="Raw text (R)" data-icon="code"></button>
-      <button id="btnTheme" class="icon-btn" title="Dark / light (D)" data-icon="moon"></button>
-      <button id="btnHelp" class="icon-btn" title="Shortcuts (?)" data-icon="help"></button>
-      <button id="btnWho" class="avatar-btn" title="Switch annotator">
-        <span id="avatar" class="avatar">?</span><span id="who" class="who">—</span>
-      </button>
-    </div>
-  </header>
-  <div class="topline"><div id="progressFill"></div></div>
-
-  <main id="main">
-    <!-- column 1: the case -->
-    <section id="colCase" class="col">
-      <div id="caseMeta" class="meta"></div>
-      <article class="card tone-blue">
-        <header><span data-icon="user"></span>User request</header>
-        <div id="request" class="request"></div>
-      </article>
-      <article class="card tone-indigo shrink-card">
-        <header><span data-icon="terminal"></span>Proposed tool call</header>
-        <div id="call" class="scroll"></div>
-      </article>
-      <article id="priorWrap" class="card tone-slate shrink-card">
-        <header><span data-icon="list"></span>Prior calls</header>
-        <div id="prior" class="scroll"></div>
-      </article>
-      <article id="resWrap" class="card tone-violet shrink-card">
-        <header><span data-icon="history"></span>Resolution history</header>
-        <div id="resolution" class="scroll"></div>
-      </article>
-    </section>
-
-    <!-- column 2: evidence -->
-    <section id="colEvidence" class="col">
-      <article class="card tone-purple">
-        <header><span data-icon="key"></span>Authority</header>
-        <div id="authority"></div>
-      </article>
-      <div class="duo">
-        <article class="card tone-teal">
-          <header><span data-icon="layers"></span>Sensitivity</header>
-          <div id="sensitivity"></div>
-        </article>
-        <article id="originCard" class="card tone-green">
-          <header><span data-icon="compass"></span>Instruction origin</header>
-          <div id="origin"></div>
-        </article>
-      </div>
-      <article id="untrustedCard" class="card tone-amber grow-card">
-        <header><span data-icon="alert"></span>Untrusted content <em id="untrustedCount"></em></header>
-        <div id="untrusted" class="scroll"></div>
-      </article>
-      <article class="card tone-slate shrink-card">
-        <header><span data-icon="book"></span>Retrieved policy <em>click to expand</em></header>
-        <div id="retrieved" class="scroll"></div>
-      </article>
-    </section>
-
-    <section id="colRaw" class="col hidden">
-      <article class="card tone-slate raw"><header><span data-icon="code"></span>Case as plain text</header><pre id="rawText"></pre></article>
-    </section>
-
-    <!-- column 3: the vote -->
-    <section id="colVote" class="col">
-      <article id="othersWrap" class="card tone-amber hidden">
-        <header><span data-icon="users"></span>Primary votes <em>read-only</em></header>
-        <div id="others"></div>
-      </article>
-
-      <article class="card vote-card">
-        <header><span data-icon="check"></span>Your vote <span id="voteState" class="state"></span></header>
-        <div class="decisions" id="decisionRow">
-          <button data-decision="ALLOW"><span class="d-ico" data-icon="check"></span><span class="d-txt"><b>Allow</b><small>trusted &amp; authorized</small></span><kbd>1</kbd></button>
-          <button data-decision="BLOCK"><span class="d-ico" data-icon="x"></span><span class="d-txt"><b>Block</b><small>prohibited or injected</small></span><kbd>2</kbd></button>
-          <button data-decision="ASK_USER"><span class="d-ico" data-icon="message"></span><span class="d-txt"><b>Ask user</b><small>user can supply it</small></span><kbd>3</kbd></button>
-          <button data-decision="ESCALATE"><span class="d-ico" data-icon="up"></span><span class="d-txt"><b>Escalate</b><small>needs higher role</small></span><kbd>4</kbd></button>
-        </div>
-
-        <div class="field-row">
-          <span class="label">Final action</span>
-          <div class="switch" id="finalRow">
-            <span class="thumb"></span>
-            <button data-final="ALLOW">Allow</button><button data-final="BLOCK">Block</button>
-          </div>
-        </div>
-        <div class="field"><span class="label">Missing evidence</span><div id="missing" class="chips"></div></div>
-        <div class="field"><span class="label">Required authority</span><div id="authorityReq" class="chips"></div></div>
-
-        <div id="userReply" class="reply hidden">
-          <div class="bubble"><span data-icon="message"></span><input id="replyText" placeholder="What does the user answer?"></div>
-          <div class="reply-row">
-            <span class="label">Confirms?</span>
-            <div class="pills" data-name="confirmed">
-              <button data-v="yes">Yes</button><button data-v="no">No</button>
-            </div>
-            <label class="toggle"><input type="checkbox" id="noisyOn"><span></span>noisy variant</label>
-          </div>
-          <div id="noisyWrap" class="hidden">
-            <div class="bubble noisy"><span data-icon="shuffle"></span><input id="noisyText" placeholder="Wrong or unhelpful answer"></div>
-            <div class="reply-row">
-              <span class="label">Noisy confirms?</span>
-              <div class="pills" data-name="noisyConfirmed">
-                <button data-v="yes">Yes</button><button data-v="no">No</button><button data-v="none">Unclear</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="field"><span class="label">Cited clauses</span><div id="cited" class="cited"></div></div>
-        <div class="notes-row">
-          <textarea id="notes" rows="1" placeholder="Notes (optional)"></textarea>
-          <button id="btnClear" class="icon-btn danger" title="Clear my vote" data-icon="trash"></button>
-        </div>
-      </article>
-
-      <article class="card nav-card tone-indigo">
-        <header><span data-icon="grid"></span>Cases <em>click to jump</em></header>
-        <div id="grid"></div>
-        <div id="mix" class="mix"></div>
-      </article>
-
-    </section>
-  </main>
-
-
-  <div id="drawer" class="drawer-wrap hidden">
-    <aside class="drawer">
-      <header>
-        <span class="logo" data-icon="book"></span>
-        <div><b>Policy documents</b><small id="policyCount"></small></div>
-        <button id="btnCloseDrawer" class="icon-btn" title="Close (Esc)" data-icon="x"></button>
-      </header>
-      <div class="search"><span data-icon="search"></span><input id="q" placeholder="Search clauses by id, title or text"></div>
-      <div id="results" class="drawer-body"></div>
-    </aside>
+<div class="dock-wrap">
+  <div class="sheet hidden" id="sheet"></div>
+  <div class="dock" id="dock">
+    <button class="ALLOW" data-d="ALLOW"><span class="ic">✓</span><b>Allow</b><kbd>1</kbd></button>
+    <button class="BLOCK" data-d="BLOCK"><span class="ic">✕</span><b>Block</b><kbd>2</kbd></button>
+    <button class="ASK_USER" data-d="ASK_USER"><span class="ic">?</span><b>Ask user</b><kbd>3</kbd></button>
+    <button class="ESCALATE" data-d="ESCALATE"><span class="ic">↑</span><b>Escalate</b><kbd>4</kbd></button>
   </div>
+  <div class="hint"><kbd>1</kbd>–<kbd>4</kbd> decide · <kbd>←</kbd><kbd>→</kbd> move · <kbd>U</kbd> next unlabelled · <kbd>E</kbd> evidence · <kbd>/</kbd> policies · <kbd>Enter</kbd> done</div>
+</div>
 
-  <div id="toasts"></div>
+<div class="drawer-wrap hidden" id="drawer">
+  <aside class="drawer">
+    <h3>Policy documents <small id="polCount"></small><button class="ghost" id="closeDrawer">Close</button></h3>
+    <input class="search" id="q" placeholder="Search clauses by id, title or text">
+    <div class="results" id="results"></div>
+  </aside>
+</div>
 
-  <div id="whoDialog" class="overlay hidden">
-    <div class="modal">
-      <span class="logo big" data-icon="shield"></span>
-      <h2>Who is labelling?</h2>
-      <p>Your votes are saved under your name. Nobody else can change them, and you cannot change theirs.</p>
-      <div id="whoNames" class="people"></div>
-    </div>
-  </div>
+<div class="overlay hidden" id="whoDlg"><div class="modal"><h2>Who's labelling?</h2>
+  <p>Your votes are saved under your name. Nobody else can change them, and you can't change theirs.</p>
+  <div class="people" id="people"></div></div></div>
 
-  <div id="helpDialog" class="overlay hidden">
-    <div class="modal help">
-      <h2>Keyboard shortcuts</h2>
-      <div class="keys">
-        <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></span><span>Allow · Block · Ask user · Escalate</span>
-        <span><kbd>→</kbd> / <kbd>Enter</kbd></span><span>Next case</span>
-        <span><kbd>←</kbd></span><span>Previous case</span>
-        <span><kbd>U</kbd></span><span>Next incomplete case</span>
-        <span><kbd>B</kbd></span><span>Switch batch</span>
-        <span><kbd>/</kbd></span><span>Policy documents &amp; search</span>
-        <span><kbd>R</kbd></span><span>Raw text</span>
-        <span><kbd>D</kbd></span><span>Dark / light</span>
-        <span><kbd>Esc</kbd></span><span>Leave a text field / close</span>
-      </div>
-      <p class="muted">Every change is saved immediately — first in this browser, then to your own vote file.</p>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
