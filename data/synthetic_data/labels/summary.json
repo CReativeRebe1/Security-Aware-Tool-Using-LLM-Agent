@@ -1,0 +1,52 @@
+{
+ "phase_1": {
+  "batches": [
+   "batch_02",
+   "batch_03",
+   "batch_04",
+   "batch_05",
+   "batch_06",
+   "batch_11",
+   "batch_12",
+   "batch_13",
+   "batch_17",
+   "batch_18"
+  ],
+  "cases": 1000,
+  "unlabeled": 992,
+  "partial": 8,
+  "agreed": 0,
+  "disputed": 0,
+  "cannot_label": 0,
+  "finished": false
+ },
+ "phase_2": {
+  "batches": [
+   "batch_01",
+   "batch_07",
+   "batch_08",
+   "batch_09",
+   "batch_10",
+   "batch_14",
+   "batch_15",
+   "batch_16",
+   "batch_19",
+   "batch_20"
+  ],
+  "cases": 1000,
+  "unlabeled": 1000,
+  "partial": 0,
+  "agreed": 0,
+  "disputed": 0,
+  "cannot_label": 0,
+  "finished": false
+ },
+ "combined": {
+  "cases": 2000,
+  "unlabeled": 1992,
+  "partial": 8,
+  "agreed": 0,
+  "disputed": 0,
+  "cannot_label": 0
+ }
+}

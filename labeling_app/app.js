@@ -40,9 +40,11 @@ async function setWho(n) {
   S.who = n; put(KEY.who, n);
   $('who').textContent = n; $('avatar').textContent = n[0].toUpperCase();
   const batches = await api(`/api/batches?annotator=${n}`);
-  const own = batches.filter((b) => b.reviewer);
-  $('batch').innerHTML = own.map((b) =>
-    `<option value="${b.batch_id}">${b.batch_id.replace('batch_', 'Batch ')} · ${b.done}/${b.total}</option>`).join('');
+  const own = batches.filter((b) => b.reviewer).sort((x, y) => x.phase - y.phase || x.batch_id.localeCompare(y.batch_id));
+  const phases = [...new Set(own.map((b) => b.phase))];
+  $('batch').innerHTML = phases.map((ph) => `<optgroup label="Phase ${ph}">` + own.filter((b) => b.phase === ph).map((b) =>
+    `<option value="${b.batch_id}">P${ph} · ${b.batch_id.replace('batch_', 'Batch ')} · ${b.done}/${b.total}</option>`).join('') +
+    '</optgroup>').join('');
   const pos = get(KEY.pos(n), {});
   const first = own.find((b) => b.batch_id === pos.batch) || own[0];
   if (first) await loadBatch(first.batch_id, pos.batch === first.batch_id ? pos.i : 0);

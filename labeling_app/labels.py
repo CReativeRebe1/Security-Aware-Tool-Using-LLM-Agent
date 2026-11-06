@@ -5,6 +5,7 @@ Storage (one file per reviewer per batch, so files from different people never c
     {"annotator": ..., "batch_id": ..., "votes": {case_id: vote}}
 
 Protocol (data/synthetic_data/batches/assignments.json):
+  - the 20 batches are split into two phases of 10; in each phase everybody reviews the same number of batches (5);
   - every batch has exactly two reviewers; nobody else can write a review for it;
   - each case comes with a suggested decision and explanation (batches/suggestions.json); a reviewer accepts it,
     edits it, or marks the case "can't label" with a reason;
@@ -41,6 +42,7 @@ CANNOT_LABEL_REASONS = ("unclear_request", "evidence_missing", "evidence_conflic
 MATCH_FIELDS = ("gold_decision", "gold_final_action")
 AGREEMENT_FIELDS = ("gold_decision", "gold_final_action", "gold_missing_evidence", "gold_required_authority")
 REVIEWERS_PER_BATCH = 2
+PHASES = (1, 2)
 
 
 class LabelError(ValueError):
@@ -50,13 +52,26 @@ class LabelError(ValueError):
 # --- assignments -------------------------------------------------------------------------------------------
 
 def load_assignments() -> dict:
+    """Checks: every batch has a phase and exactly two different reviewers; within a phase everybody has the same
+    number of batches."""
     with open(ASSIGNMENTS_FILE, encoding="utf-8") as f:
         a = json.load(f)
+    load: dict[int, Counter] = {}
     for bid, b in a["batches"].items():
         r = b.get("reviewers", [])
         if len(r) != REVIEWERS_PER_BATCH or len(set(r)) != REVIEWERS_PER_BATCH:
             raise LabelError(f"{bid} must have exactly {REVIEWERS_PER_BATCH} different reviewers, has {r}")
+        if b.get("phase") not in PHASES:
+            raise LabelError(f"{bid} needs a phase from {PHASES}")
+        load.setdefault(b["phase"], Counter()).update(r)
+    for ph, c in load.items():
+        if set(c) != set(a["annotators"]) or len(set(c.values())) != 1:
+            raise LabelError(f"phase {ph} is not shared equally: {dict(c)}")
     return a
+
+
+def phase_batches(assignments: dict, phase: int) -> list[str]:
+    return sorted(b for b, v in assignments["batches"].items() if v["phase"] == phase)
 
 
 def is_reviewer(assignments: dict, annotator: str, batch_id: str) -> bool:

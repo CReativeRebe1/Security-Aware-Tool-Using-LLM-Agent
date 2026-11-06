@@ -64,6 +64,27 @@ def test_every_batch_has_exactly_two_reviewers():
     assert set(load) == set(asg["annotators"]) and len(set(load.values())) == 1     # equal share each
 
 
+def test_two_phases_of_five_batches_each():
+    asg = L.load_assignments()
+    for ph in L.PHASES:
+        bids = L.phase_batches(asg, ph)
+        assert len(bids) == 10
+        load = Counter(r for b in bids for r in asg["batches"][b]["reviewers"])
+        assert load == Counter({n: 5 for n in asg["annotators"]})
+    assert sorted(L.phase_batches(asg, 1) + L.phase_batches(asg, 2)) == sorted(asg["batches"])
+
+
+def test_unequal_phase_is_rejected(tmp_path, monkeypatch):
+    a = json.loads(L.ASSIGNMENTS_FILE.read_text(encoding="utf-8"))
+    one = next(b for b, v in a["batches"].items() if v["phase"] == 1)
+    a["batches"][one]["phase"] = 2
+    bad = tmp_path / "assignments.json"
+    bad.write_text(json.dumps(a), encoding="utf-8")
+    monkeypatch.setattr(L, "ASSIGNMENTS_FILE", bad)
+    with pytest.raises(L.LabelError):
+        L.load_assignments()
+
+
 def test_protocol_end_to_end(srv):
     asg = L.load_assignments()
     a, b = asg["batches"][BATCH]["reviewers"]
@@ -123,7 +144,10 @@ def test_protocol_end_to_end(srv):
     assert next(r for r in rows if r["batch_id"] == BATCH)["reviewer"] is False
 
     merge.main()
-    cases = {json.loads(x)["case_id"]: json.loads(x) for x in open(L.LABELS_DIR / "cases.jsonl", encoding="utf-8")}
+    ph = asg["batches"][BATCH]["phase"]
+    out = L.LABELS_DIR / "combined"
+    cases = {json.loads(x)["case_id"]: json.loads(x) for x in open(out / "cases.jsonl", encoding="utf-8")}
+    assert len(cases) == 2000 and cases[ids[0]]["phase"] == ph
     assert cases[ids[0]]["status"] == "agreed" and cases[ids[0]]["gold_decision"] == "ALLOW"
     assert cases[ids[0]]["reviewers"] == [a, b]
     assert cases[ids[1]]["status"] == "disputed"
@@ -131,14 +155,24 @@ def test_protocol_end_to_end(srv):
     assert cases[ids[3]]["status"] == "cannot_label"
     assert cases[ids[4]]["status"] == "disputed"
     assert cases[ids[50]]["status"] == "unlabeled"
-    gold = [json.loads(x)["case_id"] for x in open(L.LABELS_DIR / "gold.jsonl", encoding="utf-8")]
+    gold = [json.loads(x)["case_id"] for x in open(out / "gold.jsonl", encoding="utf-8")]
     assert gold == [ids[0]]
-    disputed = json.loads((L.LABELS_DIR / "disputed.json").read_text())
+    disputed = json.loads((out / "disputed.json").read_text())
     assert sorted(sum(disputed.values(), [])) == sorted([ids[1], ids[4]])
-    cl = json.loads((L.LABELS_DIR / "cannot_label.json").read_text(encoding="utf-8"))
+    cl = json.loads((out / "cannot_label.json").read_text(encoding="utf-8"))
     assert cl[BATCH][0]["case_id"] == ids[3] and cl[BATCH][0]["reasons"][b]["reason"] == "unclear_request"
-    agreement = json.loads((L.LABELS_DIR / "agreement.json").read_text())
+    agreement = json.loads((out / "agreement.json").read_text())
     assert agreement["gold_decision"]["n_cases"] == 2
+
+    # per phase: this batch's phase has the same results; the other phase has none of its cases
+    mine = L.LABELS_DIR / f"phase_{ph}"
+    other = L.LABELS_DIR / f"phase_{3 - ph}"
+    assert [json.loads(x)["case_id"] for x in open(mine / "gold.jsonl", encoding="utf-8")] == [ids[0]]
+    assert sum(1 for _ in open(mine / "cases.jsonl", encoding="utf-8")) == 1000
+    assert open(other / "gold.jsonl", encoding="utf-8").read() == ""
+    summary = json.loads((L.LABELS_DIR / "summary.json").read_text())
+    assert summary[f"phase_{ph}"]["agreed"] == 1 and summary[f"phase_{ph}"]["finished"] is False
+    assert json.loads((mine / "label_mix.json").read_text())["gold_decision"] == {"ALLOW": 1}
 
 
 def test_resolution_rules():

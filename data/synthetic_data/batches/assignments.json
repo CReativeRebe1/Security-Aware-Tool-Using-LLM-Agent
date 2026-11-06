@@ -5,123 +5,143 @@
   "shubham",
   "yogendra"
  ],
- "rule": "each batch is reviewed by exactly two reviewers, independently; where they disagree on the decision or final action the case is disputed and the two settle it by revising their own reviews",
+ "rule": "The 20 batches are split into two phases of 10. In each phase every person reviews 5 batches and every batch has exactly two reviewers, who work independently and never see each other's reviews. A case is agreed when both give the same decision and final action; otherwise it is disputed and the two settle it by revising their own reviews. At the end of each phase merge.py combines that phase's reviews.",
  "batches": {
   "batch_01": {
+   "phase": 2,
    "reviewers": [
     "rinkesh",
     "prabhash"
    ]
   },
   "batch_02": {
+   "phase": 1,
    "reviewers": [
     "shubham",
     "yogendra"
    ]
   },
   "batch_03": {
+   "phase": 1,
    "reviewers": [
     "rinkesh",
     "shubham"
    ]
   },
   "batch_04": {
+   "phase": 1,
    "reviewers": [
     "prabhash",
     "yogendra"
    ]
   },
   "batch_05": {
+   "phase": 1,
    "reviewers": [
     "rinkesh",
     "yogendra"
    ]
   },
   "batch_06": {
+   "phase": 1,
    "reviewers": [
     "prabhash",
     "shubham"
    ]
   },
   "batch_07": {
+   "phase": 2,
    "reviewers": [
     "rinkesh",
     "prabhash"
    ]
   },
   "batch_08": {
+   "phase": 2,
    "reviewers": [
     "shubham",
     "yogendra"
    ]
   },
   "batch_09": {
+   "phase": 2,
    "reviewers": [
     "rinkesh",
     "shubham"
    ]
   },
   "batch_10": {
+   "phase": 2,
    "reviewers": [
     "prabhash",
     "yogendra"
    ]
   },
   "batch_11": {
+   "phase": 1,
    "reviewers": [
     "rinkesh",
     "yogendra"
    ]
   },
   "batch_12": {
+   "phase": 1,
    "reviewers": [
     "prabhash",
     "shubham"
    ]
   },
   "batch_13": {
+   "phase": 1,
    "reviewers": [
     "rinkesh",
     "prabhash"
    ]
   },
   "batch_14": {
+   "phase": 2,
    "reviewers": [
     "shubham",
     "yogendra"
    ]
   },
   "batch_15": {
+   "phase": 2,
    "reviewers": [
     "rinkesh",
     "shubham"
    ]
   },
   "batch_16": {
+   "phase": 2,
    "reviewers": [
     "prabhash",
     "yogendra"
    ]
   },
   "batch_17": {
+   "phase": 1,
    "reviewers": [
     "rinkesh",
     "yogendra"
    ]
   },
   "batch_18": {
+   "phase": 1,
    "reviewers": [
     "prabhash",
     "shubham"
    ]
   },
   "batch_19": {
+   "phase": 2,
    "reviewers": [
     "rinkesh",
     "prabhash"
    ]
   },
   "batch_20": {
+   "phase": 2,
    "reviewers": [
     "shubham",
     "yogendra"

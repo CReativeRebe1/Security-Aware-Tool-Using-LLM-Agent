@@ -30,42 +30,54 @@ have reviewed a case it is **agreed** if their decision and final action match; 
 the two talk it over and each revises their own review. Each review is stored under its author's name in the
 author's own file, so nobody can change anyone else's review and files from different people never conflict in git.
 
-## Assignments (`data/synthetic_data/batches/assignments.json`)
+## Phases and assignments (`data/synthetic_data/batches/assignments.json`)
 
-Each person reviews 10 batches; every batch has two reviewers.
+The 20 batches are split into **two phases of 10 batches**. In each phase every person reviews **5 batches**, and
+every batch has **2 reviewers**. Finish phase 1 first; at the end of each phase the reviews are combined with
+`merge.py` (see below).
 
-| Batch | Reviewer 1 | Reviewer 2 |
+The split was chosen so both phases have the same kind of data: difficulty is identical (345 hard / 655 medium
+cases each), and suite, category, follow-up rounds and suggested decisions differ by only a few cases.
+
+| Phase | Batch | Reviewer 1 | Reviewer 2 |
+|---|---|---|---|
+| 1 | 02 | shubham | yogendra |
+| 1 | 03 | rinkesh | shubham |
+| 1 | 04 | prabhash | yogendra |
+| 1 | 05 | rinkesh | yogendra |
+| 1 | 06 | prabhash | shubham |
+| 1 | 11 | rinkesh | yogendra |
+| 1 | 12 | prabhash | shubham |
+| 1 | 13 | rinkesh | prabhash |
+| 1 | 17 | rinkesh | yogendra |
+| 1 | 18 | prabhash | shubham |
+| 2 | 01 | rinkesh | prabhash |
+| 2 | 07 | rinkesh | prabhash |
+| 2 | 08 | shubham | yogendra |
+| 2 | 09 | rinkesh | shubham |
+| 2 | 10 | prabhash | yogendra |
+| 2 | 14 | shubham | yogendra |
+| 2 | 15 | rinkesh | shubham |
+| 2 | 16 | prabhash | yogendra |
+| 2 | 19 | rinkesh | prabhash |
+| 2 | 20 | shubham | yogendra |
+
+| Person | Phase 1 batches | Phase 2 batches |
 |---|---|---|
-| 01 | rinkesh | prabhash |
-| 02 | shubham | yogendra |
-| 03 | rinkesh | shubham |
-| 04 | prabhash | yogendra |
-| 05 | rinkesh | yogendra |
-| 06 | prabhash | shubham |
-| 07 | rinkesh | prabhash |
-| 08 | shubham | yogendra |
-| 09 | rinkesh | shubham |
-| 10 | prabhash | yogendra |
-| 11 | rinkesh | yogendra |
-| 12 | prabhash | shubham |
-| 13 | rinkesh | prabhash |
-| 14 | shubham | yogendra |
-| 15 | rinkesh | shubham |
-| 16 | prabhash | yogendra |
-| 17 | rinkesh | yogendra |
-| 18 | prabhash | shubham |
-| 19 | rinkesh | prabhash |
-| 20 | shubham | yogendra |
+| rinkesh | 03, 05, 11, 13, 17 | 01, 07, 09, 15, 19 |
+| prabhash | 04, 06, 12, 13, 18 | 01, 07, 10, 16, 19 |
+| shubham | 02, 03, 06, 12, 18 | 08, 09, 14, 15, 20 |
+| yogendra | 02, 04, 05, 11, 17 | 08, 10, 14, 16, 20 |
 
 ## Reviewing
 
 ```bash
-git checkout labling && git pull
+git checkout labeling && git pull
 python labeling_app/server.py          # Python 3.10+, no extra packages
 ```
 
 Open **http://localhost:8080**, pick your name once (it is remembered; click your name to switch), and choose a
-batch from the batch menu (only your 10 batches are listed, with your progress). The screen has three columns and
+batch from the batch menu (only your 10 batches are listed, grouped by phase, with your progress). The screen has three columns and
 nothing scrolls:
 
 - **Left — the case:** what the user asked, what the agent wants to do (arguments copied from content are outlined
@@ -116,27 +128,38 @@ git pull --rebase && git push
 Push whenever you like (partial batches are fine); nothing you push can overwrite another person's reviews.
 
 **Disputed cases:** after both reviewers of a batch have pushed, run `merge.py` (below) and look at
-`labels/disputed.json`. The two reviewers discuss each listed case and update their own reviews in the tool until
+`labels/phase_N/disputed.json`. The two reviewers discuss each listed case and update their own reviews in the tool until
 they agree.
 
-## Building the main database
+## Combining the data at the end of a phase
 
 ```bash
 git pull
 python labeling_app/merge.py
 ```
 
-This writes `data/synthetic_data/labels/`:
+It prints a progress table per phase and writes `data/synthetic_data/labels/`:
+
+| Folder / file | Content |
+|---|---|
+| `phase_1/` | the 10 batches of phase 1 |
+| `phase_2/` | the 10 batches of phase 2 |
+| `combined/` | both phases together (after phase 1 it holds phase 1's data; after phase 2, everything) |
+| `summary.json` | per phase: batches, case counts per status, and `finished` (every case agreed or can't label) |
+
+Each folder holds the same files:
 
 | File | Content |
 |---|---|
-| `cases.jsonl` | every case: status (`unlabeled`, `partial`, `agreed`, `disputed`, `cannot_label`), its two reviewers, and its gold labels once agreed |
+| `cases.jsonl` | every case: phase, batch, status (`unlabeled`, `partial`, `agreed`, `disputed`, `cannot_label`), its two reviewers, and its gold labels once agreed |
 | `gold.jsonl` | agreed cases only — the labels the experiments use |
 | `votes.jsonl` | every individual review |
 | `disputed.json` | cases where the two reviewers disagree, per batch |
 | `cannot_label.json` | cases both reviewers marked can't label, with their reasons and notes (fix or drop them) |
 | `agreement.json` | Krippendorff's α and Cohen's κ between the two reviewers |
+| `label_mix.json` | gold decisions, final actions, suites and categories, to compare the two phases |
 
+A phase is done when `merge.py` shows it as finished: every case agreed or can't label, no disputes left.
 Everything in `labels/` is derived and can be regenerated at any time.
 
 ## Policy documents

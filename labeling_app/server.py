@@ -39,13 +39,16 @@ class Handler(SimpleHTTPRequestHandler):
         if args and str(args[1]).startswith(("4", "5")):
             super().log_message(fmt, *args)
 
+    def end_headers(self):                      # never let the browser keep an old copy of the page
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     # --- plumbing ------------------------------------------------------------------------------------------
     def _json(self, data, status=HTTPStatus.OK):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -97,7 +100,7 @@ class Handler(SimpleHTTPRequestHandler):
         for bid in sorted(asg["batches"]):
             mine = L.is_reviewer(asg, ann, bid)
             votes = L.read_votes(ann, bid) if mine else {}
-            out.append({"batch_id": bid, "reviewer": mine, "done": sum(L.is_reviewed(v) for v in votes.values()),
+            out.append({"batch_id": bid, "phase": asg["batches"][bid]["phase"], "reviewer": mine, "done": sum(L.is_reviewed(v) for v in votes.values()),
                         "total": len(self.server.case_ids(bid))})
         self._json(out)
 

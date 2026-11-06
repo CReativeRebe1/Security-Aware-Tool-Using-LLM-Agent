@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
-"""Build the main label database from everyone's vote files.
+"""Build the label database from everyone's review files, per phase and combined.
 
     git pull                       # get everyone's annotations/<name>/<batch>.json
     python labeling_app/merge.py   # -> data/synthetic_data/labels/
 
 Writes (all derived, safe to regenerate):
+  labels/phase_1/   the 10 batches of phase 1
+  labels/phase_2/   the 10 batches of phase 2
+  labels/combined/  all 20 batches together (after phase 1 this is phase 1's data; after phase 2, everything)
+  labels/summary.json   progress of each phase and whether it is finished
+
+Each folder holds:
   votes.jsonl         every review, one per line
-  cases.jsonl         every case: batch, status, its two reviewers, and the gold labels once agreed
+  cases.jsonl         every case: phase, batch, status, its two reviewers, and the gold labels once agreed
   gold.jsonl          only agreed cases, ready for the training/eval pipeline
   disputed.json       cases where the two reviewers disagree, per batch (the pair settles them)
   cannot_label.json   cases both reviewers marked "can't label", with their reasons and notes
   agreement.json      Krippendorff's alpha (nominal) and Cohen's kappa between the two reviewers
+  label_mix.json      gold decisions, final actions, suites and categories, to compare the phases
 Status: unlabeled | partial | agreed | disputed | cannot_label.
+A phase is finished when every case in it is agreed or cannot_label.
 """
 
 from __future__ import annotations
@@ -19,11 +27,12 @@ from __future__ import annotations
 import json
 import sys
 from collections import Counter, defaultdict
-from itertools import combinations
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import labels as L  # noqa: E402
+
+STATUSES = ("unlabeled", "partial", "agreed", "disputed", "cannot_label")
 
 
 def krippendorff_alpha(units: list[list]) -> float | None:
@@ -55,17 +64,18 @@ def cohen_kappa(x: list, y: list) -> float | None:
     return 1.0 if pe == 1 else (po - pe) / (1 - pe)
 
 
-def main() -> None:
-    asg = L.load_assignments()
-    out_dir = L.LABELS_DIR
+def build(asg: dict, batch_ids: list[str], out_dir: Path) -> Counter:
+    """Merge the reviews of the given batches into out_dir; returns the case count per status."""
     out_dir.mkdir(parents=True, exist_ok=True)
     votes, cases, gold = [], [], []
     disputed, cant = defaultdict(list), defaultdict(list)
     pairs = defaultdict(lambda: defaultdict(lambda: ([], [])))      # field -> (a, b) -> (a's, b's labels)
     units = defaultdict(list)                                         # field -> [[a's, b's]]
     status_count: Counter = Counter()
+    mix = defaultdict(Counter)
 
-    for bid, b in sorted(asg["batches"].items()):
+    for bid in batch_ids:
+        b = asg["batches"][bid]
         ra, rb = b["reviewers"]
         va, vb = L.read_votes(ra, bid), L.read_votes(rb, bid)
         votes += [*va.values(), *vb.values()]
@@ -74,9 +84,14 @@ def main() -> None:
             p1, p2 = va.get(cid), vb.get(cid)
             status, g = L.resolve(p1, p2)
             status_count[status] += 1
-            cases.append({"case_id": cid, "batch_id": bid, "status": status, "reviewers": [ra, rb], **(g or {})})
+            meta = {"case_id": cid, "phase": b["phase"], "batch_id": bid}
+            cases.append({**meta, "status": status, "reviewers": [ra, rb], **(g or {})})
             if g:
-                gold.append({"case_id": cid, "batch_id": bid, **g})
+                gold.append({**meta, "suite": case.get("suite"), "category": case.get("category"), **g})
+                mix["gold_decision"][g["gold_decision"]] += 1
+                mix["gold_final_action"][g["gold_final_action"]] += 1
+                mix["suite"][case.get("suite")] += 1
+                mix["category"][case.get("category")] += 1
             elif status == "disputed":
                 disputed[f"{bid} ({ra}, {rb})"].append(cid)
             elif status == "cannot_label":
@@ -105,21 +120,42 @@ def main() -> None:
             for r in rows:
                 fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 
+    def dump_json(name, data):
+        (out_dir / name).write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
+
     dump_jsonl("votes.jsonl", sorted(votes, key=lambda v: (v["case_id"], v["annotator"])))
     dump_jsonl("cases.jsonl", cases)
     dump_jsonl("gold.jsonl", gold)
-    (out_dir / "disputed.json").write_text(json.dumps(dict(disputed), indent=1), encoding="utf-8")
-    (out_dir / "cannot_label.json").write_text(json.dumps(dict(cant), indent=1, ensure_ascii=False), encoding="utf-8")
-    (out_dir / "agreement.json").write_text(json.dumps(agreement, indent=1), encoding="utf-8")
+    dump_json("disputed.json", dict(disputed))
+    dump_json("cannot_label.json", dict(cant))
+    dump_json("agreement.json", agreement)
+    dump_json("label_mix.json", {k: dict(sorted(v.items())) for k, v in mix.items()})
+    return status_count
 
-    print(f"{len(votes)} reviews on {len(cases)} cases -> {out_dir}")
-    for s in ("unlabeled", "partial", "agreed", "disputed", "cannot_label"):
-        print(f"  {s:14s} {status_count[s]}")
-    for f, r in agreement.items():
-        alpha = "n/a" if r["krippendorff_alpha"] is None else f"{r['krippendorff_alpha']:.3f}"
-        print(f"  alpha {f:24s} {alpha}  (n={r['n_cases']})")
-    if status_count["disputed"]:
-        print("  disputed cases: the two reviewers should talk and revise their own reviews (see disputed.json)")
+
+def main() -> None:
+    asg = L.load_assignments()
+    root = L.LABELS_DIR
+    summary = {}
+    for ph in L.PHASES:
+        bids = L.phase_batches(asg, ph)
+        c = build(asg, bids, root / f"phase_{ph}")
+        total = sum(c.values())
+        summary[f"phase_{ph}"] = {"batches": bids, "cases": total, **{s: c[s] for s in STATUSES},
+                                  "finished": c["agreed"] + c["cannot_label"] == total}
+    c = build(asg, sorted(asg["batches"]), root / "combined")
+    summary["combined"] = {"cases": sum(c.values()), **{s: c[s] for s in STATUSES}}
+    (root / "summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+
+    print(f"-> {root}")
+    print(f"  {'':10s}" + "".join(f"{s:>14s}" for s in STATUSES) + "    finished")
+    for name, s in summary.items():
+        done = "" if name == "combined" else ("yes" if s["finished"] else "no")
+        print(f"  {name:10s}" + "".join(f"{s[k]:>14d}" for k in STATUSES) + f"    {done}")
+    alpha = json.loads((root / "combined" / "agreement.json").read_text())["gold_decision"]["krippendorff_alpha"]
+    print(f"  alpha on the decision (combined): {'n/a' if alpha is None else f'{alpha:.3f}'}")
+    if summary["combined"]["disputed"]:
+        print("  disputed cases: the two reviewers should talk and revise their own reviews (see */disputed.json)")
 
 
 if __name__ == "__main__":
