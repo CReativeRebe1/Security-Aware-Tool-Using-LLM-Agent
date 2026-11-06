@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Local server for the labelling tool.
+"""Local server for the review tool.
 
     python labeling_app/server.py            # then open http://localhost:8080
 
-Serves the page and a small JSON API. Votes are written to
-data/synthetic_data/batches/annotations/<annotator>/<batch_id>.json (see labels.py). The server enforces the
-protocol: you can only write your own votes, only in batches you are assigned to, and as tie-breaker only on
-disputed cases; primary annotators never receive anyone else's votes.
+Serves the page and a small JSON API. Reviews are written to
+data/synthetic_data/batches/annotations/<reviewer>/<batch_id>.json (see labels.py). The server enforces the
+protocol: each batch has exactly two reviewers, you can only write your own reviews and only in your own batches,
+and nobody ever receives another person's reviews.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ class Handler(SimpleHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         routes = {"/api/config": self.config, "/api/batches": self.batches, "/api/batch": self.batch,
-                  "/api/policies": self.policies}
+                  "/api/policies": self.policies, "/api/suggestions": self.suggestions}
         if u.path in routes:
             try:
                 routes[u.path](q)
@@ -87,52 +87,48 @@ class Handler(SimpleHTTPRequestHandler):
         a = self.server.assignments
         self._json({"annotators": a["annotators"], "rule": a.get("rule", ""),
                     "vocab": {"decision": L.DECISIONS, "final_action": L.FINAL_ACTIONS,
-                              "missing_evidence": L.MISSING_EVIDENCE, "required_authority": L.REQUIRED_AUTHORITY}})
+                              "missing_evidence": L.MISSING_EVIDENCE, "required_authority": L.REQUIRED_AUTHORITY,
+                              "cannot_label_reasons": L.CANNOT_LABEL_REASONS}})
 
     def batches(self, q):
-        """Every batch with the caller's role and progress."""
+        """Every batch: whether the caller reviews it, and their progress."""
         ann, asg = self._annotator(q), self.server.assignments
         out = []
         for bid in sorted(asg["batches"]):
-            role = L.role_of(asg, ann, bid)
-            mine = L.read_votes(ann, bid) if role else {}
-            row = {"batch_id": bid, "role": role, "done": sum(L.is_complete(v) for v in mine.values())}
-            if role == "tiebreak":
-                row["total"] = len(L.disputed_cases(asg, bid))
-            elif role == "primary":
-                row["total"] = 100
-            out.append(row)
+            mine = L.is_reviewer(asg, ann, bid)
+            votes = L.read_votes(ann, bid) if mine else {}
+            out.append({"batch_id": bid, "reviewer": mine, "done": sum(L.is_reviewed(v) for v in votes.values()),
+                        "total": len(self.server.case_ids(bid))})
         self._json(out)
 
+    def _check(self, ann: str, bid: str) -> None:
+        if not L.is_reviewer(self.server.assignments, ann, bid):
+            raise L.LabelError(f"{ann} is not one of the two reviewers of {bid}")
+
     def batch(self, q):
-        ann, bid, asg = self._annotator(q), q.get("id", ""), self.server.assignments
-        role = L.role_of(asg, ann, bid)
-        if role is None:
-            raise L.LabelError(f"{ann} is not assigned to {bid}")
-        cases = L.load_batch(bid)
-        others = {}
-        if role == "tiebreak":
-            others = L.disputed_cases(asg, bid)
-            cases = [c for c in cases if c["case_id"] in others]
-        self._json({"batch_id": bid, "role": role, "cases": [_case_view(c) for c in cases],
-                    "votes": L.read_votes(ann, bid), "others": others})
+        ann, bid = self._annotator(q), q.get("id", "")
+        self._check(ann, bid)
+        self._json({"batch_id": bid, "cases": [_case_view(c) for c in L.load_batch(bid)],
+                    "votes": L.read_votes(ann, bid)})
+
+    def suggestions(self, q):
+        """Suggested decision + explanation for every case of one of the caller's batches."""
+        ann, bid = self._annotator(q), q.get("id", "")
+        self._check(ann, bid)
+        ids = self.server.case_ids(bid)
+        self._json({cid: s for cid, s in self.server.suggestions.items() if cid in ids})
 
     def policies(self, q):
         self._json(L.load_policies())
 
     def vote(self, body):
         ann, bid, cid = self._annotator(body), body.get("batch_id", ""), body.get("case_id", "")
-        asg = self.server.assignments
-        role = L.role_of(asg, ann, bid)
-        if role is None:
-            raise L.LabelError(f"{ann} is not assigned to {bid}")
+        self._check(ann, bid)
         if cid not in self.server.case_ids(bid):
             raise L.LabelError(f"{cid} is not in {bid}")
-        if role == "tiebreak" and cid not in L.disputed_cases(asg, bid):
-            raise L.LabelError("tie-break votes are only taken on disputed cases")
-        votes = L.write_vote(ann, bid, cid, body.get("vote"), role)
-        self._json({"ok": True, "complete": L.is_complete(votes.get(cid)),
-                    "done": sum(L.is_complete(v) for v in votes.values())})
+        votes = L.write_vote(ann, bid, cid, body.get("vote"))
+        self._json({"ok": True, "reviewed": L.is_reviewed(votes.get(cid)),
+                    "done": sum(L.is_reviewed(v) for v in votes.values())})
 
 
 class Server(ThreadingHTTPServer):
@@ -141,6 +137,7 @@ class Server(ThreadingHTTPServer):
     def __init__(self, addr):
         super().__init__(addr, Handler)
         self.assignments = L.load_assignments()
+        self.suggestions = L.load_suggestions()
         self._ids: dict[str, set] = {}
 
     def case_ids(self, bid: str) -> set:

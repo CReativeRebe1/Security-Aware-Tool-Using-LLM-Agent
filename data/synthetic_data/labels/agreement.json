@@ -1,0 +1,26 @@
+{
+ "gold_decision": {
+  "n_cases": 0,
+  "percent_agreement": null,
+  "krippendorff_alpha": null,
+  "cohen_kappa": {}
+ },
+ "gold_final_action": {
+  "n_cases": 0,
+  "percent_agreement": null,
+  "krippendorff_alpha": null,
+  "cohen_kappa": {}
+ },
+ "gold_missing_evidence": {
+  "n_cases": 0,
+  "percent_agreement": null,
+  "krippendorff_alpha": null,
+  "cohen_kappa": {}
+ },
+ "gold_required_authority": {
+  "n_cases": 0,
+  "percent_agreement": null,
+  "krippendorff_alpha": null,
+  "cohen_kappa": {}
+ }
+}

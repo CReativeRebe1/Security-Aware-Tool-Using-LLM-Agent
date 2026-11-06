@@ -1,30 +1,32 @@
-/* Labelling tool ("focus" design). Every change is saved at once: first to this browser (a localStorage queue),
-   then to the local server, which writes your own vote file. Unsent changes are re-sent on the next load. */
-
 const $ = (id) => document.getElementById(id);
-const S = {
-  who: null, cfg: null, batches: [], batch: null, role: null, cases: [], votes: {}, others: {}, policies: [],
-  i: 0, evidence: false, busy: false, sending: false,
-};
-const KEY = { who: 'labeler.who', pos: (w) => `labeler.focus.${w}`, queue: (w) => `labeler.queue.${w}` };
+const S = { who: null, cfg: null, sug: {}, batch: null, cases: [], votes: {}, i: 0, mode: 'view', evidence: false,
+  draft: null, busy: false };
+const KEY = { who: 'labeler.who', pos: (w) => `labeler.pos.${w}` };
 const DEF = { ALLOW: ['none', 'current_user'], BLOCK: ['none', 'none'], ASK_USER: ['user_intent', 'current_user'], ESCALATE: ['approval', 'manager'] };
-const COLOR = { ALLOW: 'var(--allow)', BLOCK: 'var(--block)', ASK_USER: 'var(--ask)', ESCALATE: 'var(--esc)' };
-
+const REASONS = [
+  ['unclear_request', 'Request is unclear'],
+  ['evidence_missing', 'Evidence is missing or broken'],
+  ['evidence_conflict', 'Evidence contradicts itself'],
+  ['no_option_fits', 'None of the 4 decisions fits'],
+  ['not_security_case', 'Not a security decision'],
+  ['bad_case', 'Duplicate or broken case'],
+  ['other', 'Other'],
+];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nice = (s) => String(s ?? '').replace(/_/g, ' ');
 const get = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } };
-const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
+const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 async function api(path, body) {
   const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
   const d = await r.json();
   if (!r.ok) throw new Error(d.error || r.statusText);
   return d;
 }
-function toast(t) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2400); }
-const complete = (v) => !!v && !!v.gold_decision && !!v.gold_final_action && !!v.gold_missing_evidence && !!v.gold_required_authority &&
-  (v.gold_decision !== 'ASK_USER' || (!!(v.user_response?.text || '').trim() && typeof v.user_response?.confirmed === 'boolean'));
+function toast(t) { const el = document.createElement('div'); el.className = 'toast'; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
 const cur = () => S.cases[S.i];
-const vote = () => S.votes[cur()?.case_id] || {};
+const sug = () => S.sug[cur()?.case_id] || null;
+const mine = () => S.votes[cur()?.case_id] || null;
+const status = (v) => v?.review?.status || null;
 
 /* ---------- people & batches ---------- */
 function pickWho() {
@@ -35,372 +37,397 @@ function pickWho() {
   });
 }
 async function setWho(n) {
-  S.who = n;
-  put(KEY.who, n);
-  $('who').textContent = n;
-  $('avatar').textContent = n[0].toUpperCase();
-  await flush();
-  S.batches = await api(`/api/batches?annotator=${n}`);
-  const label = (b) => `${b.batch_id.replace('batch_', 'Batch ')}${b.role === 'tiebreak' ? ' · tie-break' : ''} · ${b.done}/${b.total}`;
-  $('batch').innerHTML = S.batches.filter((b) => b.role).map((b) => `<option value="${b.batch_id}">${label(b)}</option>`).join('');
+  S.who = n; put(KEY.who, n);
+  $('who').textContent = n; $('avatar').textContent = n[0].toUpperCase();
+  const batches = await api(`/api/batches?annotator=${n}`);
+  const own = batches.filter((b) => b.reviewer);
+  $('batch').innerHTML = own.map((b) =>
+    `<option value="${b.batch_id}">${b.batch_id.replace('batch_', 'Batch ')} · ${b.done}/${b.total}</option>`).join('');
   const pos = get(KEY.pos(n), {});
-  const first = S.batches.find((b) => b.role && b.batch_id === pos.batch) || S.batches.find((b) => b.role);
+  const first = own.find((b) => b.batch_id === pos.batch) || own[0];
   if (first) await loadBatch(first.batch_id, pos.batch === first.batch_id ? pos.i : 0);
+  else toast('No batches are assigned to you');
 }
 async function loadBatch(id, i = 0) {
-  const d = await api(`/api/batch?id=${id}&annotator=${S.who}`);
-  Object.assign(S, { batch: id, role: d.role, cases: d.cases, votes: d.votes, others: d.others || {} });
-  for (const q of get(KEY.queue(S.who), [])) {            // unsent local changes win over the server copy
-    if (q.batch_id === id) { if (q.vote) S.votes[q.case_id] = q.vote; else delete S.votes[q.case_id]; }
-  }
-  $('batch').value = id;
-  $('role').textContent = d.role === 'tiebreak' ? 'tie-break' : 'primary · blind';
+  const [d, sg] = await Promise.all([api(`/api/batch?id=${id}&annotator=${S.who}`),
+    api(`/api/suggestions?id=${id}&annotator=${S.who}`)]);
+  Object.assign(S, { batch: id, cases: d.cases, votes: d.votes, sug: sg });
+  $('batch').value = id; $('role').textContent = 'review';
   go(Math.min(i, Math.max(S.cases.length - 1, 0)), true);
 }
 
-/* ---------- rendering ---------- */
+/* ---------- case card ---------- */
 function signals(inp) {
   const prov = inp.provenance || [];
   const origin = prov.find((p) => p.kind === 'call') || {};
   const args = prov.filter((p) => p.kind === 'arg');
   const bad = args.filter((p) => p.trust === 'untrusted').length;
   const third = args.filter((p) => p.trust === 'third_party').length;
-  const a = inp.authority || {};
-  const s = inp.sensitivity || {};
+  const a = inp.authority || {}, s = inp.sensitivity || {};
   const role = a.required_role || a.required_authority;
-  const out = [
-    origin.trust === 'untrusted'
-      ? ['bad', 'Origin', 'Injected', `from ${origin.instruction_origin || 'content'}${origin.origin_source ? ` (${origin.origin_source})` : ''}`]
-      : ['ok', 'Origin', 'The user', 'request came from the user'],
-    a.user_may_authorize === false
-      ? ['mid', 'Authority', nice(role || 'higher role'), (a.basis || []).map(nice).join(', ') || 'user cannot authorize']
-      : ['ok', 'Authority', 'User may act', nice(role || 'current user')],
-    s.flow === 'high_to_low'
-      ? ['bad', 'Data flow', 'High → low', `${s.resource} → ${s.destination}`]
-      : ['info', 'Data flow', s.resource || '—', s.destination ? `to ${s.destination}` : 'no outgoing data'],
-    bad ? ['bad', 'Arguments', `${bad} injected`, `${args.length} arguments traced`]
-      : third ? ['mid', 'Arguments', `${third} from content`, 'copied from tool output'] : ['ok', 'Arguments', 'Clean', 'from user or system'],
-  ];
-  return out.map(([c, t, v, sub]) => `<div class="sig ${c}"><div class="t">${t}</div><div class="v">${esc(v)}</div>` +
-    `<div class="s" title="${esc(sub)}">${esc(sub)}</div></div>`).join('');
+  return [
+    origin.trust === 'untrusted' ? ['bad', 'Origin', 'Injected', `from ${origin.instruction_origin || 'content'}`] : ['ok', 'Origin', 'The user', 'request came from the user'],
+    a.user_may_authorize === false ? ['mid', 'Authority', nice(role || 'higher role'), (a.basis || []).map(nice).join(', ') || 'user cannot authorize'] : ['ok', 'Authority', 'User may act', nice(role || 'current user')],
+    s.flow === 'high_to_low' ? ['bad', 'Data flow', 'High → low', `${s.resource} → ${s.destination}`] : ['info', 'Data flow', s.resource || '—', s.destination ? `to ${s.destination}` : 'no outgoing data'],
+    bad ? ['bad', 'Arguments', `${bad} injected`, `${args.length} arguments traced`] : third ? ['mid', 'Arguments', `${third} from content`, 'copied from tool output'] : ['ok', 'Arguments', 'Clean', 'from user or system'],
+  ].map(([c, t, v, sub]) => `<div class="sig ${c}"><div class="t">${t}</div><div class="v">${esc(v)}</div><div class="s" title="${esc(sub)}">${esc(sub)}</div></div>`).join('');
 }
 
-function clauseHtml(p, terms) {
-  const cited = (vote().gold_clause_ids || []).includes(p.id);
-  const hl = (t) => (terms ? highlight(t, terms) : esc(t));
-  return `<div class="clause"><div class="ct"><code>${esc(p.id)}</code><b>${hl(p.title)}</b> — ${hl(p.text)}</div>` +
-    `<button class="cite${cited ? ' on' : ''}" data-id="${esc(p.id)}">${cited ? 'cited' : 'cite'}</button></div>`;
-}
-function bindCites(root) {
-  root.querySelectorAll('.cite').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); toggleCite(b.dataset.id); }; });
-}
-
-function otherVotes(c) {
-  const list = S.role === 'tiebreak' ? S.others[c.case_id] || [] : [];
-  if (!list.length) return '';
-  return `<div class="k">Primary votes — they disagree</div><div class="others">${list.map((v) =>
-    `<div class="ov"><div class="who"><span>${esc(v.annotator[0].toUpperCase())}</span>${esc(v.annotator)}</div>` +
-    `<span class="d" style="color:${COLOR[v.gold_decision] || '#fff'}">${esc(nice(v.gold_decision))}</span> → <b>${esc(v.gold_final_action)}</b>` +
-    ` · ${esc(nice(v.gold_missing_evidence))} · ${esc(nice(v.gold_required_authority))}` +
-    (v.user_response?.text ? `<div>“${esc(v.user_response.text)}” (${v.user_response.confirmed ? 'yes' : 'no'})</div>` : '') +
-    (v.notes ? `<div><i>${esc(v.notes)}</i></div>` : '') + '</div>').join('')}</div>`;
-}
-
-function render(anim) {
-  const c = cur();
-  const card = $('card');
-  renderTicks();
-  if (!c) {
-    card.className = 'card';
-    card.innerHTML = `<div class="empty"><h2>${S.role === 'tiebreak' ? 'No disputes yet' : 'Nothing here'}</h2>` +
-      `<p>${S.role === 'tiebreak' ? 'Disputed cases appear once both primary annotators have voted and pushed — then pull.' : 'This batch has no cases.'}</p></div>`;
-    $('pos').textContent = '0 / 0';
-    $('done').textContent = '';
-    $('sheet').classList.add('hidden');
-    return;
-  }
-  const inp = c.input || {};
-  const call = inp.proposed_call || {};
-  const v = vote();
+function renderCard(anim) {
+  const c = cur(), card = $('card');
+  if (!c) { card.className = 'card'; card.innerHTML = '<div class="empty"><h2>Nothing here</h2></div>'; return; }
+  const inp = c.input || {}, call = inp.proposed_call || {};
   const trust = Object.fromEntries((inp.provenance || []).filter((p) => p.arg).map((p) => [p.arg, p.trust]));
-  const args = Object.entries(call.args || {}).map(([k, val]) => {
-    const t = trust[k];
-    const txt = typeof val === 'object' ? JSON.stringify(val) : String(val);
-    return `<span class="arg ${t === 'untrusted' ? 'bad' : t === 'third_party' ? 'warn' : ''}" title="${esc(k)} = ${esc(txt)} (${esc(t || 'unknown')})">` +
-      `<i>${esc(k)}</i><b>${esc(txt)}</b></span>`;
+  const args = Object.entries(call.args || {}).map(([k, v]) => {
+    const t = trust[k], txt = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return `<span class="arg ${t === 'untrusted' ? 'bad' : t === 'third_party' ? 'warn' : ''}" title="${esc(k)} = ${esc(txt)}"><i>${esc(k)}</i><b>${esc(txt)}</b></span>`;
   }).join('');
-  const thread = (inp.resolution_history || []).map((r) =>
-    `<div class="msg"><small>${esc(nice(r.kind))} → ${esc(r.responder)}</small>${esc(r.response)}</div>`).join('');
-  const untrusted = (inp.untrusted_content || []).map((u) => `<div class="src">${esc(u.id)} · ${esc(u.source)}</div><pre>${esc(u.text)}</pre>`).join('') || '<pre>none</pre>';
-  const pol = (inp.policy_clauses || []).map((p) => clauseHtml(p)).join('') || '<div class="clause">none</div>';
-  const cited = (v.gold_clause_ids || []).map((id) => `<span class="tagc">${esc(id)}<button data-id="${esc(id)}" title="remove">×</button></span>`).join('');
-
-  card.className = `card${v.gold_decision ? ` glow-${v.gold_decision}` : ''}`;
-  card.innerHTML =
+  const thread = (inp.resolution_history || []).map((r) => `<div class="msg"><small>${esc(nice(r.kind))} → ${esc(r.responder)}</small>${esc(r.response)}</div>`).join('');
+  card.className = 'card';
+  card.innerHTML = '<div class="cin">' +
     `<div class="meta"><span class="tag">${esc(c.suite)}</span><span class="tag">${esc(nice(c.category))}</span>` +
-    `<span class="tag ${esc(c.difficulty)}">${esc(c.difficulty)}</span>${c.round ? '<span class="tag">follow-up round</span>' : ''}` +
-    `${complete(v) ? '<span class="done">✓ labelled</span>' : ''}` +
-    `${v.gold_decision ? `<button class="link" id="clear" title="Delete your vote on this case">clear</button>` : ''}</div>` +
-    otherVotes(c) +
+    `<span class="tag ${esc(c.difficulty)}">${esc(c.difficulty)}</span>${c.round ? '<span class="tag">follow-up round</span>' : ''}</div>` +
     `<div class="k">The user asked</div><p class="quote">${esc(inp.user?.prompt || '—')}</p>` +
     `<div class="k">The agent wants to</div><div class="action"><span class="fn">${esc(call.function)}</span>${args}</div>` +
     `<div class="signals">${signals(inp)}</div>` +
-    (thread ? `<div class="k">Conversation so far</div><div class="thread">${thread}</div>` : '') +
-    `<button class="more" id="more">${S.evidence ? 'Hide evidence ▲' : 'Show evidence — tool outputs & policy ▼'}</button>` +
-    (S.evidence ? `<div class="evidence"><div class="box"><div class="k">Tool outputs (untrusted)</div>${untrusted}</div>` +
-      `<div class="box"><div class="k">Retrieved policy</div>${pol}</div></div>` : '') +
-    `<div class="foot">${cited}<input class="note" id="note" placeholder="Note (optional)" value="${esc(v.notes || '')}"></div>`;
-
-  $('more').onclick = () => { S.evidence = !S.evidence; render(); };
-  if ($('clear')) $('clear').onclick = clearVote;
-  $('note').oninput = (e) => edit({ notes: e.target.value }, false);
-  card.querySelectorAll('.tagc button').forEach((b) => { b.onclick = () => toggleCite(b.dataset.id); });
-  bindCites(card);
+    (thread ? `<div class="k">Conversation so far</div><div class="thread">${thread}</div>` : '') + '</div>';
+  renderEvidence(inp);
   if (anim) { card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
-
-  $('pos').textContent = `${S.i + 1} / ${S.cases.length}`;
-  const n = S.cases.filter((x) => complete(S.votes[x.case_id])).length;
-  $('done').textContent = `· ${n} labelled`;
-  document.querySelectorAll('#dock button').forEach((b) => b.classList.toggle('on', b.dataset.d === v.gold_decision));
-  renderSheet();
 }
 
-function renderTicks() {
-  $('ticks').innerHTML = S.cases.map((c, i) => {
-    const v = S.votes[c.case_id];
-    const cls = complete(v) ? v.gold_decision : v?.gold_decision ? 'part' : '';
-    return `<button class="${cls}${i === S.i ? ' cur' : ''}" data-i="${i}" title="Case ${i + 1}${v?.gold_decision ? ` · ${nice(v.gold_decision)}` : ''}"></button>`;
-  }).join('');
-  $('ticks').querySelectorAll('button').forEach((b) => { b.onclick = () => go(+b.dataset.i, true); });
+/* evidence is always shown on the right */
+const compact = (t) => String(t ?? '').split('\n').map((l) => l.trimEnd()).filter((l) => l.trim()).join('\n');
+function renderEvidence(inp) {
+  const blocks = (inp.untrusted_content || []).map((u) =>
+    `<div class="src">${esc(u.id)} · ${esc(u.source)}</div><pre>${esc(compact(u.text))}</pre>`).join('');
+  $('evTools').innerHTML = blocks || '<div class="none">none</div>';
+  $('fullText').innerHTML = (inp.untrusted_content || []).map((u) =>
+    `<div class="src" style="color:var(--warn);font:600 12px var(--mono);margin:10px 0 3px">${esc(u.id)} · ${esc(u.source)}</div><pre>${esc(u.text)}</pre>`).join('');
+  $('evPolicy').innerHTML = (inp.policy_clauses || []).map((p) =>
+    `<div class="clause"><code>${esc(p.id)}</code><b>${esc(p.title)}</b> — ${esc(p.text)}</div>`).join('') || '<div class="none">none</div>';
 }
 
-function chips(field, values, selected, cls = () => '') {
+/* nothing scrolls: shrink text until each box fits its space */
+function fitFont(el, max = 12.5, min = 6.5) {
+  let s = max;
+  el.style.fontSize = `${s}px`;
+  while (el.scrollHeight > el.clientHeight + 1 && s > min) { s -= 0.25; el.style.fontSize = `${s}px`; }
+}
+function fitZoom(box, min = 0.5) {            // scale the card's content (not the card) until it fits the card
+  const inner = box.querySelector('.cin');
+  if (!inner) return;
+  let z = 1;
+  inner.style.zoom = 1;
+  while (box.scrollHeight > box.clientHeight + 1 && z > min) { z -= 0.03; inner.style.zoom = z; }
+}
+/* evidence: tool outputs and policy share the column by content; shrink both together; if still too long, flow the
+   tool outputs into two columns; as a last resort clip them with an "open full text" link */
+function fitEvidence() {
+  const t = $('evTools'), p = $('evPolicy');
+  t.querySelector('.full')?.remove();
+  t.classList.remove('clipped');
+  t.style.columnCount = 1;
+  const over = () => t.scrollHeight > t.clientHeight + 1 || p.scrollHeight > p.clientHeight + 1;
+  const size = (s) => { t.style.fontSize = `${s}px`; p.style.fontSize = `${s + 0.5}px`; };
+  let s = 12;
+  size(s);
+  while (over() && s > 8.5) { s -= 0.25; size(s); }
+  if (over()) {
+    t.style.columnCount = 2;
+    t.style.columnGap = '14px';
+    s = 11; size(s);
+    while (over() && s > 7.5) { s -= 0.25; size(s); }
+  }
+  if (t.scrollHeight > t.clientHeight + 1) {
+    t.classList.add('clipped');
+    const b = document.createElement('button');
+    b.className = 'full'; b.textContent = 'open full text';
+    b.onclick = () => $('fullDlg').classList.remove('hidden');
+    t.appendChild(b);
+  }
+}
+function wrapInner(box) {                       // fitZoom scales an inner wrapper, so the box keeps its size
+  if (box.firstElementChild?.classList.contains('cin') && box.children.length === 1) return;
+  const w = document.createElement('div');
+  w.className = 'cin';
+  while (box.firstChild) w.appendChild(box.firstChild);
+  box.appendChild(w);
+}
+function fitAll() {
+  fitEvidence();
+  fitZoom($('card'), 0.7);
+  wrapInner($('panel'));
+  fitZoom($('panel'), 0.7);
+}
+
+/* ---------- review panel ---------- */
+function summary(d) {
+  // d: {decision, final_action, missing_evidence, required_authority, clause_ids, user_response}
+  const ur = d.user_response;
+  return `<span class="dec ${esc(d.decision)}">${esc(nice(d.decision))}</span><span class="arrow">→</span>` +
+    `<span class="fin ${esc(d.final_action)}">${esc(d.final_action || '—')}</span>` +
+    `<span class="mini">missing <b>${esc(nice(d.missing_evidence))}</b></span>` +
+    `<span class="mini">decides <b>${esc(nice(d.required_authority))}</b></span>` +
+    ((d.clause_ids || []).length ? `<span class="mini">policy <b>${esc(d.clause_ids.join(', '))}</b></span>` : '') +
+    (ur && ur.text ? `</div><div class="replyline">User reply: <b>“${esc(ur.text)}”</b> (${ur.confirmed ? 'confirms' : 'declines'})` : '');
+}
+function fromVote(v) {
+  return { decision: v.gold_decision, final_action: v.gold_final_action, missing_evidence: v.gold_missing_evidence,
+    required_authority: v.gold_required_authority, clause_ids: v.gold_clause_ids || [], user_response: v.user_response };
+}
+
+function renderPanel() {
+  const p = $('panel'), s = sug(), v = mine();
+  if (!cur()) { p.innerHTML = ''; return; }
+  if (S.mode === 'edit') return renderEdit();
+  if (S.mode === 'cant') return renderCant();
+  const st = status(v);
+  if (st) {
+    const label = { accepted: ['acc', '✓ Accepted'], edited: ['edt', '✎ Edited'], cannot_label: ['cant', "⚠ Can't label"] }[st];
+    const reason = st === 'cannot_label' ? (REASONS.find((r) => r[0] === v.review.reason) || [, 'Other'])[1] : '';
+    p.innerHTML =
+      `<div class="ph"><span class="lab">Your review</span><span class="status ${label[0]}">${label[1]}</span></div>` +
+      (st === 'cannot_label'
+        ? `<div class="why"><small>Why it can't be labelled: ${esc(reason)}</small>${esc(v.review.note)}</div>`
+        : `<div class="ph">${summary(fromVote(v))}</div><div class="why"><small>Explanation</small>${esc(v.review.explanation)}</div>`) +
+      `<div class="actions"><button class="act edit" id="bEdit">✎ Change <kbd>R</kbd></button>` +
+      `<button class="act cant" id="bCant">⚠ Can't label <kbd>C</kbd></button>` +
+      `<button class="act ghost" id="bNext">Next unreviewed →</button></div>`;
+  } else if (s) {
+    p.innerHTML =
+      `<div class="ph"><span class="lab">Suggested decision</span>${summary(s)}</div>` +
+      `<div class="why"><small>Why</small>${esc(s.explanation)}</div>` +
+      `<div class="actions"><button class="act accept" id="bAccept">✓ Accept <kbd>A</kbd></button>` +
+      `<button class="act edit" id="bEdit">✎ Reject &amp; edit <kbd>R</kbd></button>` +
+      `<button class="act cant" id="bCant">⚠ Can't label <kbd>C</kbd></button></div>`;
+  } else {
+    p.innerHTML = '<div class="ph"><span class="lab">No suggestion for this case</span></div>' +
+      `<div class="actions"><button class="act edit" id="bEdit">✎ Label it <kbd>R</kbd></button>` +
+      `<button class="act cant" id="bCant">⚠ Can't label <kbd>C</kbd></button></div>`;
+  }
+  if ($('bAccept')) $('bAccept').onclick = accept;
+  if ($('bEdit')) $('bEdit').onclick = startEdit;
+  if ($('bCant')) $('bCant').onclick = startCant;
+  if ($('bNext')) $('bNext').onclick = nextUnreviewed;
+  fitAll();
+}
+
+function chipRow(field, values, selected, suggested) {
   return `<div class="chips" data-f="${field}">${values.map((x) =>
-    `<button class="${cls(x)}${x === selected ? ' on' : ''}" data-v="${x}">${esc(nice(x))}</button>`).join('')}</div>`;
+    `<button class="${x === selected ? 'on' : ''}${x === suggested ? ' suggested' : ''} ${field === 'final_action' ? x : ''}" data-v="${x}">${esc(nice(x))}</button>`).join('')}</div>`;
 }
-function yesNo(field, value, withNone) {
-  const b = (v, label, cls, on) => `<button class="${cls}${on ? ' on' : ''}" data-v="${v}">${label}</button>`;
-  return `<div class="chips" data-f="${field}">${b('yes', 'Yes', 'yes', value === true)}${b('no', 'No', 'no', value === false)}` +
-    `${withNone ? b('none', 'Unclear', 'none-v', value === null) : ''}</div>`;
+function draftReady(d) {
+  if (!d.decision || !d.final_action || !d.missing_evidence || !d.required_authority) return 'Pick decision, outcome, missing evidence and who decides';
+  if (d.decision === 'ASK_USER' && (!(d.user_response?.text || '').trim() || typeof d.user_response?.confirmed !== 'boolean')) return 'Write the user reply and whether it confirms';
+  if (!d.explanation.trim()) return 'Write why this is the right decision';
+  return null;
 }
 
-function renderSheet() {
-  const v = vote();
-  const d = v.gold_decision;
-  const sh = $('sheet');
-  if (d !== 'ASK_USER' && d !== 'ESCALATE') { sh.classList.add('hidden'); return; }
-  const u = v.user_response || {};
-  const noisy = u.noisy_text !== undefined && u.noisy_text !== null;
-  const ok = complete(v);
-  sh.innerHTML =
-    `<span class="lab">${d === 'ASK_USER' ? 'Then' : 'If approved'}</span>` +
-    chips('gold_final_action', ['ALLOW', 'BLOCK'], v.gold_final_action, (x) => x) +
-    `<span class="lab">Missing</span>${chips('gold_missing_evidence', S.cfg.vocab.missing_evidence, v.gold_missing_evidence)}` +
-    `<span class="lab">Who decides</span>${chips('gold_required_authority', S.cfg.vocab.required_authority, v.gold_required_authority)}` +
-    (d === 'ASK_USER'
-      ? `<span class="lab">User says</span><div class="line"><input class="reply" id="reply" placeholder="Type the user's answer…" value="${esc(u.text || '')}">` +
-        `${yesNo('confirmed', u.confirmed)}<label class="toggle"><input type="checkbox" id="noisyOn" ${noisy ? 'checked' : ''}><span></span>noisy</label></div>` +
-        (noisy ? `<span class="lab">Noisy reply</span><div class="line"><input class="reply" id="noisyText" placeholder="Wrong or unhelpful answer" value="${esc(u.noisy_text || '')}">` +
-          `${yesNo('noisy_confirmed', u.noisy_confirmed, true)}</div>` : '')
-      : '') +
-    `<div class="go"><span class="state${ok ? ' okay' : ''}" id="sheetState">${ok ? '✓ Ready' : d === 'ASK_USER'
-      ? 'Pick the outcome, write the reply and whether it confirms' : 'Pick the outcome if approved'}</span>` +
-    `<button class="done-btn" id="doneBtn" ${ok ? '' : 'disabled'}>Done · next ⏎</button></div>`;
-  sh.classList.remove('hidden');
-  sh.querySelectorAll('.chips[data-f]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
+function startEdit() {
+  const v = mine(), s = sug();
+  const base = status(v) && status(v) !== 'cannot_label' ? { ...fromVote(v), explanation: v.review.explanation } :
+    s ? { ...s, clause_ids: [...(s.clause_ids || [])], user_response: s.user_response ? { ...s.user_response } : null } :
+      { decision: null, final_action: null, missing_evidence: null, required_authority: null, clause_ids: [], user_response: null, explanation: '' };
+  S.draft = base;
+  S.mode = 'edit';
+  renderPanel();
+  setTimeout(() => $('expl')?.focus(), 30);
+}
+function renderEdit() {
+  const d = S.draft, s = sug() || {};
+  const ur = d.user_response || {};
+  const wait = draftReady(d);
+  $('panel').innerHTML =
+    `<div class="ph"><span class="lab">Correct the decision</span><span class="mini">• = suggested</span></div>` +
+    `<div class="grid2">` +
+    `<span class="lab">Decision</span><div class="decrow" data-f="decision">${['ALLOW', 'BLOCK', 'ASK_USER', 'ESCALATE'].map((x) =>
+      `<button class="${x} ${x === d.decision ? 'on' : ''}" data-v="${x}">${x === s.decision ? '• ' : ''}${nice(x)}</button>`).join('')}</div>` +
+    `<span class="lab">Outcome</span>${chipRow('final_action', ['ALLOW', 'BLOCK'], d.final_action, s.final_action)}` +
+    `<span class="lab">Missing</span>${chipRow('missing_evidence', S.cfg.vocab.missing_evidence, d.missing_evidence, s.missing_evidence)}` +
+    `<span class="lab">Who decides</span>${chipRow('required_authority', S.cfg.vocab.required_authority, d.required_authority, s.required_authority)}` +
+    (d.decision === 'ASK_USER'
+      ? `<span class="lab">User says</span><input class="reply" id="ureply" placeholder="What does the user answer?" value="${esc(ur.text || '')}">` +
+        `<span class="lab">Confirms?</span><div class="chips" data-f="confirmed"><button class="yes ${ur.confirmed === true ? 'on' : ''}" data-v="yes">Yes</button>` +
+        `<button class="no ${ur.confirmed === false ? 'on' : ''}" data-v="no">No</button></div>` : '') +
+    `<span class="lab">Explanation</span><textarea class="expl" id="expl" placeholder="Why is this the right decision?">${esc(d.explanation)}</textarea>` +
+    `</div><div class="foot2"><span class="hintx ${wait ? '' : 'ok'}" id="hint">${wait ? esc(wait) : '✓ Ready'}</span>` +
+    `<span class="spacer"></span><button class="act ghost" id="bCancel">Cancel <kbd>Esc</kbd></button>` +
+    `<button class="done-btn" id="bSave" ${wait ? 'disabled' : ''}>Save · next ⏎</button></div>`;
+  const p = $('panel');
+  p.querySelectorAll('.decrow button').forEach((b) => { b.onclick = () => setDraftDecision(b.dataset.v); });
+  p.querySelectorAll('.chips[data-f]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
     b.onclick = () => {
-      const f = g.dataset.f;
-      if (f === 'confirmed') editReply({ confirmed: b.dataset.v === 'yes' });
-      else if (f === 'noisy_confirmed') editReply({ noisy_confirmed: b.dataset.v === 'none' ? null : b.dataset.v === 'yes' });
-      else edit({ [f]: b.dataset.v });
+      if (g.dataset.f === 'confirmed') S.draft.user_response = { ...(S.draft.user_response || {}), confirmed: b.dataset.v === 'yes' };
+      else S.draft[g.dataset.f] = b.dataset.v;
+      renderEdit();
     };
   }));
-  if ($('reply')) $('reply').oninput = (e) => editReply({ text: e.target.value }, false);
-  if ($('noisyText')) $('noisyText').oninput = (e) => editReply({ noisy_text: e.target.value }, false);
-  if ($('noisyOn')) {
-    $('noisyOn').onchange = (e) => editReply(e.target.checked ? { noisy_text: '', noisy_confirmed: null } : { noisy_text: null, noisy_confirmed: null });
+  if ($('ureply')) $('ureply').oninput = (e) => { S.draft.user_response = { ...(S.draft.user_response || {}), text: e.target.value }; refreshHint(); };
+  $('expl').oninput = (e) => { S.draft.explanation = e.target.value; refreshHint(); };
+  $('bCancel').onclick = cancel;
+  $('bSave').onclick = saveEdit;
+  fitAll();
+}
+function setDraftDecision(x) {
+  const d = S.draft;
+  if (d.decision !== x) {
+    const [m, a] = DEF[x];
+    Object.assign(d, { decision: x, missing_evidence: m, required_authority: a,
+      final_action: x === 'ALLOW' || x === 'BLOCK' ? x : null });
+    if (x !== 'ASK_USER') d.user_response = null;
   }
-  $('doneBtn').onclick = () => advance(d);
+  renderEdit();
+}
+function refreshHint() {
+  const wait = draftReady(S.draft);
+  $('hint').className = `hintx ${wait ? '' : 'ok'}`;
+  $('hint').textContent = wait || '✓ Ready';
+  $('bSave').disabled = !!wait;
 }
 
-/* while typing, update only the readiness indicators (re-rendering would steal the focus) */
-function refreshLight() {
-  const ok = complete(vote());
-  if ($('sheetState') && ok) { $('sheetState').className = 'state okay'; $('sheetState').textContent = '✓ Ready'; }
-  if ($('doneBtn')) $('doneBtn').disabled = !ok;
-  renderTicks();
-  $('done').textContent = `· ${S.cases.filter((x) => complete(S.votes[x.case_id])).length} labelled`;
+function startCant() {
+  const v = mine();
+  S.draft = status(v) === 'cannot_label' ? { reason: v.review.reason, note: v.review.note } : { reason: null, note: '' };
+  S.mode = 'cant';
+  renderPanel();
+}
+function renderCant() {
+  const d = S.draft;
+  const ok = d.reason && d.note.trim();
+  $('panel').innerHTML =
+    `<div class="ph"><span class="lab">Why can't this case be labelled?</span></div>` +
+    `<div class="chips" id="reasons">${REASONS.map(([k, t]) => `<button class="${k === d.reason ? 'on' : ''}" data-v="${k}">${t}</button>`).join('')}</div>` +
+    `<textarea class="expl" id="cnote" style="margin-top:10px" placeholder="Explain what is wrong with this case, so the team can fix or drop it">${esc(d.note)}</textarea>` +
+    `<div class="foot2"><span class="hintx ${ok ? 'ok' : ''}" id="hint">${ok ? '✓ Ready' : 'Pick a reason and write a short note'}</span>` +
+    `<span class="spacer"></span><button class="act ghost" id="bCancel">Cancel <kbd>Esc</kbd></button>` +
+    `<button class="done-btn" id="bSave" ${ok ? '' : 'disabled'}>Save · next ⏎</button></div>`;
+  $('reasons').querySelectorAll('button').forEach((b) => { b.onclick = () => { S.draft.reason = b.dataset.v; renderCant(); }; });
+  $('cnote').oninput = (e) => {
+    S.draft.note = e.target.value;
+    const r = S.draft.reason && S.draft.note.trim();
+    $('hint').className = `hintx ${r ? 'ok' : ''}`; $('hint').textContent = r ? '✓ Ready' : 'Pick a reason and write a short note';
+    $('bSave').disabled = !r;
+  };
+  $('bCancel').onclick = cancel;
+  $('bSave').onclick = saveCant;
+  fitAll();
+  setTimeout(() => $('cnote')?.focus(), 30);
+}
+function cancel() { S.mode = 'view'; S.draft = null; renderPanel(); }
+
+/* ---------- saving ---------- */
+async function save(vote) {
+  const c = cur(), prev = S.votes[c.case_id];
+  S.votes[c.case_id] = vote;
+  try {
+    await api('/api/vote', { annotator: S.who, batch_id: S.batch, case_id: c.case_id, vote });
+  } catch (e) { if (prev) S.votes[c.case_id] = prev; else delete S.votes[c.case_id]; renderTicks(); toast(`Not saved: ${e.message}`); }
+}
+function voteFrom(d, statusName) {
+  return { gold_decision: d.decision, gold_final_action: d.final_action, gold_missing_evidence: d.missing_evidence,
+    gold_required_authority: d.required_authority, gold_clause_ids: d.clause_ids || [], user_response: d.user_response || null,
+    notes: d.explanation, review: { status: statusName, explanation: d.explanation, suggested: sug() } };
+}
+function accept() {
+  const s = sug();
+  if (!s || S.busy) return;
+  save(voteFrom(s, 'accepted'));
+  advance('ALLOW');
+}
+function saveEdit() {
+  if (draftReady(S.draft)) return;
+  const s = sug() || {};
+  const same = ['decision', 'final_action', 'missing_evidence', 'required_authority'].every((f) => S.draft[f] === s[f]) &&
+    S.draft.explanation.trim() === (s.explanation || '').trim();
+  save(voteFrom(S.draft, same ? 'accepted' : 'edited'));
+  advance(S.draft.decision === 'BLOCK' ? 'BLOCK' : 'ASK_USER');
+}
+function saveCant() {
+  const d = S.draft;
+  if (!d.reason || !d.note.trim()) return;
+  save({ gold_decision: null, gold_final_action: null, gold_missing_evidence: null, gold_required_authority: null,
+    gold_clause_ids: [], user_response: null, notes: d.note,
+    review: { status: 'cannot_label', reason: d.reason, note: d.note, suggested: sug() } });
+  advance('ESCALATE');
 }
 
-/* ---------- editing ---------- */
-function edit(patch, rerender = true) {
-  const c = cur();
-  if (!c) return;
-  const v = { ...vote(), ...patch };
-  S.votes[c.case_id] = v;
-  enqueue(c.case_id, v);
-  if (rerender) render(); else refreshLight();
-}
-function editReply(patch, rerender = true) { edit({ user_response: { ...(vote().user_response || {}), ...patch } }, rerender); }
-
-function decide(d) {
-  if (!cur() || S.busy) return;
-  const [m, a] = DEF[d];
-  const old = vote();
-  const v = { ...old, gold_decision: d, gold_missing_evidence: m, gold_required_authority: a,   // keeps cited clauses + note
-    gold_final_action: d === 'ALLOW' || d === 'BLOCK' ? d : (old.gold_decision === d ? old.gold_final_action : null) };
-  if (d !== 'ASK_USER') v.user_response = null;
-  edit(v);
-  if (d === 'ALLOW' || d === 'BLOCK') advance(d);
-  else setTimeout(() => (d === 'ASK_USER' ? $('reply') : null)?.focus(), 60);
-}
-
-function toggleCite(id) {
-  const ids = new Set(vote().gold_clause_ids || []);
-  if (ids.has(id)) ids.delete(id); else ids.add(id);
-  edit({ gold_clause_ids: [...ids].sort() });
-  if (!$('drawer').classList.contains('hidden')) search();
-}
-
-function clearVote() {
-  const c = cur();
-  if (!c || !S.votes[c.case_id] || !confirm('Delete your vote on this case?')) return;
-  delete S.votes[c.case_id];
-  enqueue(c.case_id, null);
-  render();
-}
-
-function advance(d) {
+/* ---------- navigation ---------- */
+function advance(flyClass) {
   S.busy = true;
-  $('card').classList.add(`fly-${d}`);
-  setTimeout(() => {
-    S.busy = false;
-    const next = S.cases.findIndex((c, j) => j > S.i && !complete(S.votes[c.case_id]));
-    if (next === -1 && S.cases.every((c) => complete(S.votes[c.case_id]))) {
-      toast('Batch complete — commit and push your votes');
-      go(S.i, true);
-    } else go(next === -1 ? S.i + 1 : next, true);
-  }, 380);
+  S.mode = 'view'; S.draft = null;
+  $('card').classList.add(`fly-${flyClass}`);
+  setTimeout(() => { S.busy = false; nextUnreviewed(true); }, 360);
+}
+function nextUnreviewed(fromSave) {
+  const n = S.cases.length;
+  for (let k = 1; k <= n; k++) {
+    const j = (S.i + k) % n;
+    if (!status(S.votes[S.cases[j].case_id])) return go(j, true);
+  }
+  toast('Every case in this batch is reviewed');
+  if (fromSave) go(S.i, true);
 }
 function go(i, anim) {
-  if (!S.cases.length) { S.i = 0; render(); return; }
+  if (!S.cases.length) return;
   S.i = (i + S.cases.length) % S.cases.length;
+  S.mode = 'view'; S.draft = null;
   put(KEY.pos(S.who), { batch: S.batch, i: S.i });
   render(anim);
 }
-function nextUnlabelled() {
-  for (let k = 1; k <= S.cases.length; k++) {
-    const j = (S.i + k) % S.cases.length;
-    if (!complete(S.votes[S.cases[j].case_id])) return go(j, true);
-  }
-  toast('Every case in this batch is labelled');
+function render(anim) {
+  renderCard(anim);
+  renderPanel();
+  renderTicks();
+  $('pos').textContent = `${S.i + 1} / ${S.cases.length}`;
 }
-
-/* ---------- saving: browser queue first, then the server ---------- */
-function enqueue(caseId, v) {
-  const q = get(KEY.queue(S.who), []).filter((x) => !(x.batch_id === S.batch && x.case_id === caseId));
-  q.push({ batch_id: S.batch, case_id: caseId, vote: v });
-  put(KEY.queue(S.who), q);
-  setSave('saving…', 'busy');
-  clearTimeout(enqueue.t);
-  enqueue.t = setTimeout(flush, 300);
-}
-async function flush() {
-  if (!S.who || S.sending) return;
-  S.sending = true;
-  let failed = false;
-  try {
-    let q = get(KEY.queue(S.who), []);
-    while (q.length) {
-      const item = q[0];
-      try {
-        await api('/api/vote', { annotator: S.who, ...item });
-      } catch (e) {
-        if (e instanceof TypeError) { setSave('offline — kept in this browser', 'err'); setTimeout(flush, 5000); return; }
-        failed = true;                                     // rejected by the server: report it, drop it, keep going
-        setSave('not saved', 'err');
-        toast(`Not saved: ${e.message}`);
-      }
-      q = get(KEY.queue(S.who), []);
-      const k = q.findIndex((x) => x.batch_id === item.batch_id && x.case_id === item.case_id && JSON.stringify(x.vote) === JSON.stringify(item.vote));
-      if (k >= 0) q.splice(k, 1);
-      put(KEY.queue(S.who), q);
-    }
-    if (!failed) setSave(`saved ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 'ok');
-  } finally {
-    S.sending = false;
-  }
-}
-function setSave(text, cls) {
-  $('save').className = `save ${cls}`;
-  $('save').querySelector('span').textContent = text;
-}
-
-/* ---------- policy documents ---------- */
-function highlight(text, terms) {
-  let out = esc(text);
-  for (const t of terms) out = out.replace(new RegExp(`(${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<mark>$1</mark>');
-  return out;
-}
-function search() {
-  const terms = $('q').value.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
-  let html;
-  if (!terms.length) {                                    // no query: browse every clause, grouped by document
-    html = [...new Set(S.policies.map((p) => p.doc))].map((d) => `<div class="doc">${esc(d)}</div>` +
-      S.policies.filter((p) => p.doc === d).map((p) => clauseHtml(p)).join('')).join('');
-  } else {
-    html = S.policies.map((p) => {
-      const hay = `${p.id} ${p.title} ${p.title} ${p.text}`.toLowerCase();
-      return { p, s: terms.reduce((n, t) => n + (hay.split(t).length - 1), 0), all: terms.every((t) => hay.includes(t)) };
-    }).filter((x) => x.s > 0).sort((a, b) => (b.all - a.all) || (b.s - a.s)).slice(0, 40)
-      .map((x) => clauseHtml(x.p, terms)).join('');
-  }
-  $('results').innerHTML = html || '<div class="clause">no match</div>';
-  bindCites($('results'));
-}
-function drawer(open) {
-  $('drawer').classList.toggle('hidden', !open);
-  if (open) { search(); $('q').focus(); }
+function renderTicks() {
+  const cnt = { accepted: 0, edited: 0, cannot_label: 0 };
+  $('ticks').innerHTML = S.cases.map((c, i) => {
+    const st = status(S.votes[c.case_id]);
+    if (st) cnt[st] += 1;
+    const cls = { accepted: 'acc', edited: 'edt', cannot_label: 'cant' }[st] || '';
+    return `<button class="${cls}${i === S.i ? ' cur' : ''}" data-i="${i}" title="Case ${i + 1}${st ? ' · ' + nice(st) : ''}"></button>`;
+  }).join('');
+  $('ticks').querySelectorAll('button').forEach((b) => { b.onclick = () => go(+b.dataset.i, true); });
+  const sw = (c, t, n) => `<span><i style="background:${c}"></i>${t} ${n}</span>`;
+  $('counts').innerHTML = sw('var(--allow)', 'accepted', cnt.accepted) + sw('#a78bfa', 'edited', cnt.edited) +
+    sw('var(--warn)', "can't label", cnt.cannot_label);
 }
 
 /* ---------- wiring ---------- */
+window.addEventListener('resize', fitAll);
+$('closeFull').onclick = () => $('fullDlg').classList.add('hidden');
+$('fullDlg').onclick = (e) => { if (e.target.id === 'fullDlg') $('fullDlg').classList.add('hidden'); };
+document.fonts?.ready.then(fitAll);
 $('prev').onclick = () => go(S.i - 1, true);
 $('next').onclick = () => go(S.i + 1, true);
 $('batch').onchange = (e) => loadBatch(e.target.value, 0);
-$('me').onclick = async () => {
-  if (!confirm('Switch annotator? Votes stay saved under each name.')) return;
-  await setWho(await pickWho());
-};
-$('btnPolicy').onclick = () => drawer(true);
-$('closeDrawer').onclick = () => drawer(false);
-$('drawer').onclick = (e) => { if (e.target.id === 'drawer') drawer(false); };
-$('q').oninput = search;
-document.querySelectorAll('#dock button').forEach((b) => { b.onclick = () => decide(b.dataset.d); });
+$('me').onclick = async () => { if (confirm('Switch reviewer?')) await setWho(await pickWho()); };
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { drawer(false); if (e.target.tagName === 'INPUT') e.target.blur(); return; }
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-    if (e.key === 'Enter' && e.target.id !== 'q' && complete(vote())) advance(vote().gold_decision);
+  const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
+  if (e.key === 'Escape') {
+    if (!$('fullDlg').classList.contains('hidden')) $('fullDlg').classList.add('hidden');
+    else if (S.mode !== 'view') cancel(); else if (typing) e.target.blur();
     return;
   }
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-  const d = { 1: 'ALLOW', 2: 'BLOCK', 3: 'ASK_USER', 4: 'ESCALATE' }[e.key];
-  if (d) decide(d);
+  if (e.key === 'Enter' && !e.shiftKey && S.mode !== 'view' && !$('bSave')?.disabled) {
+    if (e.target.tagName === 'TEXTAREA' && !e.ctrlKey) return;      // plain Enter adds a line; Ctrl+Enter saves
+    e.preventDefault(); $('bSave').click(); return;
+  }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (S.mode === 'edit' && ['1', '2', '3', '4'].includes(k)) { setDraftDecision(['ALLOW', 'BLOCK', 'ASK_USER', 'ESCALATE'][+k - 1]); }
+  else if (k === 'a' && S.mode === 'view' && !status(mine())) accept();
+  else if (k === 'r') startEdit();
+  else if (k === 'c') startCant();
   else if (e.key === 'ArrowRight') go(S.i + 1, true);
   else if (e.key === 'ArrowLeft') go(S.i - 1, true);
-  else if (e.key === 'u' || e.key === 'U') nextUnlabelled();
-  else if (e.key === 'e' || e.key === 'E') { S.evidence = !S.evidence; render(); }
-  else if (e.key === '/') drawer(true);
-  else if (e.key === 'Enter' && complete(vote())) advance(vote().gold_decision);
   else return;
   e.preventDefault();
 });
-window.addEventListener('online', flush);
 
 (async () => {
   S.cfg = await api('/api/config');
-  S.policies = await api('/api/policies');
-  $('polCount').textContent = `${S.policies.length} clauses`;
-  // a saved name wins; ?annotator=<name> only preselects it on a first visit
   const saved = get(KEY.who, null) || new URLSearchParams(location.search).get('annotator');
   await setWho(S.cfg.annotators.includes(saved) ? saved : await pickWho());
 })();

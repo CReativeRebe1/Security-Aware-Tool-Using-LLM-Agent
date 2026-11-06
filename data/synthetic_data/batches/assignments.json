@@ -5,147 +5,127 @@
   "shubham",
   "yogendra"
  ],
- "rule": "primary annotators label the whole batch independently and blind; the tiebreak annotator labels only cases where the two primary votes differ on gold_decision or gold_final_action",
+ "rule": "each batch is reviewed by exactly two reviewers, independently; where they disagree on the decision or final action the case is disputed and the two settle it by revising their own reviews",
  "batches": {
   "batch_01": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "prabhash"
-   ],
-   "tiebreak": "shubham"
+   ]
   },
   "batch_02": {
-   "primary": [
+   "reviewers": [
     "shubham",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   },
   "batch_03": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "shubham"
-   ],
-   "tiebreak": "prabhash"
+   ]
   },
   "batch_04": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   },
   "batch_05": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "yogendra"
-   ],
-   "tiebreak": "prabhash"
+   ]
   },
   "batch_06": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "shubham"
-   ],
-   "tiebreak": "yogendra"
+   ]
   },
   "batch_07": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "prabhash"
-   ],
-   "tiebreak": "shubham"
+   ]
   },
   "batch_08": {
-   "primary": [
+   "reviewers": [
     "shubham",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   },
   "batch_09": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "shubham"
-   ],
-   "tiebreak": "yogendra"
+   ]
   },
   "batch_10": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "yogendra"
-   ],
-   "tiebreak": "shubham"
+   ]
   },
   "batch_11": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "yogendra"
-   ],
-   "tiebreak": "prabhash"
+   ]
   },
   "batch_12": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "shubham"
-   ],
-   "tiebreak": "yogendra"
+   ]
   },
   "batch_13": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "prabhash"
-   ],
-   "tiebreak": "shubham"
+   ]
   },
   "batch_14": {
-   "primary": [
+   "reviewers": [
     "shubham",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   },
   "batch_15": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "shubham"
-   ],
-   "tiebreak": "prabhash"
+   ]
   },
   "batch_16": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   },
   "batch_17": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "yogendra"
-   ],
-   "tiebreak": "prabhash"
+   ]
   },
   "batch_18": {
-   "primary": [
+   "reviewers": [
     "prabhash",
     "shubham"
-   ],
-   "tiebreak": "yogendra"
+   ]
   },
   "batch_19": {
-   "primary": [
+   "reviewers": [
     "rinkesh",
     "prabhash"
-   ],
-   "tiebreak": "shubham"
+   ]
   },
   "batch_20": {
-   "primary": [
+   "reviewers": [
     "shubham",
     "yogendra"
-   ],
-   "tiebreak": "rinkesh"
+   ]
   }
  }
 }

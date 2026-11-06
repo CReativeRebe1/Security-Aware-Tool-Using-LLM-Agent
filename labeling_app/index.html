@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gate · Focus</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='%23a78bfa'/%3E%3C/svg%3E">
+<title>Gate · Review</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='%2334d399'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -14,44 +14,35 @@
 <div class="aurora"><i></i><i></i><i></i></div>
 
 <div class="top">
-  <div class="logo"><b></b>Gate<span style="color:var(--dim);font-weight:600">focus</span></div>
+  <div class="logo"><b></b>Gate<span style="color:var(--dim);font-weight:600">review</span></div>
   <div class="pill"><select id="batch" title="Batch"></select><span id="role" class="role"></span></div>
-  <button class="ghost" id="btnPolicy" title="Policy documents (/)">Policies</button>
   <div class="spacer"></div>
-  <span class="save" id="save"><i></i><span>—</span></span>
-  <div class="count"><span id="pos">–</span> <small id="done"></small></div>
-  <div class="me" id="me" title="Switch annotator"><span id="avatar">?</span><b id="who">–</b></div>
+  <div class="counts" id="counts"></div>
+  <div class="navbtns"><button id="prev" title="Previous (←)">‹</button><button id="next" title="Next (→)">›</button></div>
+  <div class="count"><span id="pos">–</span></div>
+  <div class="me" id="me" title="Switch reviewer"><span id="avatar">?</span><b id="who">–</b></div>
 </div>
 <div class="ticks" id="ticks"></div>
 
-<div class="stage">
-  <button class="nav prev" id="prev" title="Previous (←)">‹</button>
-  <article class="card" id="card"></article>
-  <button class="nav next" id="next" title="Next (→)">›</button>
+<div class="layout">
+  <section class="left">
+    <article class="card" id="card"></article>
+  </section>
+  <section class="right">
+    <div class="ev tools"><div class="k">Tool outputs (untrusted)</div><div class="body" id="evTools"></div></div>
+    <div class="ev policy"><div class="k">Retrieved policy</div><div class="body" id="evPolicy"></div></div>
+  </section>
+  <section class="reviewcol">
+    <div class="panel" id="panel"></div>
+  </section>
 </div>
+<div class="overlay hidden" id="fullDlg"><div class="modal wide"><h2 style="margin-top:0">Tool outputs</h2><div id="fullText"></div>
+  <p style="text-align:right;margin:12px 0 0"><button class="act ghost" id="closeFull">Close <kbd>Esc</kbd></button></p></div></div>
+<div class="hint" style="text-align:center;padding-bottom:8px"><kbd>A</kbd> accept · <kbd>R</kbd> edit · <kbd>C</kbd> can't label ·
+  <kbd>←</kbd><kbd>→</kbd> move · <kbd>Esc</kbd> cancel</div>
 
-<div class="dock-wrap">
-  <div class="sheet hidden" id="sheet"></div>
-  <div class="dock" id="dock">
-    <button class="ALLOW" data-d="ALLOW"><span class="ic">✓</span><b>Allow</b><kbd>1</kbd></button>
-    <button class="BLOCK" data-d="BLOCK"><span class="ic">✕</span><b>Block</b><kbd>2</kbd></button>
-    <button class="ASK_USER" data-d="ASK_USER"><span class="ic">?</span><b>Ask user</b><kbd>3</kbd></button>
-    <button class="ESCALATE" data-d="ESCALATE"><span class="ic">↑</span><b>Escalate</b><kbd>4</kbd></button>
-  </div>
-  <div class="hint"><kbd>1</kbd>–<kbd>4</kbd> decide · <kbd>←</kbd><kbd>→</kbd> move · <kbd>U</kbd> next unlabelled · <kbd>E</kbd> evidence · <kbd>/</kbd> policies · <kbd>Enter</kbd> done</div>
-</div>
-
-<div class="drawer-wrap hidden" id="drawer">
-  <aside class="drawer">
-    <h3>Policy documents <small id="polCount"></small><button class="ghost" id="closeDrawer">Close</button></h3>
-    <input class="search" id="q" placeholder="Search clauses by id, title or text">
-    <div class="results" id="results"></div>
-  </aside>
-</div>
-
-<div class="overlay hidden" id="whoDlg"><div class="modal"><h2>Who's labelling?</h2>
-  <p>Your votes are saved under your name. Nobody else can change them, and you can't change theirs.</p>
-  <div class="people" id="people"></div></div></div>
+<div class="overlay hidden" id="whoDlg"><div class="modal"><h2>Who's reviewing?</h2>
+  <p>Your reviews are saved under your name.</p><div class="people" id="people"></div></div></div>
 
 <script src="app.js"></script>
 </body>

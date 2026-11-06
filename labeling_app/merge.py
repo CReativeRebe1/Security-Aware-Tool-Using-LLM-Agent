@@ -5,12 +5,13 @@
     python labeling_app/merge.py   # -> data/synthetic_data/labels/
 
 Writes (all derived, safe to regenerate):
-  votes.jsonl           every vote, one per line
-  cases.jsonl           every case: batch, status, the votes' annotators, and the gold labels once decided
-  gold.jsonl            only decided cases (status agreed or resolved), ready for the training/eval pipeline
-  tiebreak_queue.json   disputed cases still waiting for their tie-break vote, per batch and tie-breaker
-  agreement.json        Krippendorff's alpha (nominal) and pairwise Cohen's kappa on the two primary votes
-Status: unlabeled | partial | agreed | awaiting_tiebreak | resolved | unresolved (three different votes).
+  votes.jsonl         every review, one per line
+  cases.jsonl         every case: batch, status, its two reviewers, and the gold labels once agreed
+  gold.jsonl          only agreed cases, ready for the training/eval pipeline
+  disputed.json       cases where the two reviewers disagree, per batch (the pair settles them)
+  cannot_label.json   cases both reviewers marked "can't label", with their reasons and notes
+  agreement.json      Krippendorff's alpha (nominal) and Cohen's kappa between the two reviewers
+Status: unlabeled | partial | agreed | disputed | cannot_label.
 """
 
 from __future__ import annotations
@@ -58,32 +59,33 @@ def main() -> None:
     asg = L.load_assignments()
     out_dir = L.LABELS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
-    votes, cases, gold, queue = [], [], [], defaultdict(list)
+    votes, cases, gold = [], [], []
+    disputed, cant = defaultdict(list), defaultdict(list)
     pairs = defaultdict(lambda: defaultdict(lambda: ([], [])))      # field -> (a, b) -> (a's, b's labels)
     units = defaultdict(list)                                         # field -> [[a's, b's]]
     status_count: Counter = Counter()
 
     for bid, b in sorted(asg["batches"].items()):
-        a, c = b["primary"]
-        tb = b["tiebreak"]
-        va, vc, vt = L.read_votes(a, bid), L.read_votes(c, bid), L.read_votes(tb, bid)
-        votes += [*va.values(), *vc.values(), *vt.values()]
+        ra, rb = b["reviewers"]
+        va, vb = L.read_votes(ra, bid), L.read_votes(rb, bid)
+        votes += [*va.values(), *vb.values()]
         for case in L.load_batch(bid):
             cid = case["case_id"]
-            p1, p2, t = va.get(cid), vc.get(cid), vt.get(cid)
-            status, g = L.resolve([p1, p2], t)
+            p1, p2 = va.get(cid), vb.get(cid)
+            status, g = L.resolve(p1, p2)
             status_count[status] += 1
-            row = {"case_id": cid, "batch_id": bid, "status": status,
-                   "voters": [v["annotator"] for v in (p1, p2, t) if v], **(g or {})}
-            cases.append(row)
+            cases.append({"case_id": cid, "batch_id": bid, "status": status, "reviewers": [ra, rb], **(g or {})})
             if g:
-                gold.append({"case_id": cid, "batch_id": bid, "status": status, **g})
-            if status == "awaiting_tiebreak":
-                queue[f"{bid} ({tb})"].append(cid)
+                gold.append({"case_id": cid, "batch_id": bid, **g})
+            elif status == "disputed":
+                disputed[f"{bid} ({ra}, {rb})"].append(cid)
+            elif status == "cannot_label":
+                cant[bid].append({"case_id": cid, "reasons": {v["annotator"]: {
+                    "reason": v["review"].get("reason"), "note": v["review"].get("note")} for v in (p1, p2)}})
             if L.is_complete(p1) and L.is_complete(p2):
                 for f in L.AGREEMENT_FIELDS:
                     units[f].append([p1[f], p2[f]])
-                    xs, ys = pairs[f][(a, c)]
+                    xs, ys = pairs[f][(ra, rb)]
                     xs.append(p1[f])
                     ys.append(p2[f])
 
@@ -106,17 +108,18 @@ def main() -> None:
     dump_jsonl("votes.jsonl", sorted(votes, key=lambda v: (v["case_id"], v["annotator"])))
     dump_jsonl("cases.jsonl", cases)
     dump_jsonl("gold.jsonl", gold)
-    (out_dir / "tiebreak_queue.json").write_text(json.dumps(dict(queue), indent=1), encoding="utf-8")
+    (out_dir / "disputed.json").write_text(json.dumps(dict(disputed), indent=1), encoding="utf-8")
+    (out_dir / "cannot_label.json").write_text(json.dumps(dict(cant), indent=1, ensure_ascii=False), encoding="utf-8")
     (out_dir / "agreement.json").write_text(json.dumps(agreement, indent=1), encoding="utf-8")
 
-    print(f"{len(votes)} votes on {len(cases)} cases -> {out_dir}")
-    for s in ("unlabeled", "partial", "agreed", "awaiting_tiebreak", "resolved", "unresolved"):
-        print(f"  {s:18s} {status_count[s]}")
+    print(f"{len(votes)} reviews on {len(cases)} cases -> {out_dir}")
+    for s in ("unlabeled", "partial", "agreed", "disputed", "cannot_label"):
+        print(f"  {s:14s} {status_count[s]}")
     for f, r in agreement.items():
         alpha = "n/a" if r["krippendorff_alpha"] is None else f"{r['krippendorff_alpha']:.3f}"
         print(f"  alpha {f:24s} {alpha}  (n={r['n_cases']})")
-    if status_count["unresolved"]:
-        print("  unresolved cases (three different votes) need a team decision: see cases.jsonl")
+    if status_count["disputed"]:
+        print("  disputed cases: the two reviewers should talk and revise their own reviews (see disputed.json)")
 
 
 if __name__ == "__main__":

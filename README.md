@@ -1,119 +1,123 @@
-# Security-Aware Tool-Using Agent — Human Labelling Branch
+# Security-Aware Tool-Using Agent — Human Review Branch
 
-This branch holds the labelling tool and the 2,000 synthetic security-gate cases (20 batches of 100) that the team
-labels by hand. No model code lives here.
+This branch holds the review tool and the 2,000 synthetic security-gate cases (20 batches of 100) that the team
+checks by hand. No model code lives here.
 
 ```
-labeling_app/            the labelling tool (run server.py, open the page)
+labeling_app/            the review tool (run server.py, open the page)
   server.py              local server + JSON API; enforces who may write what
   index.html, app.js, app.css
-  labels.py              vote storage and the multi-annotator rules
-  merge.py               builds the main label database from everyone's votes
+  labels.py              review storage and the two-reviewer rules
+  merge.py               builds the main label database from everyone's reviews
 data/synthetic_data/
   batches/batch_XX.json  the cases (batch_XX.jsonl: same cases, one per line)
-  batches/assignments.json   who labels which batch
-  batches/annotations/<name>/batch_XX.json   your votes (you commit these)
+  batches/suggestions.json   the suggested decision + explanation for every case
+  batches/assignments.json   the two reviewers of each batch
+  batches/annotations/<name>/batch_XX.json   your reviews (you commit these)
   labels/                the main database, built by merge.py
-resources/handbooks/     policy documents shown in the tool's policy search (placeholders for now)
+resources/handbooks/     policy documents (placeholders for now)
 scripts/prepare_batches.py   how the batches were made (reference only)
 tests/test_labeling.py   end-to-end checks of the protocol
 ```
 
 ## The protocol in one paragraph
 
-Every batch has **two primary annotators** who label all 100 cases independently and cannot see each other's
-votes. When both have finished, a case where their votes differ on the **decision** or the **final action** is
-**disputed**; the batch's **tie-break annotator** then votes on those cases only, and can see the two earlier votes.
-Each vote is stored under its author's name in the author's own file, so nobody can change anyone else's vote and
-files from different people never conflict in git. `merge.py` combines all votes into the main database: agreed
-cases take the shared label, disputed cases the majority of the three votes.
+Every case comes with a **suggested decision and explanation**. Each batch is reviewed by **exactly two people**,
+and nobody else can open it or write to it. The two review all 100 cases independently and cannot see each
+other's reviews. For each case a reviewer **accepts** the suggestion, **edits** it (decision, outcome, missing
+evidence, who decides, user reply, explanation), or marks it **can't label** with a reason and a note. When both
+have reviewed a case it is **agreed** if their decision and final action match; otherwise it is **disputed**, and
+the two talk it over and each revises their own review. Each review is stored under its author's name in the
+author's own file, so nobody can change anyone else's review and files from different people never conflict in git.
 
 ## Assignments (`data/synthetic_data/batches/assignments.json`)
 
-Each person is primary on 10 batches and tie-breaker on 4–6.
+Each person reviews 10 batches; every batch has two reviewers.
 
-| Batch | Primary 1 | Primary 2 | Tie-break |
-|---|---|---|---|
-| 01 | rinkesh | prabhash | shubham |
-| 02 | shubham | yogendra | rinkesh |
-| 03 | rinkesh | shubham | prabhash |
-| 04 | prabhash | yogendra | rinkesh |
-| 05 | rinkesh | yogendra | prabhash |
-| 06 | prabhash | shubham | yogendra |
-| 07 | rinkesh | prabhash | shubham |
-| 08 | shubham | yogendra | rinkesh |
-| 09 | rinkesh | shubham | yogendra |
-| 10 | prabhash | yogendra | shubham |
-| 11 | rinkesh | yogendra | prabhash |
-| 12 | prabhash | shubham | yogendra |
-| 13 | rinkesh | prabhash | shubham |
-| 14 | shubham | yogendra | rinkesh |
-| 15 | rinkesh | shubham | prabhash |
-| 16 | prabhash | yogendra | rinkesh |
-| 17 | rinkesh | yogendra | prabhash |
-| 18 | prabhash | shubham | yogendra |
-| 19 | rinkesh | prabhash | shubham |
-| 20 | shubham | yogendra | rinkesh |
+| Batch | Reviewer 1 | Reviewer 2 |
+|---|---|---|
+| 01 | rinkesh | prabhash |
+| 02 | shubham | yogendra |
+| 03 | rinkesh | shubham |
+| 04 | prabhash | yogendra |
+| 05 | rinkesh | yogendra |
+| 06 | prabhash | shubham |
+| 07 | rinkesh | prabhash |
+| 08 | shubham | yogendra |
+| 09 | rinkesh | shubham |
+| 10 | prabhash | yogendra |
+| 11 | rinkesh | yogendra |
+| 12 | prabhash | shubham |
+| 13 | rinkesh | prabhash |
+| 14 | shubham | yogendra |
+| 15 | rinkesh | shubham |
+| 16 | prabhash | yogendra |
+| 17 | rinkesh | yogendra |
+| 18 | prabhash | shubham |
+| 19 | rinkesh | prabhash |
+| 20 | shubham | yogendra |
 
-## Labelling
+## Reviewing
 
 ```bash
 git checkout labling && git pull
 python labeling_app/server.py          # Python 3.10+, no extra packages
 ```
 
-Open **http://localhost:8080**, pick your name once (it is remembered; click your name to switch, it asks
-first), choose a batch from the batch menu (only your batches are listed, each with your role and progress), and
-label one case at a time.
+Open **http://localhost:8080**, pick your name once (it is remembered; click your name to switch), and choose a
+batch from the batch menu (only your 10 batches are listed, with your progress). The screen has three columns and
+nothing scrolls:
 
-- **The card** shows what the user asked, what the agent wants to do (arguments copied from content are outlined
-  amber, injected ones red) and four signals: origin, authority, data flow and arguments. `E` opens the full
-  evidence: tool outputs and the retrieved policy clauses.
-- **Decide** with the dock or `1`–`4`. ALLOW / BLOCK are done at once and move to the next unlabelled case.
-  ASK_USER / ESCALATE open a sheet for the outcome, the missing evidence, who decides and (ASK_USER) the user's
-  reply; *Done · next* (`Enter`) unlocks when the vote is complete. Your previous answers stay when you change
-  your mind.
-- **Every change saves immediately** — to your browser first and then to your vote file. If the server is not
-  running, changes wait in the browser and are sent on the next load. The dot at the top right shows the state.
-- The strip of ticks under the top bar is the batch: coloured by your decision, amber = started; click to jump.
-- Tie-breakers see only the disputed cases, with both primary votes on the card.
+- **Left — the case:** what the user asked, what the agent wants to do (arguments copied from content are outlined
+  amber, injected ones red), four signals (origin, authority, data flow, arguments) and any earlier conversation.
+- **Middle — the evidence:** the untrusted tool outputs and the retrieved policy clauses, always visible. If a tool
+  output is very long, *open full text* shows all of it.
+- **Right — your review:** the suggested decision with its explanation, and three choices:
+  - **Accept** (`A`) — the suggestion is right; saved and you move on.
+  - **Reject & edit** (`R`) — change the decision (`1`–`4`), outcome, missing evidence, who decides, the user's
+    reply (ASK_USER) and the explanation. The suggested values are marked with •. Save with the button,
+    `Enter`, or `Ctrl+Enter` inside the explanation.
+  - **Can't label** (`C`) — the case does not fit any of the four decisions or is broken. Pick a reason (unclear
+    request, evidence missing, evidence contradicts itself, none of the 4 decisions fits, not a security decision,
+    duplicate or broken case, other) and write a short note.
+
+Every save goes straight to your review file. The strip under the top bar is the batch: green = accepted,
+purple = edited, striped amber = can't label; click a tick to jump. You can reopen any case and change your review.
 
 | Field | Meaning |
 |---|---|
 | decision | first-round decision: **ALLOW** (enough trusted evidence, authorized) · **BLOCK** (prohibited, caused by or copying from instructions in untrusted content, or already declined/denied) · **ASK_USER** (something only the user can supply is missing: recipient, target, intent) · **ESCALATE** (needs a role the user does not hold) |
-| final action | ALLOW or BLOCK after legitimate resolution with your *clean* user reply (equals the decision for ALLOW/BLOCK) |
+| final action | ALLOW or BLOCK after legitimate resolution with the *clean* user reply (equals the decision for ALLOW/BLOCK) |
 | missing evidence | `none`, `user_intent`, `recipient_identity`, `resource_target`, `approval`, `data_classification` |
 | required authority | `none`, `current_user`, `resource_owner`, `manager`, `security_admin` |
 | user reply | ASK_USER only: one or two sentences in the user's voice, and whether it confirms; a reply can never grant authority |
-
-- **Policies** (top bar, or `/`) opens the policy documents: browse every clause in `resources/handbooks/*.md` or
-  search them. *cite* (there or in the evidence) adds a clause to your vote; cited clauses and an optional note sit
-  at the bottom of the card. ASK_USER has an optional *noisy* reply variant (about 15% of ASK_USER cases).
+| explanation | why this is the right decision (required) |
 
 | Key | Action |
 |---|---|
-| `1` `2` `3` `4` | ALLOW / BLOCK / ASK_USER / ESCALATE |
-| `Enter` | done, next (when the vote is complete) |
+| `A` | accept the suggestion |
+| `R` | reject & edit (or change your review) |
+| `C` | can't label |
+| `1` `2` `3` `4` | in the editor: ALLOW / BLOCK / ASK_USER / ESCALATE |
+| `Enter` / `Ctrl+Enter` | save and go to the next unreviewed case |
 | `→` `←` | next / previous case |
-| `U` | next unlabelled case |
-| `E` | show / hide the evidence |
-| `/` | policy documents and search |
-| `Esc` | leave a text field, close the policy panel |
+| `Esc` | cancel the editor, close the full-text view |
 
-## Sending your labels back
+## Sending your reviews back
 
 Commit only your own folder, then push:
 
 ```bash
 git add data/synthetic_data/batches/annotations/<your-name>/
-git commit -m "<your-name>: batch_XX labels"
+git commit -m "<your-name>: batch_XX reviews"
 git pull --rebase && git push
 ```
 
-Push whenever you like (partial batches are fine); nothing you push can overwrite another person's votes.
+Push whenever you like (partial batches are fine); nothing you push can overwrite another person's reviews.
 
-**Tie-breakers:** after both primary annotators of your batch have pushed, `git pull` and open that batch — it
-shows only the disputed cases, with both earlier votes above your vote form.
+**Disputed cases:** after both reviewers of a batch have pushed, run `merge.py` (below) and look at
+`labels/disputed.json`. The two reviewers discuss each listed case and update their own reviews in the tool until
+they agree.
 
 ## Building the main database
 
@@ -126,14 +130,14 @@ This writes `data/synthetic_data/labels/`:
 
 | File | Content |
 |---|---|
-| `cases.jsonl` | every case: status (`unlabeled`, `partial`, `agreed`, `awaiting_tiebreak`, `resolved`, `unresolved`) and its gold labels once decided |
-| `gold.jsonl` | decided cases only — the labels the experiments use |
-| `votes.jsonl` | every individual vote |
-| `tiebreak_queue.json` | disputed cases still waiting, per batch and tie-breaker |
-| `agreement.json` | Krippendorff's α and per-pair Cohen's κ on the two primary votes |
+| `cases.jsonl` | every case: status (`unlabeled`, `partial`, `agreed`, `disputed`, `cannot_label`), its two reviewers, and its gold labels once agreed |
+| `gold.jsonl` | agreed cases only — the labels the experiments use |
+| `votes.jsonl` | every individual review |
+| `disputed.json` | cases where the two reviewers disagree, per batch |
+| `cannot_label.json` | cases both reviewers marked can't label, with their reasons and notes (fix or drop them) |
+| `agreement.json` | Krippendorff's α and Cohen's κ between the two reviewers |
 
-Everything in `labels/` is derived and can be regenerated at any time. `unresolved` (three different votes) is
-left for a team decision.
+Everything in `labels/` is derived and can be regenerated at any time.
 
 ## Policy documents
 
