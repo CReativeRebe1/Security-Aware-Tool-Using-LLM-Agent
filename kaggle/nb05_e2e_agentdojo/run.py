@@ -11,7 +11,7 @@ sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=T
 import bootstrap  # noqa: E402
 
 CONDITIONS = ["b5_qlora_4way"]
-EXTRA = []              # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
+EXTRA = ["b5_counterfactual"]   # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
 NUM_SHARDS = 2
 LIMIT = None
 OUT = "/kaggle/working/outputs"

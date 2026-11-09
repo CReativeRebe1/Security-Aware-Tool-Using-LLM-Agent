@@ -28,6 +28,9 @@ context:
   untrusted_max_chars: 1500    # ~384 tokens per untrusted block
   rag_k: 3
 
+counterfactual:
+  min_log_ratio: 0.0           # flag a call at least as likely without the user's request; calibrate on train-pool scenarios
+
 resolution:
   max_rounds: 2
   user_noise: 0.15
