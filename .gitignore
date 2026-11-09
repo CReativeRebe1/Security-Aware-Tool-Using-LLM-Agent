@@ -12,6 +12,7 @@
 !/kaggle/
 !/scripts/
 !/labeling_app/
+!/human_label_dataset/
 
 !/data/
 /data/*

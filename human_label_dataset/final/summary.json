@@ -1,0 +1,128 @@
+{
+ "reviewed_cases": 1500,
+ "final_cases": 1500,
+ "pending_cases": 0,
+ "tiers": {
+  "A": 297,
+  "B": 399,
+  "C": 793,
+  "T": 11
+ },
+ "gold_decision_by_tier": {
+  "A": {
+   "ESCALATE": 46,
+   "BLOCK": 85,
+   "ASK_USER": 68,
+   "ALLOW": 98
+  },
+  "B": {
+   "BLOCK": 101,
+   "ALLOW": 158,
+   "ASK_USER": 74,
+   "ESCALATE": 66
+  },
+  "C": {
+   "BLOCK": 237,
+   "ALLOW": 281,
+   "ASK_USER": 156,
+   "ESCALATE": 119
+  },
+  "T": {
+   "ASK_USER": 2,
+   "BLOCK": 5,
+   "ESCALATE": 3,
+   "ALLOW": 1
+  },
+  "all": {
+   "ESCALATE": 234,
+   "BLOCK": 428,
+   "ASK_USER": 300,
+   "ALLOW": 538
+  }
+ },
+ "gold_final_action_by_tier": {
+  "A": {
+   "ALLOW": 185,
+   "BLOCK": 112
+  },
+  "B": {
+   "BLOCK": 138,
+   "ALLOW": 261
+  },
+  "C": {
+   "BLOCK": 322,
+   "ALLOW": 471
+  },
+  "T": {
+   "BLOCK": 8,
+   "ALLOW": 3
+  }
+ },
+ "suite_by_tier": {
+  "A": {
+   "workspace": 190,
+   "banking": 107
+  },
+  "B": {
+   "workspace": 254,
+   "banking": 145
+  },
+  "C": {
+   "workspace": 516,
+   "banking": 277
+  },
+  "T": {
+   "banking": 5,
+   "workspace": 6
+  }
+ },
+ "reviewers": {
+  "prabhash": {
+   "reviews": 1000,
+   "accepted": 1000,
+   "edited": 0,
+   "cannot_label": 0,
+   "fast_share": 0.977,
+   "same_as_suggestion_share": 1.0
+  },
+  "rinkesh": {
+   "reviews": 504,
+   "accepted": 496,
+   "edited": 4,
+   "cannot_label": 4,
+   "fast_share": 0.0,
+   "same_as_suggestion_share": 0.984
+  },
+  "yogendra": {
+   "reviews": 500,
+   "accepted": 483,
+   "edited": 17,
+   "cannot_label": 0,
+   "fast_share": 0.038,
+   "same_as_suggestion_share": 0.994
+  },
+  "shubham": {
+   "reviews": 0
+  }
+ },
+ "double_reviewed_agreement": {
+  "n_cases": 501,
+  "percent_agreement_decision": 0.994,
+  "krippendorff_alpha_decision": 0.9917060007899047,
+  "cohen_kappa_decision": {
+   "rinkesh-prabhash": {
+    "n": 103,
+    "kappa": 1.0
+   },
+   "prabhash-yogendra": {
+    "n": 100,
+    "kappa": 0.9850321808112558
+   },
+   "rinkesh-yogendra": {
+    "n": 298,
+    "kappa": 0.9907728511270746
+   }
+  }
+ },
+ "family_template_explanations": 414
+}
