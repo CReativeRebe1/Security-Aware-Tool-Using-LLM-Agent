@@ -3,8 +3,8 @@
 The same EvidenceMask and prompt renderer as evaluation (P3), and the decoder's skeleton as the target text, so
 the model is trained on exactly the format it is scored on. Labels per condition:
   four-way (B5, -prov/-auth/-RAG/-intermediate): gold_decision
-  binary (B4):                                   gold_final_action
-  three-way (b5_no_ask / b5_no_esc):             removed class -> gold_final_action
+  binary (B4), three-way (b5_no_ask / b5_no_esc): gold_decision, a deferral the gate cannot make -> BLOCK
+Conditions with `history: none` skip pre-answered cases: without the answer their label would be contradictory.
 `b5_no_inter` drops missing_evidence / required_authority from the target. B4 and B5 see the same examples.
 Every case is asserted against pool train_only (train-source minus the dev pool used for the B4 threshold).
 
@@ -33,10 +33,7 @@ TRAINED = ("b4_qlora_binary", "b5_qlora_4way", "b5_no_prov", "b5_no_auth", "b5_n
 
 
 def target_for(case: Case, cond: Condition) -> GateOutput:
-    if cond.binary:
-        decision = case.gold_final_action
-    else:
-        decision = collapse_decision(case.gold_decision, cond.decision_space, case.gold_final_action)
+    decision = collapse_decision(case.gold_decision, cond.decision_space)
     return GateOutput(decision=decision, missing_evidence=case.gold_missing_evidence or "none",
                       required_authority=case.gold_required_authority or "none")
 
@@ -52,6 +49,8 @@ def sft_rows(cases: Iterable[Case], cond: Condition, splits: Splits) -> list[dic
         splits.assert_pool(c, "train_only")
         if not c.has_gold:
             raise ValueError(f"training case {c.case_id} has no gold labels")
+        if mask.skips(c.input):
+            continue
         gi = mask.apply(c.input, c.alt_provenance)
         tgt = target_for(c, cond)
         rows.append({

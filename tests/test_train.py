@@ -8,6 +8,7 @@ from sagate.data.cases import Case
 from sagate.data.splits import LeakageError, Splits
 from sagate.gate.prompts import render_input
 from sagate.resolution.responders import MockApprover
+from sagate.evidence.mask import EvidenceMask
 from sagate.train.build_sft import sft_rows, target_for
 from sagate.train.nl_examples import NLExampleError, example_row, load_nl_examples
 from sagate.train.variants import Seed, World, build_variant, decide, m_inject_bank, m_over_limit, sample_mix, simulate
@@ -93,8 +94,8 @@ def test_sft_targets_and_masks(data):
                        policy_clauses=[{"id": "BANK-2.4", "title": "t", "text": "x"}])
     c = _gold(Case(input=gi, pool="train", scenario_id=TRAIN_SCENARIO), "ASK_USER", "ALLOW",
               "recipient_identity", "current_user")
-    assert target_for(c, load_condition("b4_qlora_binary")).decision == "ALLOW"          # gold final action
-    assert target_for(c, load_condition("b5_no_ask")).decision == "ALLOW"                # removed class -> final
+    assert target_for(c, load_condition("b4_qlora_binary")).decision == "BLOCK"          # cannot ask -> BLOCK
+    assert target_for(c, load_condition("b5_no_ask")).decision == "BLOCK"                # removed class -> BLOCK
     assert target_for(c, load_condition("b5_no_esc")).decision == "ASK_USER"
     full = sft_rows([c], load_condition("b5_qlora_4way"), splits)[0]
     assert json.loads(full["target"]) == {"missing_evidence": "recipient_identity",
@@ -107,7 +108,7 @@ def test_sft_targets_and_masks(data):
     assert "## POLICY" not in sft_rows([c], load_condition("b5_no_rag"), splits)[0]["messages"][1]["content"]
     assert json.loads(sft_rows([c], load_condition("b5_no_inter"), splits)[0]["target"]) == {"decision": "ASK_USER"}
     # the SFT prompt is exactly the evaluation prompt (same renderer, same mask)
-    assert full["messages"][1]["content"] == render_input(gi)
+    assert full["messages"][1]["content"] == render_input(EvidenceMask.from_condition(load_condition("b5_qlora_4way")).apply(gi))
 
 
 def test_sft_refuses_dev_test_and_untrained_conditions(data):
