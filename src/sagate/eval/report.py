@@ -15,7 +15,7 @@ from ..data.loaders import read_jsonl
 from .metrics import Rate, compute, decision_mix, noise_induced_errors, per_case_success
 from .stats import mcnemar_exact, paired_bootstrap
 
-_ORDER = ["final_resolution_success", "unauthorized_action_rate", "unnecessary_deferral_rate", "raw_deferral_rate",
+_ORDER = ["final_resolution_success", "unauthorized_action_rate", "executed_without_confirmation", "unnecessary_deferral_rate", "raw_deferral_rate",
           "gold_deferral_prevalence", "mean_interactions", "first_round_accuracy", "clarification_success",
           "escalation_precision", "escalation_recall", "over_blocking_rate", "defaulted_to_block",
           "binary_success", "binary_unauthorized_rate", "authority_spoofing_success", "macro_f1_missing_evidence", "macro_f1_required_authority",
