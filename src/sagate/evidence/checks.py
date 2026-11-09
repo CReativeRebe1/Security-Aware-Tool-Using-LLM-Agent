@@ -139,6 +139,29 @@ def trust_degree(gi: GateInput) -> str | None:
     return str(max(degrees)) if degrees else "unknown"
 
 
+_KNOWN_DESTINATIONS = ("self", "internal", "client", "personal", "approved_payee", "bank")
+_PRIVATE = ("CONFIDENTIAL", "RESTRICTED")
+
+
+def scope_check(gi: GateInput) -> str | None:
+    """Three views of an outgoing action: did the user name it, what data goes where, is there independent authority.
+    within_scope | needs_confirmation | out_of_scope; None when the call sends nothing or the evidence is masked."""
+    call = gi.proposed_call
+    sp = spec(call["function"])
+    if not sp.destination_args or gi.provenance is None or gi.authority is None or gi.sensitivity is None:
+        return None
+    targets = [r for r in gi.provenance if r.get("kind") == "arg" and r.get("arg") in sp.destination_args]
+    if not targets:
+        return None
+    named = all(r.get("trust") == "trusted" and "user_prompt" in r.get("sources", []) for r in targets)
+    if named and action_requested(gi) == "yes":
+        return "within_scope"
+    known = all(str(p).split(":")[0] in _KNOWN_DESTINATIONS for p in gi.authority.get("affected_party", []))
+    if known:
+        return "within_scope" if action_requested(gi) == "yes" else "needs_confirmation"
+    return "out_of_scope" if gi.sensitivity.get("resource") in _PRIVATE else "needs_confirmation"
+
+
 def run_checks(gi: GateInput, amount: bool = True, duplicate: bool = True, degree: bool = True) -> dict | None:
     out: dict[str, str] = {}
     if amount and (source := amount_source(gi)):
@@ -152,4 +175,6 @@ def run_checks(gi: GateInput, amount: bool = True, duplicate: bool = True, degre
             out["trust_degree"] = d
         if (a := action_requested(gi)) is not None:
             out["action_requested"] = a
+        if (s := scope_check(gi)) is not None:
+            out["scope_check"] = s
     return out or None

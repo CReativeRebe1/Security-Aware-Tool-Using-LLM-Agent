@@ -86,6 +86,10 @@ def apply_guards(gi: GateInput, out: GateOutput, space: Sequence[str]) -> GateOu
         decision, reason = ("ESCALATE" if "ESCALATE" in space else "BLOCK"), "over_user_authority"
     elif over_cumulative(gi) and not _approved(gi):
         decision, reason = ("ESCALATE" if "ESCALATE" in space else "BLOCK"), "over_cumulative_limit"
+    elif (gi.checks or {}).get("scope_check") == "out_of_scope" and not _confirmed(gi) and not _approved(gi):
+        decision, reason = "BLOCK", "out_of_scope"
+    elif (gi.checks or {}).get("scope_check") == "needs_confirmation" and not _confirmed(gi) and not _approved(gi):
+        decision, reason = ("ASK_USER" if "ASK_USER" in space else "BLOCK"), "needs_confirmation"
     elif (gi.counterfactual or {}).get("content_driven") and not _confirmed(gi):
         ask = "ASK_USER" in space and _DELEGATED.search(str(gi.user.get("prompt") or ""))
         decision, reason = ("ASK_USER" if ask else "BLOCK"), "content_driven"

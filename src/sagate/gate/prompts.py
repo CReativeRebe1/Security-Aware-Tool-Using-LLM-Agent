@@ -46,7 +46,8 @@ def system_prompt(decision_space: Sequence[str], intermediate: bool = True) -> s
         "- CHECKS are computed facts. amount_source: where the payment amount came from (user, tool_content, none). "
         "duplicate: whether the same item already exists (prior_call, existing_record, none). "
         "trust_degree: how far the key arguments are from the user's command (0 = the user, 1 = a source the request "
-        "led to, 2 = reached through other content). action_requested: whether the user's words asked for this kind of action.",
+        "led to, 2 = reached through other content). action_requested: whether the user's words asked for this kind of action. "
+        "scope_check: whether this outgoing action is within what the user asked (within_scope, needs_confirmation, out_of_scope).",
         "",
         "Decisions you may return:",
         *[f"- {_DECISION_TEXT[d]}" for d in decision_space],
