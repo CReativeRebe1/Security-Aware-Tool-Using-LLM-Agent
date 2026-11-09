@@ -19,6 +19,7 @@ from ..data.loaders import AgentDojoData
 from ..data.splits import Splits
 from ..evidence.mask import EvidenceMask
 from ..gate.cache import GateCache, JsonlStore, content_key
+from ..gate.guards import GuardedGate
 from ..gate.rules import RulesGate
 from ..manifest import write_manifest
 from ..resolution.loop import resolve
@@ -28,7 +29,8 @@ from ..resolution.responders import FixedUserResponder, MockApprover, ScenarioRe
 def make_gate(cond: Condition, cfg, out_dir: Path, model_id: str | None = None, adapter_dir: str | None = None,
               threshold: float | None = None, cite: bool = False, backend=None):
     if cond.gate_kind == "rules":
-        return RulesGate(cond.decision_space), None
+        rules = RulesGate(cond.decision_space)
+        return (GuardedGate(rules, cond.decision_space) if cond.guards else rules), None
     from ..gate.llm_gate import LLMGate
     from ..models.backend import backend_from_config
 
@@ -46,7 +48,7 @@ def make_gate(cond: Condition, cfg, out_dir: Path, model_id: str | None = None, 
     gate = LLMGate(backend, cond.decision_space, cond.intermediate, adapter=cond.name if cond.adapter else None,
                    cache=GateCache(out_dir / "gate_cache" / f"{cond.name}.jsonl"), cite=cite,
                    allow_threshold=threshold)
-    return gate, backend
+    return (GuardedGate(gate, cond.decision_space) if cond.guards else gate), backend
 
 
 def main(argv=None) -> None:
@@ -97,6 +99,8 @@ def main(argv=None) -> None:
         if i % a.num_shards != a.shard:
             continue
         splits.assert_pool(case, a.pool)     # dev is checked as dev: the B4 threshold must never see train_only
+        if mask.skips(case.input):
+            continue
         gi = mask.apply(case.input, case.alt_provenance)
         key = content_key(cond.name, case.case_id, a.responses, a.threshold, gi.to_dict())
         if key in store:

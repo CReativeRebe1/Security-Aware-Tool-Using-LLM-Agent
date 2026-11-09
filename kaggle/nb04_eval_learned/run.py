@@ -46,7 +46,7 @@ def run(cond, pool, responses="clean", cite=False):
 
 gpu0 = [run("b4_qlora_binary", "dev"), run("b5_qlora_4way", "dev"), run("b4_qlora_binary", "test"),
         run("b5_qlora_4way", "test", cite=True), run("b5_qlora_4way", "test", "noisy"),
-        run("b5_inferred_prov", "test"), run("b5_inferred_prov", "test", "noisy")]
+        run("b5_inferred_prov", "test"), run("b5_inferred_prov", "test", "noisy"), run("b5_guarded", "test")]
 gpu1 = [run(c, "test") for c in ("b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc", "b5_no_inter")]
 codes = bootstrap.run_on_gpus([["bash", "-c", " ; ".join(gpu0)], ["bash", "-c", " ; ".join(gpu1)]])
 
