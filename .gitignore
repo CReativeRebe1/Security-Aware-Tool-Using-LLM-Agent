@@ -12,6 +12,7 @@
 !/kaggle/
 !/scripts/
 !/results/
+!/experiments/
 !/data/
 /data/*
 !/data/processed/
