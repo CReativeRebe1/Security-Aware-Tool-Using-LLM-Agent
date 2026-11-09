@@ -39,6 +39,9 @@ sys.path.insert(0, str(HERE))
 import names  # noqa: E402
 
 FAST_SECONDS = 3
+# Reviewers whose fast saves still count as careful: they labelled these cases with the earlier schema and only
+# re-marked the same labels in the review tool, so the save times do not show their reading time.
+EARLIER_SCHEMA_REVIEWERS = {"prabhash"}
 FIELDS = ("decision", "final_action", "missing_evidence", "required_authority")
 OUT = HERE / "final"
 
@@ -100,7 +103,7 @@ def main() -> None:
             revs = {r: votes[r][cid] for r in b["reviewers"] if cid in votes[r]}
             if not revs:
                 continue
-            careful = {r for r in revs if cid not in fast[r]}
+            careful = {r for r in revs if cid not in fast[r] or r in EARLIER_SCHEMA_REVIEWERS}
             meta = case["raw_case"]["meta"]
             base = {"case_id": cid, "batch_id": bid, "position": pos, "phase": b["phase"], "suite": case["suite"],
                     "category": case["category"], "difficulty": case["difficulty"], "round": case["round"],
@@ -236,7 +239,9 @@ def write_report(s: dict, asg: dict) -> None:
         f"| | **all** | **{s['final_cases']}** | " + " | ".join(str(s['gold_decision_by_tier']['all'].get(d, 0)) for d in dec) + " |",
         "",
         f"A review is *fast* when it was saved less than {FAST_SECONDS} s after the reviewer's previous save, too quick"
-        " to read the case.",
+        " to read the case. Exception: " + ", ".join(sorted(EARLIER_SCHEMA_REVIEWERS)) + " labelled these cases"
+        " earlier with the previous labelling schema and re-marked the same labels in the review tool, so those"
+        " reviews count as careful.",
         "",
         "**For the final evaluation use tiers A + B + T.** Tier C labels are the suggested labels accepted without being"
         " read; treat them as unchecked until someone reviews them properly.",

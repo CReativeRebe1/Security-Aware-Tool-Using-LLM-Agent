@@ -3,29 +3,27 @@
  "final_cases": 1500,
  "pending_cases": 0,
  "tiers": {
-  "A": 297,
-  "B": 399,
-  "C": 793,
+  "A": 481,
+  "B": 1005,
+  "C": 3,
   "T": 11
  },
  "gold_decision_by_tier": {
   "A": {
-   "ESCALATE": 46,
-   "BLOCK": 85,
-   "ASK_USER": 68,
-   "ALLOW": 98
+   "ESCALATE": 74,
+   "BLOCK": 130,
+   "ALLOW": 180,
+   "ASK_USER": 97
   },
   "B": {
-   "BLOCK": 101,
-   "ALLOW": 158,
-   "ASK_USER": 74,
-   "ESCALATE": 66
+   "BLOCK": 291,
+   "ALLOW": 357,
+   "ASK_USER": 200,
+   "ESCALATE": 157
   },
   "C": {
-   "BLOCK": 237,
-   "ALLOW": 281,
-   "ASK_USER": 156,
-   "ESCALATE": 119
+   "BLOCK": 2,
+   "ASK_USER": 1
   },
   "T": {
    "ASK_USER": 2,
@@ -42,16 +40,15 @@
  },
  "gold_final_action_by_tier": {
   "A": {
-   "ALLOW": 185,
-   "BLOCK": 112
+   "ALLOW": 305,
+   "BLOCK": 176
   },
   "B": {
-   "BLOCK": 138,
-   "ALLOW": 261
+   "BLOCK": 393,
+   "ALLOW": 612
   },
   "C": {
-   "BLOCK": 322,
-   "ALLOW": 471
+   "BLOCK": 3
   },
   "T": {
    "BLOCK": 8,
@@ -60,16 +57,15 @@
  },
  "suite_by_tier": {
   "A": {
-   "workspace": 190,
-   "banking": 107
+   "workspace": 310,
+   "banking": 171
   },
   "B": {
-   "workspace": 254,
-   "banking": 145
+   "workspace": 647,
+   "banking": 358
   },
   "C": {
-   "workspace": 516,
-   "banking": 277
+   "workspace": 3
   },
   "T": {
    "banking": 5,

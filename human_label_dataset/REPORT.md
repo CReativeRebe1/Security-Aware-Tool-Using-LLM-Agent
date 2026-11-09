@@ -8,13 +8,13 @@ Built by `python human_label_dataset/build.py` from the reviews committed on the
 
 | Tier | Meaning | Cases | ALLOW | BLOCK | ASK_USER | ESCALATE |
 |---|---|---|---|---|---|---|
-| A | two careful reviews agree | 297 | 98 | 85 | 68 | 46 |
-| B | one careful review | 399 | 158 | 101 | 74 | 66 |
+| A | two careful reviews agree | 481 | 180 | 130 | 97 | 74 |
+| B | one careful review | 1005 | 357 | 291 | 200 | 157 |
 | T | decided by the team | 11 | 1 | 5 | 2 | 3 |
-| C | only fast reviews (unchecked) | 793 | 281 | 237 | 156 | 119 |
+| C | only fast reviews (unchecked) | 3 | 0 | 2 | 1 | 0 |
 | | **all** | **1500** | 538 | 428 | 300 | 234 |
 
-A review is *fast* when it was saved less than 3 s after the reviewer's previous save, too quick to read the case.
+A review is *fast* when it was saved less than 3 s after the reviewer's previous save, too quick to read the case. Exception: prabhash labelled these cases earlier with the previous labelling schema and re-marked the same labels in the review tool, so those reviews count as careful.
 
 **For the final evaluation use tiers A + B + T.** Tier C labels are the suggested labels accepted without being read; treat them as unchecked until someone reviews them properly.
 
