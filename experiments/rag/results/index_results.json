@@ -1,0 +1,42 @@
+{
+ "BM25 trusted query (previous)": {
+  "recall@3": 0.378,
+  "all_gold_in_top3": "53/236",
+  "recall@5": 0.531,
+  "all_gold_in_top5": "86/236",
+  "recall@8": 0.64,
+  "all_gold_in_top8": "125/236"
+ },
+ "BM25 + evidence words": {
+  "recall@3": 0.583,
+  "all_gold_in_top3": "88/236",
+  "recall@5": 0.669,
+  "all_gold_in_top5": "113/236",
+  "recall@8": 0.768,
+  "all_gold_in_top8": "148/236"
+ },
+ "Fact index alone (train labels)": {
+  "recall@3": 0.507,
+  "all_gold_in_top3": "53/236",
+  "recall@5": 0.686,
+  "all_gold_in_top5": "115/236",
+  "recall@8": 0.784,
+  "all_gold_in_top8": "144/236"
+ },
+ "BM25 + evidence + fact index (chosen)": {
+  "recall@3": 0.64,
+  "all_gold_in_top3": "106/236",
+  "recall@5": 0.764,
+  "all_gold_in_top5": "147/236",
+  "recall@8": 0.946,
+  "all_gold_in_top8": "209/236"
+ },
+ "BM25 + evidence + index from generated cases only": {
+  "recall@3": 0.556,
+  "all_gold_in_top3": "88/236",
+  "recall@5": 0.643,
+  "all_gold_in_top5": "109/236",
+  "recall@8": 0.695,
+  "all_gold_in_top8": "119/236"
+ }
+}
