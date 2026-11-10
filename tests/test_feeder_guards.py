@@ -48,26 +48,39 @@ def test_feeder_history_and_checks_reach_the_prompt():
     assert EvidenceMask(history="none").skips(gi) and not EvidenceMask().skips(gi)
     assert "## RESOLUTION HISTORY" not in render_input(EvidenceMask(history="none").apply(gi))
     text = render_input(EvidenceMask(history="answers_only").apply(gi))
-    assert "Approved." in text and "manager" not in text and "relationship_mgr" not in text
+    history = text[text.index("## RESOLUTION HISTORY"):]
+    assert "Approved." in history and "manager" not in history and "relationship_mgr" not in history
     full = render_input(EvidenceMask().apply(gi))
     assert "amount_source: user" in full and "duplicate: none" in full
     off = render_input(EvidenceMask(amount_source=False, duplicate_check=False, trust_degree=False).apply(gi))
     assert "## CHECKS" not in off
 
 
-def test_feeder_rag_query_ignores_authority(monkeypatch):
+def test_retrieval_uses_only_the_evidence_the_gate_may_see(monkeypatch):
     seen = []
     import sagate.evidence.mask as m
 
     class R:
+        clauses = []
+
         def retrieve(self, q, k):
             seen.append((q, k))
             return []
+
+        def by_id(self, cid):
+            return None
     monkeypatch.setattr(m, "_retriever", lambda suite: R())
+    monkeypatch.setattr(m, "index_rank", lambda gi: [])
     auth = {"required_role": "manager", "basis": ["transfer_over_limit"], "affected_party": ["new_payee:X"]}
-    gi = _pay(authority=auth, policy_clauses=[{"id": "BANK-2.4", "title": "t", "text": "x"}])
-    EvidenceMask(authority=False, rag_query="no_authority").apply(gi)
-    assert seen[0][1] == 1 and "manager" not in seen[0][0] and "over limit" not in seen[0][0]
+    prov = [{"id": "P0", "kind": "call", "instruction_origin": "T1", "trust": "untrusted"}]
+    gi = _pay(authority=auth, provenance=prov)
+    EvidenceMask().apply(gi)
+    EvidenceMask(authority=False).apply(gi)
+    EvidenceMask(provenance="none").apply(gi)
+    full, no_auth, no_prov = (q for q, _ in seen)
+    assert "manager approval" in full and "instruction inside tool output" in full
+    assert "manager" not in no_auth and "over limit" not in no_auth and "instruction inside tool output" in no_auth
+    assert "instruction inside tool output" not in no_prov and "manager approval" in no_prov
     assert "manager approval" in build_query("p", "send_money", "transfer", auth, None)
 
 
@@ -239,3 +252,17 @@ def test_split_payment_counts_as_the_whole():
     assert out.decision == "ESCALATE" and out.guard == "over_cumulative_limit"
     small = _pay("Pay my cleaner 300", 150.0, authority={"user_may_authorize": True, "affected_party": ["new_payee:X"]})
     assert apply_guards(small, _allow(), FOUR).decision == "ALLOW"
+
+
+def test_policy_index_is_built_from_training_cases_only():
+    import pytest
+    from sagate.data.splits import LeakageError
+    from sagate.evidence.policy_index import build, facts
+    gi = _pay("Send 50", authority={"user_may_authorize": False, "basis": ["transfer_over_limit"], "affected_party": ["new_payee:X"]})
+    assert {"basis=transfer_over_limit", "party=new_payee"} <= facts(gi)
+    gi.authority = None
+    assert not any(f.startswith(("basis=", "party=")) for f in facts(gi)), "masked authority adds no facts"
+    case = Case(input=_pay(), pool="test")
+    case.gold_clause_ids = ["BANK-2.2"]
+    with pytest.raises(LeakageError):
+        build([case])

@@ -14,9 +14,9 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
-from ..evidence.mask import _retriever
-from ..evidence.policy_rag import build_query
+from ..evidence.mask import retrieve_clauses
 from ..evidence.provenance import ToolBlock, build_records
+from ..gate.schema import GateInput
 from .annotation import NOISE_RATE, _noisy
 from .cases import Case, save_cases
 from .loaders import read_jsonl
@@ -35,9 +35,7 @@ def _blocks(gi: dict) -> list[ToolBlock]:
 def convert(row: dict, seed: int = 42) -> Case:
     gi = row["input"]
     call = gi["proposed_call"]
-    query = build_query(gi["user"].get("prompt") or "", call["function"], call.get("action") or "",
-                        gi.get("authority"), gi.get("sensitivity"))
-    retrieved = [c.id for c in _retriever(gi["suite"]).retrieve(query, k=5)]
+    retrieved = [c["id"] for c in retrieve_clauses(GateInput.from_dict(gi))]   # what the full gate is shown
     inferred = build_records(call.get("args") or {}, gi["user"].get("prompt") or "", _blocks(gi), mode="inferred")
     reply = row.get("user_response")
     if reply:

@@ -18,7 +18,7 @@ def test_frozen_case_files_are_disjoint_by_family():
     assert not (fam["train"] & fam["dev"]) and not (fam["train"] & fam["test"]) and not (fam["dev"] & fam["test"])
     for p, cs in pools.items():
         assert all(c.pool == p and c.subset == "decision_only" and c.has_gold for c in cs)
-        assert all(len(c.meta["retrieved_ids"]) == 5 and "inferred" in c.alt_provenance for c in cs)
+        assert all(len(c.meta["retrieved_ids"]) == 8 and "inferred" in c.alt_provenance for c in cs)
 
 
 def test_training_refuses_held_out_cases():

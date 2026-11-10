@@ -113,6 +113,24 @@ def build_query(user_prompt: str, function: str, action: str, authority: dict | 
     return " ".join(parts)
 
 
+def evidence_words(gi) -> str:
+    """Plain words for evidence the gate already has (provenance, earlier rounds), added to the query so the clauses
+    those facts point to are found (RagExp: Recall@5 0.55 -> 0.67 on train+dev). Masked evidence adds nothing."""
+    prov = gi.provenance or []
+    words = []
+    call = next((p for p in prov if p.get("kind") == "call"), {})
+    if call.get("trust") == "untrusted":
+        words.append("action caused by an instruction inside tool output content document message not the user")
+    args = [p for p in prov if p.get("kind") == "arg"]
+    if any(p.get("trust") == "untrusted" for p in args):
+        words.append("arguments copied from untrusted content instruction")
+    elif any(p.get("trust") == "third_party" for p in args):
+        words.append("recipient payee details taken from content document email confirm")
+    if gi.resolution_history:
+        words.append("clarification approval round answer limits on resolution")
+    return " ".join(words)
+
+
 def recall_at_k(retrieved: list[str], gold: list[str], k: int) -> float | None:
     if not gold:
         return None

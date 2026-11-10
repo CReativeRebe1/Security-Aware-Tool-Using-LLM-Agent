@@ -15,6 +15,8 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 | 2026-11-09 | Pipeline audit against the frozen data | Findings below; led to the `valhalla` branch |
 | 2026-11-10 | Fixes, new evidence and guards on `valhalla` (8 commits) | Rules gate on frozen test: unsafe 21.2% → 10.2% |
 | 2026-11-10 | Frozen data wired in; parallel training groups; run guide (`docs/RUN_GUIDE.md`) | CPU dry run passes; leak guard refuses test cases in training |
+| 2026-11-10 | Kaggle smoke test (NB07), all stages on 2 × T4, account `satorugojo13` | 11/11 stages pass in ~17 min |
+| 2026-11-10 | Retrieval: evidence words + fact-to-clause index fused with BM25, 8 clauses | Dev Recall@8 0.946 (was Recall@3 ~0.41) |
 
 ## Audit findings (2026-11-09)
 
@@ -47,6 +49,9 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 | B5 with guards is the main candidate | Best estimated chance of meeting the 5% unsafe target |
 | Train 2 epochs instead of 1 | Training set is now ~2,050 examples, so 2 epochs (8–10 h) fit one session; same for every condition |
 | Run 1 = B5/B4 + baselines; ablations only after the team agrees on Run 1 | Ablations must compare against the final B5 |
+| Retrieval = BM25 + evidence words + fact index (built from training labels only), 8 clauses | Dev Recall@5 0.55 → 0.76, Recall@8 0.95; each condition retrieves only from evidence it may see |
+| Index from generated cases alone is not enough (covers 20 of 48 clauses, Recall@5 0.64) | Generated per-clause coverage cases will be a supplement at lower weight, not a replacement |
+| Training max length 2,560 → 3,072 tokens | Longer prompts: 121 of 1,000 variants would be dropped at 2,560, 8 at 3,072; smoke test trains on the longest examples first |
 
 ## What was added on `valhalla`
 
@@ -90,7 +95,7 @@ These are rules-gate simulations, not B5. Several were checked on the test set d
 
 | Item | When |
 |---|---|
-| Decide on `RagExp` (needs embedding models, not a plain merge); Run 1 uses BM25 | After Run 1 |
+| Generate per-clause coverage cases for the index (supplement for rare clause combinations) | After Run 1 |
 | Action trail (hop-counted degree built from the real call chain) | After the run |
 | Degree rule in the gate prompt + guard for degree ≥ 2 | After the run |
 | Family-level bootstrap | Before NB06 |

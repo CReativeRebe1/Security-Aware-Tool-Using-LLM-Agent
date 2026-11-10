@@ -93,7 +93,6 @@ class Condition:
     authority: bool = True
     sensitivity: bool = True
     rag: bool = True
-    rag_query: str = "full"              # full | no_authority
     history: str = "full"                # full | answers_only | none
     amount_source: bool = True
     duplicate_check: bool = True
@@ -128,7 +127,6 @@ class Condition:
             authority=bool(ev.get("authority", True)),
             sensitivity=bool(ev.get("sensitivity", True)),
             rag=bool(rag),
-            rag_query=str(ev.get("rag_query", "full")),
             history=str(ev.get("history", "full")),
             amount_source=bool(ev.get("amount_source", True)),
             duplicate_check=bool(ev.get("duplicate_check", True)),

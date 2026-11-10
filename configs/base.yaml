@@ -26,7 +26,7 @@ context:
   gate_read_only: false        # false = read-only tools bypass the gate (logged)
   max_untrusted_blocks: 3      # keep only the most recent tool outputs
   untrusted_max_chars: 1500    # ~384 tokens per untrusted block
-  rag_k: 3
+  rag_k: 8                     # BM25 + evidence words + fact index: Recall@8 0.95 on dev (+~300 prompt tokens vs 3)
 
 counterfactual:
   min_log_ratio: 0.0           # flag a call at least as likely without the user's request; calibrate on train-pool scenarios
@@ -46,7 +46,7 @@ train:
   trainer: peft                # peft (transformers Trainer + PEFT) | unsloth (optional, same config)
   lora: {r: 16, alpha: 32, dropout: 0.05,
          target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]}
-  max_length: 2560             # 8B on T4 ran out of memory on a ~3.8k-token example; drops ~1% (median 1.2k tokens)
+  max_length: 3072             # 8 policy clauses lengthen prompts: 121/1,000 variants pass 2,560, 8 pass 3,072 (T4 OOM was at ~3.8k)
   batch_size: 1
   grad_accum: 16
   lr: 2.0e-4
