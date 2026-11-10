@@ -14,18 +14,19 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 | 2026-11-09 | Retrieval experiment (`RagExp`, not merged) | Recall@5 0.630 → 0.781 on test (target 0.85) |
 | 2026-11-09 | Pipeline audit against the frozen data | Findings below; led to the `valhalla` branch |
 | 2026-11-10 | Fixes, new evidence and guards on `valhalla` (8 commits) | Rules gate on frozen test: unsafe 21.2% → 10.2% |
+| 2026-11-10 | Frozen data wired in; parallel training groups; run guide (`docs/RUN_GUIDE.md`) | CPU dry run passes; leak guard refuses test cases in training |
 
 ## Audit findings (2026-11-09)
 
 | Finding | Effect | Status |
 |---|---|---|
-| NB03 still trains on the old 2,000-case file, which contains all 212 frozen test cases | Test leaks into training | **Open:** frozen data not yet wired in |
+| NB03 still trains on the old 2,000-case file, which contains all 212 frozen test cases | Test leaks into training | Fixed: frozen splits converted, old file no longer staged, training refuses held-out cases |
 | Running an action without the required approval scored as correct | Hid unsafe actions; favoured B4 | Fixed (`57f4363`) |
 | Pre-answered rounds visible to gates that cannot ask (B4, B2, −ASK, −ESCALATE) | Free evidence for those gates | Fixed (`569bbb9`) |
 | −authority ablation still saw authority through retrieval and history | Underestimates H1 | Fixed (`569bbb9`) |
 | One injected line tainted a whole tool output | User's own calls blocked with inferred provenance | Fixed (`3682193`) |
 | Quiet injections (no suspicious wording) look trusted | 220 of 230 missed on train+dev with inferred provenance | **Open:** partly addressed by trust degree, scope check, counterfactual |
-| NB04/NB05 load adapters from one NB03 run | Ablations silently missing | **Open:** before ablations |
+| NB04/NB05 load adapters from one NB03 run | Ablations silently missing | Fixed: adapters collected from every attached NB03 kernel |
 | Bootstrap/McNemar treat cases as independent (212 cases, 21 families) | Intervals too narrow | **Open:** before NB06 |
 
 ## Decisions
@@ -43,6 +44,9 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 | Do not tighten injection phrase cues | Would drop detection of `direct` attacks from 98.6% to 16.3% |
 | Uneven costs (needless ask vs wrong payment) handled with a weighted score at the end | Predictions keep every decision, so it needs no re-run |
 | No more design changes on test numbers; design on train+dev, run test once | Avoid leaking test information through us |
+| B5 with guards is the main candidate | Best estimated chance of meeting the 5% unsafe target |
+| Train 2 epochs instead of 1 | Training set is now ~2,050 examples, so 2 epochs (8–10 h) fit one session; same for every condition |
+| Run 1 = B5/B4 + baselines; ablations only after the team agrees on Run 1 | Ablations must compare against the final B5 |
 
 ## What was added on `valhalla`
 
@@ -86,11 +90,9 @@ These are rules-gate simulations, not B5. Several were checked on the test set d
 
 | Item | When |
 |---|---|
-| Wire frozen data into NB02/NB03/NB04 | Before the run |
-| Decide on `RagExp` (needs embedding models, not a plain merge) | Before the run |
+| Decide on `RagExp` (needs embedding models, not a plain merge); Run 1 uses BM25 | After Run 1 |
 | Action trail (hop-counted degree built from the real call chain) | After the run |
 | Degree rule in the gate prompt + guard for degree ≥ 2 | After the run |
-| Adapter loading across sessions | Before ablations |
 | Family-level bootstrap | Before NB06 |
 | Calibrate counterfactual threshold on train scenarios | Before NB05 |
 | Loop round count; clean replies in NB05; live payee trust | Later |

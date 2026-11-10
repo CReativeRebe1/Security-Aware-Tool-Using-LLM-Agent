@@ -9,8 +9,11 @@ import sys
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
 import bootstrap  # noqa: E402
 
-CONDITIONS = ["b5_qlora_4way", "b4_qlora_binary", "b5_no_prov", "b5_no_auth",     # primary first (H1/H2)
-              "b5_no_rag", "b5_no_ask", "b5_no_esc", "b5_no_inter"]
+# One group per Kaggle account, so teammates can train in parallel (docs/RUN_GUIDE.md). A = the primary run.
+GROUPS = {"A": ["b5_qlora_4way", "b4_qlora_binary"], "B": ["b5_no_prov", "b5_no_auth"],
+          "C": ["b5_no_rag", "b5_no_inter"], "D": ["b5_no_ask", "b5_no_esc"]}
+GROUP = "A"
+CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2
 MAX_STEPS = None        # e.g. 20 for a smoke run
 OUT = "/kaggle/working/outputs"
@@ -35,11 +38,11 @@ if os.path.exists(nl):
     train_cases.append(nl)
 else:
     print("note: annotations/train_nl.jsonl not staged", flush=True)
-synthetic_nl = os.path.join(root, "data", "labled-data", "synthetic_nl.jsonl")   # 2,000 labelled synthetic cases
-if os.path.exists(synthetic_nl):
-    train_cases.append(synthetic_nl)
-else:
-    print("note: data/labled-data/synthetic_nl.jsonl not staged", flush=True)
+human = os.path.join(root, "annotations", "train_human.jsonl")    # frozen human-labelled training split
+if not os.path.exists(human):
+    sys.exit("annotations/train_human.jsonl not staged (python -m sagate.data.human_labels)")
+train_cases.append(human)
+print(f"group {GROUP}: {CONDITIONS}", flush=True)
 code = bootstrap.run([py, "-m", "sagate.train.build_sft", "--condition", *CONDITIONS, "--cases", *train_cases,
                       "--out", sft])
 if code:

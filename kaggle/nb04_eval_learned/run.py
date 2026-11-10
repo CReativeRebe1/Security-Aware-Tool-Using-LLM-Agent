@@ -21,17 +21,16 @@ def find(pattern):
 
 root = bootstrap.setup()
 py = sys.executable
-adapters = os.path.dirname(find("adapters/b5_qlora_4way/adapter_config.json") or "")
-adapters = os.path.dirname(adapters) if adapters else None
-if not adapters:
+adapters = bootstrap.collect_adapters()        # every attached NB03 kernel; newest copy of each condition
+if not adapters or not os.path.exists(f"{adapters}/b5_qlora_4way"):
     sys.exit("NB03 adapters not attached (no adapters/b5_qlora_4way under /kaggle/input)")
 test = os.path.join(root, "annotations", "test_cases.jsonl")
 if not os.path.exists(test):
     print("annotations/test_cases.jsonl not staged: dry run on the unlabelled test candidates", flush=True)
     test = f"{OUT}/cases/test_candidates.jsonl"
     bootstrap.run([py, "-m", "sagate.data.build_cases", "--pool", "test", "--out", test])
-dev = find("sft/dev_cases.jsonl")
-if dev is None:
+dev = os.path.join(root, "annotations", "dev_cases.jsonl")      # frozen human-labelled dev split
+if not os.path.exists(dev):
     dev = f"{OUT}/cases/dev_cases.jsonl"
     bootstrap.run([py, "-m", "sagate.train.variants", "--pool", "dev", "--out", dev])
 cases = {"test": test, "dev": dev}
@@ -47,7 +46,13 @@ def run(cond, pool, responses="clean", cite=False):
 gpu0 = [run("b4_qlora_binary", "dev"), run("b5_qlora_4way", "dev"), run("b4_qlora_binary", "test"),
         run("b5_qlora_4way", "test", cite=True), run("b5_qlora_4way", "test", "noisy"),
         run("b5_inferred_prov", "test"), run("b5_inferred_prov", "test", "noisy"), run("b5_guarded", "test")]
-gpu1 = [run(c, "test") for c in ("b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc", "b5_no_inter")]
+ABLATIONS = ("b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc", "b5_no_inter")
+ready = [c for c in ABLATIONS if os.path.exists(f"{adapters}/{c}")]
+print("ablations with adapters:", ready or "none", "| missing:", [c for c in ABLATIONS if c not in ready], flush=True)
+gpu1 = [run(c, "test") for c in ready]
+if not gpu1:                                   # first run: only B4/B5 are trained, so B4 takes the second GPU
+    gpu1 = [c for c in gpu0 if "b4_qlora_binary" in c]
+    gpu0 = [c for c in gpu0 if c not in gpu1]
 codes = bootstrap.run_on_gpus([["bash", "-c", " ; ".join(gpu0)], ["bash", "-c", " ; ".join(gpu1)]])
 
 d, t = f"{OUT}/predictions/dev", f"{OUT}/predictions/test"

@@ -22,7 +22,7 @@ from typing import Iterable
 from ..config import Condition, load_condition, load_config
 from ..data.cases import Case, load_cases
 from ..data.loaders import AgentDojoData, write_jsonl
-from ..data.splits import Splits
+from ..data.splits import LeakageError, Splits
 from ..evidence.mask import EvidenceMask
 from ..gate.prompts import chat_messages, target_text
 from ..gate.schema import GateOutput, collapse_decision
@@ -75,10 +75,25 @@ def load_training_cases(paths: Iterable[str | Path]) -> list[Case]:
     return out
 
 
+def assert_not_held_out(cases: list[Case], annotations_dir: Path) -> None:
+    """No training case, and no scenario family, may appear in the frozen dev or test set."""
+    ids, families = set(), set()
+    for name in ("dev_cases.jsonl", "test_cases.jsonl"):
+        if (annotations_dir / name).exists():
+            for c in load_cases(annotations_dir / name):
+                ids.add(c.case_id)
+                if c.meta.get("family"):
+                    families.add(c.meta["family"])
+    leaked = [c.case_id for c in cases if c.case_id in ids or c.meta.get("family") in families]
+    if leaked:
+        raise LeakageError(f"{len(leaked)} training cases are in the frozen dev/test set, e.g. {leaked[:3]}")
+
+
 def build(conditions: list[str], case_paths: list[str], out_dir: str | Path, cfg_path: str | None = None) -> dict:
     cfg = load_config(cfg_path)
     splits = Splits(AgentDojoData(cfg.data_dir))
     cases = load_training_cases([p for p in case_paths if Path(p).exists()])
+    assert_not_held_out(cases, cfg.path("annotations_dir"))
     out_dir = Path(out_dir)
     paths = {}
     for name in conditions:

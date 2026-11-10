@@ -18,8 +18,7 @@ OUT = "/kaggle/working/outputs"
 
 root = bootstrap.setup()
 py = sys.executable
-hits = sorted(glob.glob("/kaggle/input/**/adapters/b5_qlora_4way/adapter_config.json", recursive=True), key=len)
-adapters = os.path.dirname(os.path.dirname(hits[0])) if hits else None
+adapters = bootstrap.collect_adapters()        # every attached NB03 kernel; newest copy of each condition
 if adapters is None and any(c.startswith(("b4", "b5")) for c in CONDITIONS + EXTRA):
     sys.exit("NB03 adapters not attached")
 limit = ["--limit", str(LIMIT)] if LIMIT else []
