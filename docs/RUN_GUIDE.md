@@ -29,6 +29,12 @@ Run 2 starts only after the team agrees on Run 1, so the ablations are compared 
    old adapters were trained on data containing the test set.
 4. **Do not edit and commit the `GROUP` line.** Set it in the staged copy (step 2 below).
 
+## Before any job: smoke test (once per code version)
+
+Run NB07 (`build/kernels/nb07_smoke_all`, ~20 min). It runs every stage on a few cases and trains on the longest
+examples. Only start real jobs if `outputs/smoke_summary.json` shows every step `"ok": true`. Full Kaggle details
+and known pitfalls: `docs/KAGGLE_GUIDE.md` (branch `kaggle-guide`).
+
 ## Steps for each NB03 / NB02 job
 
 ```bash
@@ -42,7 +48,8 @@ bash kaggle/stage_code.sh --owner <your-kaggle-username>
    kaggle datasets create  -p build/sagate-code --dir-mode zip            # first time only
    kaggle datasets version -p build/sagate-code --dir-mode zip -m "$(git rev-parse --short HEAD)"
    ```
-   Wait until the dataset shows the new version as ready on Kaggle before pushing a kernel.
+   Kaggle can report "ready" before it serves the new files. Check the served version instead:
+   `kaggle datasets download <owner>/sagate-code -f GIT_SHA -p /tmp/sha && cat /tmp/sha/GIT_SHA` must print the team hash.
 2. **NB03 only: set your group** in `build/kernels/nb03_train_qlora/run.py`: `GROUP = "A"` (or B, C, D).
 3. **Push** (12 h limit):
    ```bash
@@ -105,6 +112,7 @@ Expected (estimates, not measured): B5 + guards 88–94% correct, 6–10% unsafe
 ## Training settings (same for every condition)
 
 QLoRA on `unsloth/Qwen3-8B-bnb-4bit`, LoRA r = 16, α = 32, dropout 0.05 on all projections, batch 1 × 16 accumulation,
-lr 2e-4 cosine, **2 epochs**, max length 2,560 tokens (longest example ~1,950, so none are dropped), seed 42.
+lr 2e-4 cosine, **2 epochs**, max length 3,072 tokens (8 of 1,000 generated variants dropped, no human cases), seed 42,
+memory-efficient attention on T4 (Shubham's fix). The gate is shown 8 policy clauses (BM25 + evidence + fact index).
 Training data: 1,000 generated variants + 1,049 human-labelled cases. Do not change these between conditions or
 after seeing test results.
