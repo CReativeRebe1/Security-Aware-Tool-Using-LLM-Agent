@@ -179,6 +179,9 @@ def analyse(cases: list[Case], pred_paths: list[str], e2e: dict | None = None, o
         if n.endswith("_noisy") and n[:-6] in preds:
             metrics.setdefault(n[:-6], {})["noise_induced_error_rate"] = noise_induced_errors(preds[n[:-6]], ps, cases)
             metrics[n] = compute(ps, cases)
+    if B5 in clean and B4_MATCHED in clean:      # B4 is scored only on cases it may see; compare like with like
+        b4_ids = {p["case_id"] for p in clean[B4_MATCHED]}
+        metrics[f"{B5}@b4_cases"] = compute([p for p in clean[B5] if p["case_id"] in b4_ids], cases)
     idx = {n: latest(ps) for n, ps in preds.items()}
     res: dict = {"n_cases": sum(c.has_gold for c in cases), "metrics": metrics, "tests": {}}
 

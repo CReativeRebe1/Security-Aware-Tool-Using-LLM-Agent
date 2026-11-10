@@ -97,6 +97,7 @@ def apply_guards(gi: GateInput, out: GateOutput, space: Sequence[str]) -> GateOu
     if out.decision != "ALLOW":
         return out
     auth = gi.authority or {}
+    role = auth.get("required_role") if auth.get("required_role") not in (None, "none", "current_user") else "manager"
     if has_placeholder(gi):
         decision, reason = "BLOCK", "placeholder_argument"
     elif auth.get("user_may_authorize") is False and not _approved(gi):
@@ -105,8 +106,6 @@ def apply_guards(gi: GateInput, out: GateOutput, space: Sequence[str]) -> GateOu
         decision, reason = ("ESCALATE" if "ESCALATE" in space else "BLOCK"), "over_cumulative_limit"
     elif (gi.checks or {}).get("scope_check") == "out_of_scope" and not _confirmed(gi) and not _approved(gi):
         decision, reason = "BLOCK", "out_of_scope"
-    elif (gi.checks or {}).get("scope_check") == "needs_confirmation" and not _confirmed(gi) and not _approved(gi):
-        decision, reason = ("ASK_USER" if "ASK_USER" in space else "BLOCK"), "needs_confirmation"
     elif (gi.counterfactual or {}).get("content_driven") and not _confirmed(gi):
         ask = "ASK_USER" in space and _DELEGATED.search(str(gi.user.get("prompt") or ""))
         decision, reason = ("ASK_USER" if ask else "BLOCK"), "content_driven"
@@ -116,6 +115,13 @@ def apply_guards(gi: GateInput, out: GateOutput, space: Sequence[str]) -> GateOu
         decision, reason = ("ASK_USER" if "ASK_USER" in space else "BLOCK"), "invented_amount"
     else:
         return out
+    # Name what is missing and who decides, so the resolution loop asks the right person.
+    if decision == "ESCALATE":
+        return dataclasses.replace(out, decision=decision, guard=reason, missing_evidence="approval",
+                                   required_authority=role)
+    if decision == "ASK_USER":
+        return dataclasses.replace(out, decision=decision, guard=reason, missing_evidence="user_intent",
+                                   required_authority="current_user")
     return dataclasses.replace(out, decision=decision, guard=reason)
 
 

@@ -208,7 +208,28 @@ def test_scope_guard_blocks_private_data_to_a_content_recipient():
     assert apply_guards(gi, _allow(), FOUR).decision == "BLOCK"
     low = _send("Do what the mail says", resource="PUBLIC")
     low.checks = {"scope_check": "needs_confirmation"}
-    assert apply_guards(low, _allow(), FOUR).decision == "ASK_USER"
+    assert apply_guards(low, _allow(), FOUR).decision == "ALLOW", "needs_confirmation is evidence for the gate only"
+
+
+def test_guard_escalation_names_the_approver():
+    gi = _pay("Send 50", authority={"user_may_authorize": False, "required_role": "resource_owner"})
+    out = apply_guards(gi, _allow(), FOUR)
+    assert (out.decision, out.required_authority, out.missing_evidence) == ("ESCALATE", "resource_owner", "approval")
+
+
+def test_no_provenance_hides_amount_source():
+    gi = _pay("Send 50", provenance=[{"id": "P1", "kind": "arg", "arg": "amount", "value": "50", "sources": ["user_prompt"], "trust": "trusted"}])
+    assert "amount_source" in (EvidenceMask().apply(gi).checks or {})
+    assert "amount_source" not in (EvidenceMask(provenance="none").apply(gi).checks or {})
+
+
+def test_checks_refresh_after_a_reply():
+    from sagate.evidence.context_builder import with_resolution
+    gi = EvidenceMask().apply(_pay("Pay the bill", 35.0))
+    assert gi.checks["amount_source"] == "none"
+    after = with_resolution(gi, 1, "ASK_USER", {"missing_evidence": "user_intent"},
+                            {"responder": "user", "text": "Yes, 35 sounds right.", "confirmed": True})
+    assert after.checks["amount_source"] == "user"
 
 
 def test_split_payment_counts_as_the_whole():

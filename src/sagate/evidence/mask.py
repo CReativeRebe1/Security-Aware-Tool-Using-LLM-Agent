@@ -74,5 +74,7 @@ class EvidenceMask:
             out.resolution_history = []
         elif self.history == "answers_only":
             out.resolution_history = [_answer_only(h) for h in out.resolution_history]
-        out.checks = run_checks(out, self.amount_source, self.duplicate_check, self.trust_degree)
+        # amount_source says where a value came from, so it is provenance evidence and leaves with it
+        out.checks = run_checks(out, self.amount_source and self.provenance != "none", self.duplicate_check,
+                                self.trust_degree)
         return out

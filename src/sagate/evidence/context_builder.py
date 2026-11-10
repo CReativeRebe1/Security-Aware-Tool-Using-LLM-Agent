@@ -13,6 +13,7 @@ from ..config import Config
 from ..data.loaders import AgentDojoData, message_text
 from ..gate.schema import GateInput
 from .authority import AuthorityRegistry
+from .checks import run_checks
 from .policy_rag import PolicyRetriever, build_query
 from .provenance import ToolBlock, build_records
 from .sensitivity import SensitivityLabeler
@@ -157,4 +158,7 @@ def with_resolution(gi: GateInput, round_no: int, kind: str, gate_output: dict, 
         entry["provides"] = response.get("provides")
         entry["confirmed"] = response.get("confirmed")
     out.resolution_history.append(entry)
+    if out.checks is not None:          # e.g. the user's reply now supplies the amount
+        fresh = run_checks(out) or {}
+        out.checks = {k: v for k, v in fresh.items() if k in out.checks} or None
     return out
