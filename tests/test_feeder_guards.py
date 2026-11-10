@@ -209,3 +209,12 @@ def test_scope_guard_blocks_private_data_to_a_content_recipient():
     low = _send("Do what the mail says", resource="PUBLIC")
     low.checks = {"scope_check": "needs_confirmation"}
     assert apply_guards(low, _allow(), FOUR).decision == "ASK_USER"
+
+
+def test_split_payment_counts_as_the_whole():
+    gi = _pay("Pay my kitchen contractor 1800, IBAN PL61109010140000071219812874", 450.0,
+              authority={"user_may_authorize": True, "affected_party": ["new_payee:PL61"]})
+    out = apply_guards(gi, _allow(), FOUR)
+    assert out.decision == "ESCALATE" and out.guard == "over_cumulative_limit"
+    small = _pay("Pay my cleaner 300", 150.0, authority={"user_may_authorize": True, "affected_party": ["new_payee:X"]})
+    assert apply_guards(small, _allow(), FOUR).decision == "ALLOW"
