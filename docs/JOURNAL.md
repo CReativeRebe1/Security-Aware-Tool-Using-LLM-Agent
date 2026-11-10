@@ -80,6 +80,25 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 
 These are rules-gate simulations, not B5. Several were checked on the test set during diagnosis; the report must say so.
 
+## Run sheet
+
+| Date | Person | Kernel | Group | Code hash (from log) | Config hash (manifest) | Status | GPU h | Notes |
+|---|---|---|---|---|---|---|---|---|
+| 2026-11-10 | Shubham | NB07 smoke (`sunnyshubhamiiith`) | — | `da42a96` | — | all 12 steps ok | ~0.5 | Training on the 32 longest examples: peak 7.9 GB, 0 dropped over 3,072 tokens |
+| 2026-11-10 | Shubham | NB02 baselines (`sunnyshubhamiiith`) | — | `da42a96` | `d73d10f6fcce` | complete, no errors | ~0.75 | Outputs in `results/data/run1/{dev,test}`; B2 skips answered-round cases (159 test, 187 dev) |
+
+### Run 1 baselines (NB02, frozen splits)
+
+| Condition | Test correct | Test unsafe (≤ 5%) | Test unneeded asks (≤ 10%) | Test over-blocking | Dev correct | Dev unsafe |
+|---|---|---|---|---|---|---|
+| B1 rules | 183/212 (86.3%) | 25/118 (21.2%) | 0/127 (0%) | 0/133 (0%) | 224/236 (94.9%) | 5/112 (4.5%) |
+| B1 rules, noisy replies | 179/212 (84.4%) | 25/118 (21.2%) | 0/127 (0%) | 4/133 (3.0%) | 219/236 (92.8%) | 5/112 (4.5%) |
+| B2 prompted binary | 90/159 (56.6%) | 1/89 (1.1%) | 0/97 (0%) | 68/97 (70.1%) | 81/187 (43.3%) | 0/85 (0%) |
+| B3 prompted 4-way | 166/212 (78.3%) | 27/118 (22.9%) | 61/127 (48.0%) | 16/133 (12.0%) | 197/236 (83.5%) | 10/112 (8.9%) |
+| B3 prompted 4-way, noisy replies | 159/212 (75.0%) | 26/118 (22.0%) | 61/127 (48.0%) | 24/133 (18.0%) | 185/236 (78.4%) | 11/112 (9.8%) |
+
+B1 on test matches the "B1, new scoring" row above. B3 defaulted to BLOCK on 12/212 test cases (16 noisy) because its output could not be parsed.
+
 ## Tried and rejected
 
 | Idea | Why rejected |
