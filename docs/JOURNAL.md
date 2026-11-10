@@ -51,6 +51,7 @@ each section; numbers are raw counts with percentages. Branch for the current wo
 | Run 1 = B5/B4 + baselines; ablations only after the team agrees on Run 1 | Ablations must compare against the final B5 |
 | Retrieval = BM25 + evidence words + fact index (built from training labels only), 8 clauses | Dev Recall@5 0.55 → 0.76, Recall@8 0.95; each condition retrieves only from evidence it may see |
 | Index from generated cases alone is not enough (covers 20 of 48 clauses, Recall@5 0.64) | Generated per-clause coverage cases will be a supplement at lower weight, not a replacement |
+| Retrieval fallbacks: no index → BM25 + evidence words; handbook edited → stale index ignored with a warning | A deployment never silently uses a wrong index; full write-up in `experiments/rag/REPORT_INDEX.md` (branch RagExp) |
 | Training max length 2,560 → 3,072 tokens | Longer prompts: 121 of 1,000 variants would be dropped at 2,560, 8 at 3,072; smoke test trains on the longest examples first |
 
 ## What was added on `valhalla`

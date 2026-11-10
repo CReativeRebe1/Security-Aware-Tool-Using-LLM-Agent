@@ -266,3 +266,18 @@ def test_policy_index_is_built_from_training_cases_only():
     case.gold_clause_ids = ["BANK-2.2"]
     with pytest.raises(LeakageError):
         build([case])
+
+
+def test_stale_or_missing_index_falls_back_to_bm25(monkeypatch):
+    import warnings
+    import sagate.evidence.policy_index as pi
+    gi = EvidenceMask().apply(_pay("Send 50", authority={"user_may_authorize": False, "basis": ["transfer_over_limit"]}))
+    pi._usable.cache_clear()
+    monkeypatch.setattr(pi, "load_index", lambda: None)
+    assert pi.rank(gi) == []
+    pi._usable.cache_clear()
+    monkeypatch.setattr(pi, "load_index", lambda: {"handbooks": {"banking": "old"}, "support": {}, "links": {}, "min_support": 5})
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        assert pi.rank(gi) == [] and "stale" in str(w[0].message)
+    pi._usable.cache_clear()

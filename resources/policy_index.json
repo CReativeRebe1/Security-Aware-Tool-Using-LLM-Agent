@@ -1,4 +1,8 @@
 {
+ "handbooks": {
+  "banking": "adc373b55ee70f84",
+  "workspace": "e993fdd579695099"
+ },
  "links": {
   "action=account_change": {
    "BANK-1.2": 7.0,

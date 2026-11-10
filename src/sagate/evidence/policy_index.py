@@ -11,7 +11,9 @@ added at a lower weight: it supplements the labelled cases, it does not replace 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import warnings
 from collections import Counter, defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -23,6 +25,12 @@ from ..gate.schema import GateInput
 
 MIN_SUPPORT = 5          # a fact seen in fewer training cases says nothing reliable
 INDEX_FILE = "policy_index.json"
+
+
+def handbook_hashes() -> dict[str, str]:
+    """Fingerprint of each handbook the index was built against; an edited handbook makes the index stale."""
+    return {p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+            for p in sorted((load_config().resources_dir / "handbooks").glob("*.md"))}
 
 
 def facts(gi: GateInput) -> set[str]:
@@ -57,7 +65,8 @@ def build(cases: list[Case], coverage: list[Case] = (), coverage_weight: float =
                 support[f] += weight
                 for clause in c.gold_clause_ids:
                     links[f][clause] += weight
-    return {"min_support": MIN_SUPPORT, "support": dict(support), "links": {f: dict(v) for f, v in links.items()}}
+    return {"min_support": MIN_SUPPORT, "handbooks": handbook_hashes(), "support": dict(support),
+            "links": {f: dict(v) for f, v in links.items()}}
 
 
 @lru_cache(maxsize=None)
@@ -66,11 +75,24 @@ def load_index() -> dict | None:
     return json.loads(path.read_text()) if path.exists() else None
 
 
-def rank(gi: GateInput) -> list[str]:
-    """Clause ids for this call's facts, best first (empty when no index has been built)."""
+@lru_cache(maxsize=None)
+def _usable(suite: str) -> bool:
     index = load_index()
     if index is None:
+        return False
+    if index.get("handbooks", {}).get(suite) != handbook_hashes().get(suite):
+        warnings.warn(f"policy index is stale for '{suite}' (handbook changed since it was built): using BM25 only. "
+                      "Rebuild with python -m sagate.evidence.policy_index")
+        return False
+    return True
+
+
+def rank(gi: GateInput) -> list[str]:
+    """Clause ids for this call's facts, best first. Empty, so retrieval falls back to BM25, when no index exists
+    or the handbook changed since it was built."""
+    if not _usable(gi.suite):
         return []
+    index = load_index()
     score: Counter = Counter()
     for f in facts(gi):
         n = index["support"].get(f, 0)
