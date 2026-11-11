@@ -27,6 +27,26 @@ from ..manifest import write_manifest
 from ..models.backend import _lcp, _set_4bit_compute_dtype
 
 IGNORE = -100
+DECISIONS = ("ALLOW", "BLOCK", "ASK_USER", "ESCALATE")
+_DECISION_KEY = '"decision": "'
+
+
+def _decision_slot(tok, prefix: str, target: str, end: str, ids: list[int]) -> tuple[int, list[int]] | None:
+    """(position in ids of the decision value's first token, that token for each of the 4 decisions), or None when
+    the decisions do not start with 4 different tokens in this context (the cost term is then skipped)."""
+    at = target.rfind(_DECISION_KEY)
+    if at < 0:
+        return None
+    start = at + len(_DECISION_KEY)
+    gold = target[start:].split('"', 1)[0]
+    k = _lcp(tok(prefix + target[:start], add_special_tokens=False)["input_ids"], ids)
+    cands = []
+    for d in DECISIONS:
+        alt = tok(prefix + target[:start] + d + target[start + len(gold):] + end, add_special_tokens=False)["input_ids"]
+        if len(alt) <= k:
+            return None
+        cands.append(alt[k])
+    return (k, cands) if len(set(cands)) == len(DECISIONS) else None
 
 
 def end_token(tok) -> str:
@@ -34,12 +54,14 @@ def end_token(tok) -> str:
 
 
 def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool = False,
-                  loss_weights: dict | None = None) -> tuple[list[dict], dict]:
+                  loss_weights: dict | None = None, cost_matrix: dict | None = None) -> tuple[list[dict], dict]:
     """[{input_ids, labels, weight}] with the prompt masked out; examples over max_length are dropped (and counted).
     `loss_weights` (decision -> weight) makes the costly mistakes count more: an example whose gold decision is
-    ASK_USER / ESCALATE / BLOCK weighs more than an ALLOW, so a wrong ALLOW costs more than a needless question."""
+    ASK_USER / ESCALATE / BLOCK weighs more than an ALLOW, so a wrong ALLOW costs more than a needless question.
+    `cost_matrix` (gold -> {predicted: cost}) adds, per example, the decision token's position, the 4 candidate
+    tokens and the gold row of costs, for the expected-cost term in completion_loss."""
     end = end_token(tok)
-    out, lengths, dropped = [], [], []
+    out, lengths, dropped, no_slot = [], [], [], 0
     for r in rows:
         prefix = tok.apply_chat_template(r["messages"], tokenize=False, add_generation_prompt=True,
                                          enable_thinking=enable_thinking)
@@ -50,10 +72,22 @@ def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool 
             dropped.append(r["case_id"])
             continue
         weight = float((loss_weights or {}).get(r.get("decision"), 1.0))
-        out.append({"input_ids": ids, "labels": [IGNORE] * n_prompt + ids[n_prompt:], "weight": weight})
+        row = {"input_ids": ids, "labels": [IGNORE] * n_prompt + ids[n_prompt:], "weight": weight}
+        if cost_matrix:
+            slot = _decision_slot(tok, prefix, r["target"], end, ids)
+            gold = r.get("decision")
+            if slot and gold in cost_matrix:
+                row["dec_from_end"] = len(ids) - slot[0]          # left padding: count from the end
+                row["dec_cands"] = slot[1]
+                row["dec_costs"] = [float(cost_matrix[gold].get(d, 0.0)) for d in DECISIONS]
+            else:
+                no_slot += 1
+        out.append(row)
     stats = {"examples": len(rows), "kept": len(out), "dropped_over_max_length": len(dropped),
              "dropped_ids": dropped[:50], "median_tokens": statistics.median(lengths) if lengths else 0,
              "max_tokens": max(lengths, default=0), "train_tokens": sum(len(x["input_ids"]) for x in out)}
+    if cost_matrix:
+        stats["cost_term_rows"] = len(out) - no_slot
     return out, stats
 
 
@@ -77,16 +111,35 @@ class Collator:
         pos = [[0] * p + list(range(len(b["input_ids"]))) for p, b in zip(pad, batch)]   # RoPE ignores padding
         return {"input_ids": torch.tensor(ids), "labels": torch.tensor(labels), "attention_mask": torch.tensor(mask),
                 "position_ids": torch.tensor(pos), "logits_to_keep": torch.tensor(keep),
-                "weight": torch.tensor([float(b.get("weight", 1.0)) for b in batch])}
+                "weight": torch.tensor([float(b.get("weight", 1.0)) for b in batch]),
+                **({"dec_from_end": torch.tensor([b.get("dec_from_end", 0) for b in batch]),
+                    "dec_cands": torch.tensor([b.get("dec_cands", [0] * 4) for b in batch]),
+                    "dec_costs": torch.tensor([b.get("dec_costs", [0.0] * 4) for b in batch])}
+                   if any("dec_cands" in b for b in batch) else {})}
 
 
-def completion_loss(model, inputs: dict, num_items_in_batch=None):
-    """Causal-LM loss on the target tokens only, computing logits for the last `logits_to_keep` + 1 positions."""
+def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs):
+    """Mean over the batch of sum_d p(d) * cost(gold, d), with p the model's distribution over the 4 decision tokens
+    at the decision position. Rows without a slot (all costs 0) add nothing."""
+    import torch
+
+    idx = (keep - dec_from_end).clamp(min=0, max=logits.shape[1] - 1).to(logits.device)
+    rows = torch.arange(logits.shape[0], device=logits.device)
+    at = logits[rows, idx]                                              # (batch, vocab)
+    probs = torch.softmax(at.gather(1, dec_cands.to(logits.device)), dim=-1)
+    return (probs * dec_costs.to(logits.device, probs.dtype)).sum(-1).mean()
+
+
+def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: float = 1.0):
+    """Causal-LM loss on the target tokens only, computing logits for the last `logits_to_keep` + 1 positions,
+    plus `cost_lambda` x the expected cost of the decision when the batch carries a cost matrix (cost-sensitive
+    training: a wrong ALLOW on a risky case costs far more than a needless question)."""
     import torch
 
     labels = inputs.pop("labels")
     keep = int(inputs.pop("logits_to_keep"))
     weight = inputs.pop("weight", None)
+    dec = [inputs.pop(k, None) for k in ("dec_from_end", "dec_cands", "dec_costs")]
     out = model(**inputs, logits_to_keep=keep + 1, use_cache=False)
     logits = out.logits[:, :-1].float()                 # position j predicts token j + 1
     tgt = labels[:, -keep:].to(logits.device)
@@ -96,7 +149,10 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None):
         per_token = per_token * weight.to(per_token.device, per_token.dtype).unsqueeze(1)
     loss = per_token.sum()
     n = num_items_in_batch if num_items_in_batch is not None else (tgt != IGNORE).sum()
-    return loss / n, out
+    loss = loss / n
+    if dec[1] is not None and cost_lambda:
+        loss = loss + cost_lambda * expected_cost(logits, keep, *dec)
+    return loss, out
 
 
 def _quantise(model_id: str, load_in_4bit: bool | None, cuda: bool) -> bool:
@@ -202,8 +258,9 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
                                  load_in_4bit, trainer)
     examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False),
-                                    ctrain.get("loss_weights"))
+                                    ctrain.get("loss_weights"), ctrain.get("cost_matrix"))
     stats["loss_weights"] = ctrain.get("loss_weights")
+    stats["cost_matrix"], stats["cost_lambda"] = ctrain.get("cost_matrix"), ctrain.get("cost_lambda", 1.0)
     print(json.dumps({k: v for k, v in stats.items() if k != "dropped_ids"}), flush=True)
 
     class _DS(Dataset):
@@ -238,7 +295,8 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     )
     class _Trainer(Trainer):
         def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
-            loss, out = completion_loss(model, dict(inputs), num_items_in_batch)
+            loss, out = completion_loss(model, dict(inputs), num_items_in_batch,
+                                        float(ctrain.get("cost_lambda", 1.0)))
             return (loss, out) if return_outputs else loss
 
     pad = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id

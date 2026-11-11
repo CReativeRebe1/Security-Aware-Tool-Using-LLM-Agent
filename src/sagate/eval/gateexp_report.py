@@ -113,7 +113,28 @@ def fault(p: dict, c) -> str:
         return "rules"
     if len(p["rounds"]) > 1 and guard == "approx":
         return "resolution"
+    if c is not None and _missing_fact(c, p):
+        return "rules"
     return "training"
+
+
+def _missing_fact(c, p: dict | None = None) -> bool:
+    """The chain did not carry the fact the gold decision rests on, so the model could not see it: a rules fault.
+    approval: gold needs an approver but the authority facts say the user may decide alone; recipient_identity: the
+    recipient is not marked new / unknown; data_classification: no label or downgrade reached the input."""
+    gi, need = c.input, c.gold_missing_evidence
+    auth = gi.authority or {}
+    facts = (((p or {}).get("rounds") or [{}])[0].get("output") or {}).get("trace", {}) or {}
+    facts = facts.get("facts") or {}
+    if c.gold_decision == "ESCALATE" and need == "approval":
+        added = facts.get("split_payment") or facts.get("label_escalation")
+        return auth.get("user_may_authorize", True) is not False and not added
+    if need == "recipient_identity":
+        return not any(str(x).startswith(("new_payee:", "unknown:")) for x in auth.get("affected_party", []))
+    if need == "data_classification":
+        sens = gi.sensitivity or {}
+        return sens.get("flow") != "high_to_low" and not facts.get("label_source")
+    return False
 
 
 def report(pred_path: str, cases_path: str) -> dict:

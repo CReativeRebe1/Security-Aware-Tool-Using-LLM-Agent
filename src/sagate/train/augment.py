@@ -7,6 +7,9 @@ guard in build_sft still applies).
   flip pairs (label changes):   lookalike_iban, question_flip, delegation
   keep pairs (label stays):     split_payment, fake_approval, paraphrased_injection
   confirm rounds (answered):    confirm_correction, confirm_yes, delegation_yes, delegation_no, confirm_other_call
+  safe twins (risky -> ALLOW):  known_payee_twin, amount_stated_twin, recipient_named_twin — the one fact that made
+                                the source risky is made safe, everything else stays (against "this family looks
+                                risky -> ask": the model must look at the deciding fact)
 
 Against over-fitting: at most `per_family` copies per (type, family); random entities (amounts, typo position,
 senders, templates); exact duplicates dropped; the final mix (human + copies) is steered to the training mix.
@@ -27,7 +30,7 @@ from pathlib import Path
 from ..config import load_config
 from ..data.cases import Case, iter_cases
 from ..evidence.tools_registry import spec
-from ..gate.gateexp import intent
+from ..gate.gateexp import amount_from_user, data_source, intent
 
 HIGH = {"transfer", "delete", "disclose"}
 TARGET_MIX = {"ALLOW": 0.35, "BLOCK": 0.30, "ASK_USER": 0.20, "ESCALATE": 0.15}
@@ -256,10 +259,100 @@ def confirm_other_call(c: Case, rng: random.Random, k: int) -> list[Case]:
     return [n]
 
 
+# --- safe twins --------------------------------------------------------------------------------------------------------
+def _approved_payees() -> list[str]:
+    import yaml
+
+    with open(load_config().resources_dir / "authority" / "banking.yaml") as f:
+        return list((yaml.safe_load(f).get("approved_payees") or {}).keys())
+
+
+def _only_fact(c: Case, decision: str, missing: str) -> bool:
+    """Fresh, user-asked, nothing untrusted: the gold rests on `missing` alone."""
+    return (c.gold_decision == decision and c.gold_missing_evidence == missing and _fresh(c)
+            and intent(c.input) == "asked" and data_source(c.input) != "untrusted"
+            and not any(r.get("trust") == "untrusted" for r in c.input.provenance or []))
+
+
+def _safe(n: Case) -> Case:
+    _gold(n, "ALLOW", "ALLOW", "none")
+    n.user_response = None
+    return n
+
+
+def known_payee_twin(c: Case, rng: random.Random, k: int) -> list[Case]:
+    """New payee the user typed (gold: confirm it) -> the same payment to a payee already on the approved list."""
+    a = _args(c)
+    parties = (c.input.authority or {}).get("affected_party", [])
+    if c.input.proposed_call["function"] not in ("send_money", "schedule_transaction") or \
+            not _only_fact(c, "ASK_USER", "recipient_identity") or not any(str(p).startswith("new_payee:") for p in parties) \
+            or not amount_from_user(c.input) or data_source(c.input) != "user" or \
+            (c.input.authority or {}).get("user_may_authorize") is False:
+        return []
+    old = str(a.get("recipient", ""))
+    if not old or old not in c.input.user["prompt"]:
+        return []
+    new_iban = rng.choice(_approved_payees())
+    n = _copy(c, "known_payee_twin", k)
+    n.input.user["prompt"] = n.input.user["prompt"].replace(old, new_iban)
+    n.input.proposed_call["args"]["recipient"] = new_iban
+    rec = _record(n, "recipient")
+    if rec:
+        rec.update(value=new_iban, sources=["user_prompt"], trust="trusted")
+    n.input.authority["affected_party"] = [f"approved_payee:{new_iban}"]
+    n.gold_clause_ids = ["BANK-2.1"]
+    return [_safe(n)]
+
+
+def amount_stated_twin(c: Case, rng: random.Random, k: int) -> list[Case]:
+    """Amount the user never stated (gold: ask) -> the user states it; the payee is already approved."""
+    parties = (c.input.authority or {}).get("affected_party", [])
+    if c.input.proposed_call["function"] not in ("send_money", "schedule_transaction") or \
+            not _only_fact(c, "ASK_USER", "user_intent") or amount_from_user(c.input) or \
+            not parties or not all(str(p).startswith("approved_payee:") for p in parties) or \
+            (c.input.authority or {}).get("user_may_authorize") is False:
+        return []
+    others = [r for r in c.input.provenance or [] if r.get("kind") == "arg" and r.get("arg") not in ("amount", "subject",
+                                                                                                     "date")]
+    if any(r.get("trust") not in ("trusted", None) for r in others):
+        return []
+    amount = _args(c).get("amount")
+    n = _copy(c, "amount_stated_twin", k)
+    n.input.user["prompt"] = f"{n.input.user['prompt'].rstrip()} {rng.choice(['Pay', 'Send', 'Make it'])} {amount}."
+    rec = _record(n, "amount")
+    if rec:
+        rec.update(sources=["user_prompt"], trust="trusted")
+    if not amount_from_user(n.input):
+        return []
+    return [_safe(n)]
+
+
+def recipient_named_twin(c: Case, rng: random.Random, k: int) -> list[Case]:
+    """Recipient picked by the agent among look-alikes / from content (gold: ask who) -> the user gives the exact
+    address. Only where no approval is needed (the data may go to that recipient)."""
+    auth = c.input.authority or {}
+    if c.input.suite != "workspace" or not _only_fact(c, "ASK_USER", "recipient_identity") or \
+            auth.get("user_may_authorize") is False or (c.input.sensitivity or {}).get("flow") == "high_to_low":
+        return []
+    a = _args(c)
+    who = a.get("recipients") or a.get("email") or a.get("participants")
+    who = [who] if isinstance(who, str) else list(who or [])
+    if len(who) != 1 or "@" not in str(who[0]) or who[0] in c.input.user["prompt"]:
+        return []
+    n = _copy(c, "recipient_named_twin", k)
+    n.input.user["prompt"] = f"{n.input.user['prompt'].rstrip()} ({rng.choice(['address', 'email', 'it is'])}: {who[0]})"
+    for r in n.input.provenance or []:
+        if r.get("kind") == "arg" and r.get("arg") in ("recipients", "email", "participants"):
+            r.update(sources=["user_prompt"], trust="trusted")
+    return [_safe(n)]
+
+
 GENERATORS = {
     "lookalike_iban": lookalike_iban, "question_flip": question_flip, "delegation": delegation,
     "split_payment": split_payment, "fake_approval": fake_approval, "paraphrased_injection": paraphrased_injection,
     "confirm_other_call": confirm_other_call,
+    "known_payee_twin": known_payee_twin, "amount_stated_twin": amount_stated_twin,
+    "recipient_named_twin": recipient_named_twin,
 }
 
 

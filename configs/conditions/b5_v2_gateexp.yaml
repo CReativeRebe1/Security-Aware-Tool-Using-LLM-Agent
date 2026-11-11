@@ -5,6 +5,6 @@ evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
 supervision: {intermediate: true}
 resolution: {enabled: true}
 gateexp:
-  pre: [declined, untrusted_provenance, authority]
-  post: [guards, no_reask, intent_confirm, new_payee_confirm, unlabelled_external, route_authority]
+  pre: [declined, credential_flow, untrusted_provenance, authority]
+  post: [guards, no_reescalate, no_reask, intent_confirm, new_payee_confirm, amount_confirm, unlabelled_external, route_authority]
   show_facts: true

@@ -28,8 +28,9 @@ from ..evidence.tools_registry import spec
 from .guards import _approved, _confirmed, _payee_limit, _transfer_rules, apply_guards, over_cumulative
 from .schema import GateInput, GateOutput
 
-PRE = ("declined", "untrusted_provenance", "authority")
-POST = ("guards", "no_reask", "intent_confirm", "new_payee_confirm", "unlabelled_external", "route_authority")
+PRE = ("declined", "credential_flow", "untrusted_provenance", "authority")
+POST = ("guards", "no_reescalate", "no_reask", "intent_confirm", "new_payee_confirm", "amount_confirm",
+        "unlabelled_external", "route_authority")
 HIGH_RISK = {"disclose", "delete", "transfer", "account_change"}
 _PAYMENTS = ("send_money", "schedule_transaction")
 
@@ -94,19 +95,41 @@ _DOC_TOTAL = re.compile(r"(?:total|amount due|amount|balance due|sum)\D{0,20}?(\
 _POINTS_AT_DOC = re.compile(r"\b(bill|invoice|statement|document|file|letter)\b", re.IGNORECASE)
 
 
-def requested_amounts(gi: GateInput) -> list[float]:
-    """Amounts the user asked to pay: numbers in the prompt that are not ids / invoice numbers ("1.8k" = 1800),
-    plus the total of a bill when the prompt points at one."""
-    prompt = str(gi.user.get("prompt") or "")
+_DATE_PART = re.compile(r"\s*[-/.]\s*\d{1,2}\b")
+
+
+def _amounts_in(text: str) -> list[float]:
     out = []
-    for m in _MONEY.finditer(prompt):
-        if _NOT_AMOUNT.search(prompt[:m.start()]):
+    for m in _MONEY.finditer(text):
+        if _NOT_AMOUNT.search(text[:m.start()]):
             continue
+        if not m.group(2) and _DATE_PART.match(text, m.end(1)) and len(m.group(1)) == 4:
+            continue                         # the year of a date (2024-06-01, 2024/06/01), not an amount
         try:
             x = float(m.group(1).replace(",", ""))
         except ValueError:
             continue
         out.append(x * 1000 if m.group(2) else x)
+    return out
+
+
+def amount_from_user(gi: GateInput) -> bool:
+    """Payment principle: the amount is one the user stated, in the request or in an answer to the gate."""
+    try:
+        amount = float((gi.proposed_call.get("args") or {}).get("amount"))
+    except (TypeError, ValueError):
+        return True                          # no amount in this call (e.g. a date change)
+    said = _amounts_in(str(gi.user.get("prompt") or ""))
+    said += [x for h in gi.resolution_history if h.get("kind") == "ASK_USER" and h.get("confirmed") is not False
+             for x in _amounts_in(str(h.get("response") or ""))]
+    return any(abs(x - amount) < 0.005 for x in said)
+
+
+def requested_amounts(gi: GateInput) -> list[float]:
+    """Amounts the user asked to pay: numbers in the prompt that are not ids / invoice numbers ("1.8k" = 1800),
+    plus the total of a bill when the prompt points at one."""
+    prompt = str(gi.user.get("prompt") or "")
+    out = _amounts_in(prompt)
     if _POINTS_AT_DOC.search(prompt):
         for t in gi.untrusted_content:
             for m in _DOC_TOTAL.finditer(t.get("text", "")):
@@ -218,13 +241,106 @@ def _disclose_role(label: str, classes: list[str], owned_by_other: bool) -> tupl
 
 _ROLE_ORDER = ("none", "current_user", "resource_owner", "manager", "security_admin")
 
+# --- ledger: exact state the model should not have to track ----------------------------------------------------------
+_IBAN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b")
+_TX_AMOUNT = re.compile(r"amount:\s*([\d.]+)")
+_TX_DATE = re.compile(r"date:\s*'?(\d{4}-\d{2}-\d{2})")
+_TX_SENDER = re.compile(r"sender:\s*(\S+)")
+_HISTORY_TOOLS = ("get_most_recent_transactions",)
+
+
+def _bound(entry: dict, gi: GateInput) -> bool:
+    """A confirmation or approval only covers the call it was about. History written by the live loop is always about
+    the current call; an entry that names a payee or amount (a question shown to the user) must match this call."""
+    if entry.get("call"):
+        return entry["call"] == _call_key(gi)
+    question = str(entry.get("question") or "")
+    if not question or spec(gi.proposed_call["function"]).action != "transfer":
+        return True
+    args = gi.proposed_call.get("args") or {}
+    ibans = _IBAN.findall(question)
+    if ibans and str(args.get("recipient")) not in ibans:
+        return False
+    amounts = [x for x in numbers(_IBAN.sub(" ", question))]
+    try:
+        amount = float(args.get("amount"))
+    except (TypeError, ValueError):
+        return True
+    return not amounts or amount in amounts
+
+
+def _call_key(gi: GateInput) -> dict:
+    args = gi.proposed_call.get("args") or {}
+    return {"function": gi.proposed_call["function"], "recipient": args.get("recipient"), "amount": args.get("amount")}
+
+
+def paid_today(gi: GateInput) -> float:
+    """Outgoing payments already made on the call's date, read from the account's transaction history when the agent
+    looked at it (earlier tasks count too), plus this task's executed payments."""
+    args = gi.proposed_call.get("args") or {}
+    day = str(args.get("date") or "")[:10]
+    total, seen = 0.0, set()
+    for t in gi.untrusted_content:
+        if not any(tool in t.get("source", "") for tool in _HISTORY_TOOLS):
+            continue
+        for item in re.split(r"\n(?=- )", t.get("text", "")):
+            a, d, snd = _TX_AMOUNT.search(item), _TX_DATE.search(item), _TX_SENDER.search(item)
+            if a and d and (not day or d.group(1) == day) and (not snd or snd.group(1) in ("me", "'me'")):
+                key = (d.group(1), a.group(1), item.strip()[:80])
+                if key not in seen:
+                    seen.add(key)
+                    total += float(a.group(1))
+    return total
+
+
+def over_daily_total(gi: GateInput) -> bool:
+    if gi.proposed_call["function"] not in _PAYMENTS:
+        return False
+    try:
+        amount = float((gi.proposed_call.get("args") or {}).get("amount"))
+    except (TypeError, ValueError):
+        return False
+    earlier = paid_today(gi)
+    return bool(earlier) and earlier + amount > _transfer_rules(gi.suite).get("daily_total_max", 5000)
+
+
+@lru_cache(maxsize=None)
+def _approver_policy(suite: str) -> dict:
+    with open(load_config().resources_dir / "authority" / f"{suite}.yaml") as f:
+        return yaml.safe_load(f).get("approver_policy") or {}
+
+
+def approver_denies(gi: GateInput) -> bool:
+    """The authority config says the required approver denies this basis: escalating would only end in a BLOCK."""
+    auth = gi.authority or {}
+    policy = _approver_policy(gi.suite).get(auth.get("required_role")) or {}
+    return any(b in policy.get("denies", []) for b in auth.get("basis", []))
+
 
 def augment(gi: GateInput) -> tuple[GateInput, dict]:
     """Copy of the input with the C8 / C10 / C11 / C12 facts added, and the facts as a dict for the log."""
     out = gi.copy()
+    unbound = [h for h in out.resolution_history if not _bound(h, gi)]
+    if unbound:                              # a "yes" to another payee / amount does not carry over to this call
+        out.resolution_history = [h for h in out.resolution_history if _bound(h, gi)]
+        if out.authority is not None and not any(h.get("kind") == "ESCALATE" and h.get("approved")
+                                                 for h in out.resolution_history):
+            out.authority = {**out.authority, "prior_approvals": []}
+    blank = [h for h in out.resolution_history if h.get("kind") == "ASK_USER" and h.get("confirmed")
+             and h.get("provides") == "none"]
+    if blank:                                # "yes, whatever" answers nothing: the question stays open
+        out.resolution_history = [{**h, "confirmed": None} if h in blank else h for h in out.resolution_history]
+    gi = out
     facts = {"intent": intent(gi), "risk": risk(gi), "data_source": data_source(gi)}
+    if blank:
+        facts["blank_answers"] = len(blank)
+    if unbound:
+        facts["unbound_history"] = len(unbound)
     auth = dict(out.authority or {}) if out.authority is not None else None
-    if auth is not None and spec(gi.proposed_call["function"]).action == "transfer" and split_payment(gi):
+    daily = auth is not None and spec(gi.proposed_call["function"]).action == "transfer" and over_daily_total(gi)
+    if daily:
+        facts["paid_today"] = paid_today(gi)
+    if auth is not None and spec(gi.proposed_call["function"]).action == "transfer" and (split_payment(gi) or daily):
         facts["split_payment"] = True
         auth["user_may_authorize"] = False
         if _ROLE_ORDER.index(auth.get("required_role", "current_user")) < _ROLE_ORDER.index("manager"):
@@ -271,16 +387,31 @@ def _external(gi: GateInput) -> bool:
     return any(not str(p).startswith(("internal:", "self:")) for p in (gi.authority or {}).get("affected_party", []))
 
 
+CREDENTIAL_WORDS = ("credential", "password", "token", "secret", "security code", "2fa")
+
+
+def credential_flow(gi: GateInput) -> bool:
+    """A credential marker in the data and a flow to a less protected place (policy: credentials never leave)."""
+    sens = gi.sensitivity or {}
+    marked = any(str(b).startswith("marker:") and any(w in str(b).lower() for w in CREDENTIAL_WORDS)
+                 for b in sens.get("basis", []))
+    return marked and sens.get("flow") == "high_to_low"
+
+
 def pre_rule(name: str, gi: GateInput, facts: dict) -> GateOutput | None:
     auth = gi.authority or {}
     if name == "declined" and _declined(gi):
         return GateOutput("BLOCK", "user_intent", "current_user", guard="pre:declined")
+    if name == "credential_flow" and credential_flow(gi):
+        return GateOutput("BLOCK", "none", "none", guard="pre:credential_flow")
     if name == "untrusted_provenance" and facts["data_source"] == "untrusted" and not _confirmed(gi):
         return GateOutput("BLOCK", "none", "none", guard="pre:untrusted_provenance")
     if name == "authority" and auth and auth.get("user_may_authorize") is False and not _approved(gi):
         if facts.get("label_escalation") and facts.get("label_source") == "default" and not _confirmed(gi):
             # the label is only the default: ask the owner what the data is before involving an approver
             return GateOutput("ASK_USER", "data_classification", "current_user", guard="confirm:data_label")
+        if approver_denies(gi):            # the approver's written policy denies this basis: no point asking
+            return GateOutput("BLOCK", "approval", auth.get("required_role"), guard="pre:approver_denies")
         role = auth.get("required_role") if auth.get("required_role") not in (None, "none", "current_user") \
             else "manager"
         return GateOutput("ESCALATE", "approval", role, guard="pre:authority")
@@ -297,6 +428,10 @@ def post_rule(name: str, gi: GateInput, facts: dict, out: GateOutput, space: Seq
     settled = _confirmed(gi) or _approved(gi)
     if name == "guards":
         return apply_guards(gi, out, space)
+    approver_said_yes = any(h.get("kind") == "ESCALATE" and h.get("approved") for h in gi.resolution_history)
+    if name == "no_reescalate" and out.decision == "ESCALATE" and approver_said_yes and \
+            out.missing_evidence in (None, "none", "approval"):
+        return dataclasses.replace(out, decision="ALLOW", missing_evidence="none", guard="post:no_reescalate")
     if name == "no_reask" and out.decision == "ASK_USER" and _confirmed(gi) and auth.get("user_may_authorize", True):
         return dataclasses.replace(out, decision="ALLOW", missing_evidence="none", guard="post:no_reask")
     if out.decision != "ALLOW" or settled:
@@ -312,6 +447,9 @@ def post_rule(name: str, gi: GateInput, facts: dict, out: GateOutput, space: Seq
     if name == "new_payee_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
             any(str(p).startswith("new_payee:") for p in auth.get("affected_party", [])):
         return _ask(out, "recipient_identity", "confirm:new_payee")
+    if name == "amount_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
+            not amount_from_user(gi):
+        return _ask(out, "user_intent", "confirm:amount_not_given")
     if name == "unlabelled_external" and facts.get("label_source") == "default" and _external(gi):
         return _ask(out, "data_classification", "confirm:data_label")
     return out
