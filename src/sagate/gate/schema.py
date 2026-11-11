@@ -118,6 +118,7 @@ class GateOutput:
     p_allow: float | None = None
     scores: dict = field(default_factory=dict)       # field -> {value: log-prob}; decoder diagnostics
     guard: str | None = None                         # the guard that overrode the model's ALLOW, if any
+    trace: dict | None = None                        # GateExp decision log: facts, rule steps, raw model output
 
     def __post_init__(self) -> None:
         if self.decision not in FIELD_VALUES["decision"]:
