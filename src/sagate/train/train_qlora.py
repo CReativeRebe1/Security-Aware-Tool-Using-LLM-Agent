@@ -195,10 +195,12 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     bad = {r["condition"] for r in rows} - {cond.name}
     if bad:
         raise ValueError(f"{sft_path} holds SFT rows for {sorted(bad)}, not {cond.name}")
-    model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
-                                 load_in_4bit, trainer)
     ctrain = cond.extra.get("train") or {}             # per-condition overrides (e.g. b5_v2: 1 epoch, loss weights)
     tcfg = {**tcfg, **{k: v for k, v in ctrain.items() if k in ("epochs", "lr")}}
+    if ctrain.get("lora_dropout") is not None:
+        tcfg["lora"] = {**tcfg["lora"], "dropout": float(ctrain["lora_dropout"])}
+    model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
+                                 load_in_4bit, trainer)
     examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False),
                                     ctrain.get("loss_weights"))
     stats["loss_weights"] = ctrain.get("loss_weights")
