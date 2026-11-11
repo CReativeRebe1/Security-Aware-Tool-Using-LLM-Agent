@@ -13,8 +13,8 @@ import bootstrap  # noqa: E402
 GROUPS = {"A": ["b5_qlora_4way", "b4_qlora_binary"], "B": ["b5_no_prov", "b5_no_auth"],
           "C": ["b5_no_rag", "b5_no_inter"], "D": ["b5_no_ask", "b5_no_esc"],
           "V2": ["b5_v2"],        # retrained B5: + annotations/train_augmented.jsonl, 1 epoch, weighted loss
-          "V3": ["b5_v3", "b5_v3_nt"]}   # cost-matrix retrain, one per GPU: with / without the clause coverage tags
-GROUP = "A"
+          "V3": ["b5_v3", "b5_v3_combo"]}   # final retrain, one per GPU: prepared data / + factor-combination data
+GROUP = "V3"
 CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2
 MAX_STEPS = None        # e.g. 20 for a smoke run
@@ -47,14 +47,20 @@ train_cases.append(human)
 if GROUP in ("V2", "V3"):                  # rule-based copies of the human cases (sagate.train.augment)
     train_cases.append(os.path.join(root, "annotations", "train_augmented.jsonl"))
 print(f"group {GROUP}: {CONDITIONS}", flush=True)
-# "_nt" conditions are built (and later evaluated) without the clause coverage tags in retrieval
-for tags, conds in (("1", [c for c in CONDITIONS if not c.endswith("_nt")]),
-                    ("0", [c for c in CONDITIONS if c.endswith("_nt")])):
-    if conds:
-        code = bootstrap.run(["env", f"SAGATE_RAG_TAGS={tags}", py, "-m", "sagate.train.build_sft", "--condition",
-                              *conds, "--cases", *train_cases, "--out", sft])
-        if code:
-            sys.exit(code)
+# one SFT build per condition: "_nt" without the clause coverage tags; train.extra_cases (e.g. the factor-combination
+# data) are added to that condition only
+import yaml  # noqa: E402
+
+for c in CONDITIONS:
+    with open(os.path.join(root, "configs", "conditions", f"{c}.yaml")) as f:
+        extra = [os.path.join(root, x) for x in ((yaml.safe_load(f) or {}).get("train") or {}).get("extra_cases", [])]
+    missing_extra = [x for x in extra if not os.path.exists(x)]
+    if missing_extra:
+        sys.exit(f"{c}: extra cases not staged: {missing_extra}")
+    code = bootstrap.run(["env", f"SAGATE_RAG_TAGS={'0' if c.endswith('_nt') else '1'}", py, "-m",
+                          "sagate.train.build_sft", "--condition", c, "--cases", *train_cases, *extra, "--out", sft])
+    if code:
+        sys.exit(code)
 
 todo = [c for c in CONDITIONS if not os.path.exists(f"{OUT}/adapters/{c}/train_summary.json")]
 print("to train:", todo, flush=True)

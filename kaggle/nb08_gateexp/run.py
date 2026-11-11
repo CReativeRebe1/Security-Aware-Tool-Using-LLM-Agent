@@ -14,10 +14,12 @@ import bootstrap  # noqa: E402
 
 BUDGET_S = 2 * 3600
 LIMIT = None            # e.g. 20 for a quick dry run
-POOLS = ("test", "attacks", "dev")   # set to ("attacks",) to rerun only the attack cases
+POOLS = ("custom",)   # set to ("attacks",) to rerun only the attack cases
 COND = "b5_v2_gateexp"              # b5_gateexp = run 1 adapter; b5_v2_gateexp / b5_v3_gateexp = retrained adapters
-ADAPTER = {"b5_v2_gateexp": "b5_v2", "b5_v3_gateexp": "b5_v3", "b5_v3_nt_gateexp": "b5_v3_nt"}.get(COND, "b5_qlora_4way")
-TAGS_AB = True                      # retrieval A/B: gpu0 without the clause coverage tags, gpu1 with them (clean only)
+ADAPTER = {"b5_v2_gateexp": "b5_v2", "b5_v3_gateexp": "b5_v3", "b5_v3_nt_gateexp": "b5_v3_nt",
+           "b5_v3_combo_gateexp": "b5_v3_combo"}.get(COND, "b5_qlora_4way")
+CUSTOM = "user_cases_2026-11-12.jsonl"   # POOLS = ("custom",) runs annotations/extra/<CUSTOM> only
+TAGS_AB = False                     # retrieval A/B: gpu0 without the clause coverage tags, gpu1 with them (clean only)
 OUT = "/kaggle/working/outputs/gateexp"
 t_end = int(time.time()) + BUDGET_S
 
@@ -28,7 +30,8 @@ if not adapters or not os.path.exists(f"{adapters}/{ADAPTER}"):
     sys.exit(f"adapter not attached (no {ADAPTER} under /kaggle/input)")
 cases = {"test": os.path.join(root, "annotations", "test_cases.jsonl"),
          "dev": os.path.join(root, "annotations", "dev_cases.jsonl"),
-         "attacks": os.path.join(root, "annotations", "attack_cases.jsonl")}
+         "attacks": os.path.join(root, "annotations", "attack_cases.jsonl"),
+         "custom": os.path.join(root, "annotations", "extra", CUSTOM)}
 cases = {k: v for k, v in cases.items() if os.path.exists(v)}
 print("case files:", {k: os.path.basename(v) for k, v in cases.items()}, flush=True)
 limit = f" --limit {LIMIT}" if LIMIT else ""
@@ -41,16 +44,18 @@ def job(pool, responses="clean", tags=None):
     if tags is not None:
         env, out = f"SAGATE_RAG_TAGS={int(tags)} ", f"{OUT}/{'tags' if tags else 'notags'}/{pool}"
     cmd = (f"{env}{py} -m sagate.eval.run_gate --condition {COND} --cases {cases[pool]} "
-           f"--pool {'test' if pool == 'attacks' else pool} --responses {responses} --adapter-dir {adapters} "
+           f"--pool {'test' if pool in ('attacks', 'custom') else pool} --responses {responses} --adapter-dir {adapters} "
            f"--out {out}{limit}")
     # skip when the budget is spent; a job that already started is allowed to finish
     return f'if [ "$(date +%s)" -lt {t_end} ]; then {cmd}; else echo "budget spent: skip {pool} {responses}"; fi'
 
 
-if TAGS_AB:
+if POOLS == ("custom",):
+    gpu0, gpu1 = [job("custom")], [job("custom", "noisy")]
+elif TAGS_AB:
     gpu0 = [j for j in (job("dev", tags=False), job("attacks", tags=False), job("test", tags=False)) if j]
     gpu1 = [j for j in (job("dev", tags=True), job("attacks", tags=True), job("test", tags=True)) if j]
-elif COND in ("b5_v2_gateexp", "b5_v3_gateexp", "b5_v3_nt_gateexp"):   # dev and attacks first; test once at the end
+elif COND in ("b5_v2_gateexp", "b5_v3_gateexp", "b5_v3_nt_gateexp", "b5_v3_combo_gateexp"):   # dev and attacks first; test once at the end
     gpu0 = [j for j in (job("dev"), job("test")) if j]
     gpu1 = [j for j in (job("attacks"), job("attacks", "noisy"), job("test", "noisy")) if j]
 else:

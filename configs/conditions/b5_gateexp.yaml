@@ -7,5 +7,5 @@ resolution: {enabled: true}
 # Deterministic layers around the model (sagate.gate.gateexp). The guards run inside `post`.
 gateexp:
   pre: [declined, credential_flow, untrusted_provenance, authority]
-  post: [guards, no_reescalate, no_reask, intent_confirm, new_payee_confirm, amount_confirm, unlabelled_external, route_authority]
+  post: [guards, no_reescalate, no_reask, unknown_args, intent_confirm, new_payee_confirm, amount_confirm, unlabelled_external, route_authority]
   show_facts: true        # the model sees the new CHECKS lines (user_intent, risk, data_source, split, data_label)

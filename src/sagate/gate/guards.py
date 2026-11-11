@@ -17,6 +17,7 @@ from ..config import load_config
 from ..evidence.checks import numbers
 from ..evidence.provenance import flatten_values
 from ..evidence.tools_registry import spec
+from .amounts import amounts_in
 from .schema import GateInput, GateOutput
 
 _PLACEHOLDER = re.compile(r"^\s*(<[^<>]*>|\{[^{}]*\}|.*_HERE|YOUR_.*|PLACEHOLDER.*|TBD|TODO|X{3,})\s*$", re.IGNORECASE)
@@ -60,7 +61,7 @@ def split_of_larger_payment(gi: GateInput) -> bool:
     if call["function"] not in _PAYMENTS:
         return False
     amount = _amount(call)
-    asked = [x for x in numbers(str(gi.user.get("prompt") or "")) if x > amount]
+    asked = [x for x in amounts_in(str(gi.user.get("prompt") or "")) if x > amount]
     return any(x > _payee_limit(gi, _transfer_rules(gi.suite)) for x in asked)
 
 

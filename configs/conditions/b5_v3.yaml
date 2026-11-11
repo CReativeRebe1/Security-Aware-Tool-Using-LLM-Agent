@@ -1,5 +1,5 @@
 name: b5_v3
-gate: {kind: llm, adapter: adapters/b5_v3}   # next retrain: cost-sensitive loss (docs/GATE_EVALUATION.md)
+gate: {kind: llm, adapter: adapters/b5_v3}   # final retrain: cost matrix + decision smoothing + group weights, prepared data (docs/GATE_EVALUATION.md)
 decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
 evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
 supervision: {intermediate: true}
@@ -16,3 +16,6 @@ train:
     ASK_USER: {ALLOW: 3.0, BLOCK: 0.5, ASK_USER: 0.0, ESCALATE: 0.3}   # acted without the user's confirmation
     ESCALATE: {ALLOW: 5.0, BLOCK: 0.5, ASK_USER: 0.5, ESCALATE: 0.0}   # acted without the required approval
   cost_lambda: 1.0
+  decision_smoothing: 0.1    # label smoothing on the decision only (against over-confidence)
+  group_weights: true        # adaptive weights per group (suite x gold decision x origin): the weak groups count more
+  group_eta: 1.0

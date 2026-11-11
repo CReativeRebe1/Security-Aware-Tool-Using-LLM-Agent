@@ -29,8 +29,8 @@ from .guards import _approved, _confirmed, _payee_limit, _transfer_rules, apply_
 from .schema import GateInput, GateOutput
 
 PRE = ("declined", "credential_flow", "untrusted_provenance", "authority")
-POST = ("guards", "no_reescalate", "no_reask", "intent_confirm", "new_payee_confirm", "amount_confirm",
-        "unlabelled_external", "route_authority")
+POST = ("guards", "no_reescalate", "no_reask", "unknown_args", "intent_confirm", "new_payee_confirm",
+        "amount_confirm", "unlabelled_external", "route_authority")
 HIGH_RISK = {"disclose", "delete", "transfer", "account_change"}
 _PAYMENTS = ("send_money", "schedule_transaction")
 
@@ -88,29 +88,7 @@ def data_source(gi: GateInput) -> str:
 
 
 # --- requested total and split payments (C10) ----------------------------------------------------------------------
-_MONEY = re.compile(r"(?:(?:€|\$|£|\b(?:eur|usd|gbp|chf)\b)\s*)?(?<![\w.,#-])(\d[\d,]*(?:\.\d+)?)(\s*k\b)?",
-                    re.IGNORECASE)
-_NOT_AMOUNT = re.compile(r"(invoice|bill|order|ref(?:erence)?|no\.?|number|id|account|#)\s*$", re.IGNORECASE)
-_DOC_TOTAL = re.compile(r"(?:total|amount due|amount|balance due|sum)\D{0,20}?(\d[\d,]*(?:\.\d+)?)", re.IGNORECASE)
-_POINTS_AT_DOC = re.compile(r"\b(bill|invoice|statement|document|file|letter)\b", re.IGNORECASE)
-
-
-_DATE_PART = re.compile(r"\s*[-/.]\s*\d{1,2}\b")
-
-
-def _amounts_in(text: str) -> list[float]:
-    out = []
-    for m in _MONEY.finditer(text):
-        if _NOT_AMOUNT.search(text[:m.start()]):
-            continue
-        if not m.group(2) and _DATE_PART.match(text, m.end(1)) and len(m.group(1)) == 4:
-            continue                         # the year of a date (2024-06-01, 2024/06/01), not an amount
-        try:
-            x = float(m.group(1).replace(",", ""))
-        except ValueError:
-            continue
-        out.append(x * 1000 if m.group(2) else x)
-    return out
+from .amounts import _DOC_TOTAL, _POINTS_AT_DOC, amounts_in as _amounts_in  # noqa: E402
 
 
 def amount_from_user(gi: GateInput) -> bool:
@@ -243,30 +221,50 @@ _ROLE_ORDER = ("none", "current_user", "resource_owner", "manager", "security_ad
 
 # --- ledger: exact state the model should not have to track ----------------------------------------------------------
 _IBAN = re.compile(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b")
+_IBAN_PREFIX = re.compile(r"\b([A-Z]{2}\d{2}[A-Z0-9]{0,8})(?:\.\.\.|…)")     # a shortened IBAN: "DE89..."
 _TX_AMOUNT = re.compile(r"amount:\s*([\d.]+)")
 _TX_DATE = re.compile(r"date:\s*'?(\d{4}-\d{2}-\d{2})")
 _TX_SENDER = re.compile(r"sender:\s*(\S+)")
 _HISTORY_TOOLS = ("get_most_recent_transactions",)
 
 
-def _bound(entry: dict, gi: GateInput) -> bool:
-    """A confirmation or approval only covers the call it was about. History written by the live loop is always about
-    the current call; an entry that names a payee or amount (a question shown to the user) must match this call."""
+def _near(a: str, b: str) -> bool:
+    """Same length and at most two characters different: a corrected typo, not another payee."""
+    return len(a) == len(b) and sum(x != y for x, y in zip(a, b)) <= 2
+
+
+def _binding(entry: dict, gi: GateInput) -> str:
+    """How an earlier answer relates to this call: "bound" (it is about this call), "other" (it was about another
+    call: ignore it) or "correction" (the user named an IBAN one or two characters off this call's: a no).
+    Declines always stay bound. Live-loop history is always about the current call; values named in the question
+    shown to the user, or in the user's answer, must fit this call."""
     if entry.get("call"):
-        return entry["call"] == _call_key(gi)
-    question = str(entry.get("question") or "")
-    if not question or spec(gi.proposed_call["function"]).action != "transfer":
-        return True
+        return "bound" if entry["call"] == _call_key(gi) else "other"
+    if not entry.get("confirmed") or spec(gi.proposed_call["function"]).action != "transfer":
+        return "bound"
     args = gi.proposed_call.get("args") or {}
-    ibans = _IBAN.findall(question)
-    if ibans and str(args.get("recipient")) not in ibans:
-        return False
-    amounts = [x for x in numbers(_IBAN.sub(" ", question))]
+    recipient = str(args.get("recipient") or "")
     try:
         amount = float(args.get("amount"))
     except (TypeError, ValueError):
-        return True
-    return not amounts or amount in amounts
+        amount = None
+    for who, text in (("question", str(entry.get("question") or "")), ("answer", str(entry.get("response") or ""))):
+        if not text:
+            continue
+        ibans = _IBAN.findall(text)
+        if ibans and recipient not in ibans:
+            return "correction" if who == "answer" and any(_near(i, recipient) for i in ibans) else "other"
+        prefixes = _IBAN_PREFIX.findall(_IBAN.sub(" ", text))
+        if prefixes and not any(recipient.startswith(p) for p in prefixes):
+            return "other"
+        named = _amounts_in(_IBAN_PREFIX.sub(" ", _IBAN.sub(" ", text)))
+        if amount is not None and named and not any(abs(x - amount) < 0.005 for x in named):
+            return "other"
+    return "bound"
+
+
+def _bound(entry: dict, gi: GateInput) -> bool:
+    return _binding(entry, gi) != "other"
 
 
 def _call_key(gi: GateInput) -> dict:
@@ -305,6 +303,27 @@ def over_daily_total(gi: GateInput) -> bool:
 
 
 @lru_cache(maxsize=None)
+def _tool_params() -> dict[str, set[str]]:
+    import json
+
+    path = load_config().data_dir / "tools.jsonl"
+    out: dict[str, set[str]] = {}
+    if path.exists():
+        for line in path.read_text().splitlines():
+            t = json.loads(line)
+            out.setdefault(t["name"], set()).update(p["name"] for p in t.get("parameters") or [])
+    return out
+
+
+def unknown_args(gi: GateInput) -> list[str]:
+    """Argument names the tool does not have: the call is malformed, so the gate cannot read its facts."""
+    known = _tool_params().get(gi.proposed_call["function"])
+    if not known:
+        return []
+    return sorted(k for k in (gi.proposed_call.get("args") or {}) if k not in known)
+
+
+@lru_cache(maxsize=None)
 def _approver_policy(suite: str) -> dict:
     with open(load_config().resources_dir / "authority" / f"{suite}.yaml") as f:
         return yaml.safe_load(f).get("approver_policy") or {}
@@ -320,7 +339,11 @@ def approver_denies(gi: GateInput) -> bool:
 def augment(gi: GateInput) -> tuple[GateInput, dict]:
     """Copy of the input with the C8 / C10 / C11 / C12 facts added, and the facts as a dict for the log."""
     out = gi.copy()
-    unbound = [h for h in out.resolution_history if not _bound(h, gi)]
+    kinds = [_binding(h, gi) for h in out.resolution_history]
+    unbound = [h for h, k in zip(out.resolution_history, kinds) if k == "other"]
+    if "correction" in kinds:                # "yes, I mean <IBAN one digit off>": not a yes to this call
+        out.resolution_history = [{**h, "confirmed": False} if k == "correction" else h
+                                  for h, k in zip(out.resolution_history, kinds)]
     if unbound:                              # a "yes" to another payee / amount does not carry over to this call
         out.resolution_history = [h for h in out.resolution_history if _bound(h, gi)]
         if out.authority is not None and not any(h.get("kind") == "ESCALATE" and h.get("approved")
@@ -336,6 +359,9 @@ def augment(gi: GateInput) -> tuple[GateInput, dict]:
         facts["blank_answers"] = len(blank)
     if unbound:
         facts["unbound_history"] = len(unbound)
+    bad_args = unknown_args(gi)
+    if bad_args:
+        facts["unknown_args"] = bad_args
     auth = dict(out.authority or {}) if out.authority is not None else None
     daily = auth is not None and spec(gi.proposed_call["function"]).action == "transfer" and over_daily_total(gi)
     if daily:
@@ -447,6 +473,8 @@ def post_rule(name: str, gi: GateInput, facts: dict, out: GateOutput, space: Seq
     if name == "new_payee_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
             any(str(p).startswith("new_payee:") for p in auth.get("affected_party", [])):
         return _ask(out, "recipient_identity", "confirm:new_payee")
+    if name == "unknown_args" and facts.get("unknown_args"):
+        return _ask(out, "resource_target", "confirm:unknown_args")
     if name == "amount_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
             not amount_from_user(gi):
         return _ask(out, "user_intent", "confirm:amount_not_given")

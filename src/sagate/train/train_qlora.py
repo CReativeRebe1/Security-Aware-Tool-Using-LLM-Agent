@@ -53,8 +53,41 @@ def end_token(tok) -> str:
     return "<|im_end|>" if "<|im_end|>" in tok.get_vocab() else tok.eos_token
 
 
+def row_group(r: dict) -> str:
+    """Training group for adaptive weighting: suite x gold decision x origin (human / augmented / generated)."""
+    cid = str(r.get("case_id", ""))
+    suite = "bank" if "|bank|" in f"|{cid}|" or cid.startswith(("var|bank", "syn|bank", "gen|bank")) else "ws"
+    origin = "gen" if cid.startswith("gen|") else ("aug" if "|aug:" in cid else "human")
+    return f"{suite}|{r.get('decision')}|{origin}"
+
+
+class GroupWeights:
+    """Variable weights during the single training run (group-robust training, simplified): an exponential moving
+    average of each group's loss; groups the model is currently worse at get more weight. Weights are normalised
+    to mean 1 over the groups and clipped, so no group can take over and no group is ignored."""
+
+    def __init__(self, groups: list[str], eta: float = 1.0, ema: float = 0.9, lo: float = 0.5, hi: float = 3.0):
+        self.index = {g: i for i, g in enumerate(sorted(set(groups)))}
+        self.loss = [1.0] * len(self.index)
+        self.eta, self.ema, self.lo, self.hi = eta, ema, lo, hi
+
+    def weight(self, gid: int) -> float:
+        import math
+
+        raw = [math.exp(self.eta * x) for x in self.loss]
+        mean = sum(raw) / len(raw)
+        return min(self.hi, max(self.lo, raw[gid] / mean))
+
+    def update(self, gid: int, loss: float) -> None:
+        self.loss[gid] = self.ema * self.loss[gid] + (1 - self.ema) * float(loss)
+
+    def state(self) -> dict:
+        return {g: round(self.loss[i], 4) for g, i in self.index.items()}
+
+
 def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool = False,
-                  loss_weights: dict | None = None, cost_matrix: dict | None = None) -> tuple[list[dict], dict]:
+                  loss_weights: dict | None = None, cost_matrix: dict | None = None,
+                  groups: GroupWeights | None = None) -> tuple[list[dict], dict]:
     """[{input_ids, labels, weight}] with the prompt masked out; examples over max_length are dropped (and counted).
     `loss_weights` (decision -> weight) makes the costly mistakes count more: an example whose gold decision is
     ASK_USER / ESCALATE / BLOCK weighs more than an ALLOW, so a wrong ALLOW costs more than a needless question.
@@ -73,6 +106,8 @@ def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool 
             continue
         weight = float((loss_weights or {}).get(r.get("decision"), 1.0))
         row = {"input_ids": ids, "labels": [IGNORE] * n_prompt + ids[n_prompt:], "weight": weight}
+        if groups is not None:
+            row["group"] = groups.index[row_group(r)]
         if cost_matrix:
             slot = _decision_slot(tok, prefix, r["target"], end, ids)
             gold = r.get("decision")
@@ -112,10 +147,27 @@ class Collator:
         return {"input_ids": torch.tensor(ids), "labels": torch.tensor(labels), "attention_mask": torch.tensor(mask),
                 "position_ids": torch.tensor(pos), "logits_to_keep": torch.tensor(keep),
                 "weight": torch.tensor([float(b.get("weight", 1.0)) for b in batch]),
+                **({"group": torch.tensor([b["group"] for b in batch])} if all("group" in b for b in batch) else {}),
                 **({"dec_from_end": torch.tensor([b.get("dec_from_end", 0) for b in batch]),
                     "dec_cands": torch.tensor([b.get("dec_cands", [0] * 4) for b in batch]),
                     "dec_costs": torch.tensor([b.get("dec_costs", [0.0] * 4) for b in batch])}
                    if any("dec_cands" in b for b in batch) else {})}
+
+
+def _decision_probs(logits, keep: int, dec_from_end, dec_cands):
+    import torch
+
+    idx = (keep - dec_from_end).clamp(min=0, max=logits.shape[1] - 1).to(logits.device)
+    rows = torch.arange(logits.shape[0], device=logits.device)
+    return torch.log_softmax(logits[rows, idx].gather(1, dec_cands.to(logits.device)), dim=-1)
+
+
+def decision_smoothing(logits, keep: int, dec_from_end, dec_cands, dec_costs):
+    """Label smoothing on the decision only: mean over the 4 decisions of -log p(d), restricted to the decision
+    tokens. Added with a small factor, it keeps some probability on the alternatives (against over-confidence)."""
+    has = (dec_costs.abs().sum(-1) > 0).to(logits.device, logits.dtype)    # rows that carry a decision slot
+    term = -_decision_probs(logits, keep, dec_from_end, dec_cands).mean(-1)
+    return (term * has).sum() / has.sum().clamp(min=1)
 
 
 def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs):
@@ -130,7 +182,8 @@ def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs):
     return (probs * dec_costs.to(logits.device, probs.dtype)).sum(-1).mean()
 
 
-def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: float = 1.0):
+def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: float = 1.0,
+                    smoothing: float = 0.0, groups: GroupWeights | None = None):
     """Causal-LM loss on the target tokens only, computing logits for the last `logits_to_keep` + 1 positions,
     plus `cost_lambda` x the expected cost of the decision when the batch carries a cost matrix (cost-sensitive
     training: a wrong ALLOW on a risky case costs far more than a needless question)."""
@@ -140,6 +193,7 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: f
     keep = int(inputs.pop("logits_to_keep"))
     weight = inputs.pop("weight", None)
     dec = [inputs.pop(k, None) for k in ("dec_from_end", "dec_cands", "dec_costs")]
+    group = inputs.pop("group", None)
     out = model(**inputs, logits_to_keep=keep + 1, use_cache=False)
     logits = out.logits[:, :-1].float()                 # position j predicts token j + 1
     tgt = labels[:, -keep:].to(logits.device)
@@ -147,11 +201,20 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: f
                                                   ignore_index=IGNORE, reduction="none").view(tgt.shape)
     if weight is not None:                              # per-example weight (decision-weighted loss)
         per_token = per_token * weight.to(per_token.device, per_token.dtype).unsqueeze(1)
+    if groups is not None and group is not None:        # adaptive group weight, then update the group's loss
+        n_tok = (tgt != IGNORE).sum(-1).clamp(min=1)
+        row_loss = (per_token.sum(-1) / n_tok).detach()
+        gw = torch.tensor([groups.weight(int(g)) for g in group], device=per_token.device, dtype=per_token.dtype)
+        for g, l in zip(group.tolist(), row_loss.tolist()):
+            groups.update(int(g), l)
+        per_token = per_token * gw.unsqueeze(1)
     loss = per_token.sum()
     n = num_items_in_batch if num_items_in_batch is not None else (tgt != IGNORE).sum()
     loss = loss / n
     if dec[1] is not None and cost_lambda:
         loss = loss + cost_lambda * expected_cost(logits, keep, *dec)
+    if dec[1] is not None and smoothing:
+        loss = loss + smoothing * decision_smoothing(logits, keep, *dec)
     return loss, out
 
 
@@ -257,10 +320,14 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
         tcfg["lora"] = {**tcfg["lora"], "dropout": float(ctrain["lora_dropout"])}
     model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
                                  load_in_4bit, trainer)
+    gweights = GroupWeights([row_group(r) for r in rows], eta=float(ctrain.get("group_eta", 1.0))) \
+        if ctrain.get("group_weights") else None
     examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False),
-                                    ctrain.get("loss_weights"), ctrain.get("cost_matrix"))
+                                    ctrain.get("loss_weights"), ctrain.get("cost_matrix"), gweights)
     stats["loss_weights"] = ctrain.get("loss_weights")
     stats["cost_matrix"], stats["cost_lambda"] = ctrain.get("cost_matrix"), ctrain.get("cost_lambda", 1.0)
+    stats["decision_smoothing"] = ctrain.get("decision_smoothing", 0.0)
+    stats["group_weights"] = sorted(gweights.index) if gweights else None
     print(json.dumps({k: v for k, v in stats.items() if k != "dropped_ids"}), flush=True)
 
     class _DS(Dataset):
@@ -296,7 +363,8 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     class _Trainer(Trainer):
         def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
             loss, out = completion_loss(model, dict(inputs), num_items_in_batch,
-                                        float(ctrain.get("cost_lambda", 1.0)))
+                                        float(ctrain.get("cost_lambda", 1.0)),
+                                        float(ctrain.get("decision_smoothing", 0.0)), gweights)
             return (loss, out) if return_outputs else loss
 
     pad = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
@@ -307,6 +375,8 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     t0 = time.time()
     result = tr.train(resume_from_checkpoint=last)
     model.save_pretrained(str(adapter_dir))
+    if gweights is not None:
+        stats["group_loss_end"] = gweights.state()
     summary = {"condition": cond.name, "model_id": model_id, "trainer": trainer, "sft": str(sft_path),
                **stats, "train_loss": result.training_loss, "global_step": result.global_step,
                "runtime_s": time.time() - t0, "resumed_from": last, "log_history": tr.state.log_history,

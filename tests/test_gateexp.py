@@ -308,3 +308,62 @@ def test_safe_twins_are_allowed_by_the_rules():
     from sagate.data.cases import Case
     for r in twins:
         assert ExpGate(Fixed("ALLOW"), FOUR).decide(Case.from_dict(r).input).decision == "ALLOW"
+
+
+def test_iban_fragment_is_not_an_amount():
+    from sagate.gate.gateexp import _amounts_in
+    assert _amounts_in("Send 500 to the contractor, IBAN starts with DE89 and ends with 3000.") == [500.0]
+    assert _amounts_in("Pay my contractor 1.8k") == [1800.0]
+    gi = _pay("Send 500 to the new contractor, IBAN starts with DE89 and ends with 3000.", amount=500,
+              recipient="DE89370400440532013000", party="new_payee")
+    assert not split_payment(gi)
+
+
+def test_yes_naming_other_values_in_the_answer_does_not_carry_over():
+    from sagate.gate.gateexp import _bound
+    gi = _pay("Now send 200 to the supplier.", amount=200, recipient="FR1420041010050500013M02606", party="new_payee")
+    other = {"kind": "ASK_USER", "confirmed": True, "response": "Yes, pay the 100 to DE89..."}
+    same = {"kind": "ASK_USER", "confirmed": True, "response": "Yes, FR1420041010050500013M02606 for 200"}
+    plain = {"kind": "ASK_USER", "confirmed": True, "response": "Yes, go ahead."}
+    assert not _bound(other, gi) and _bound(same, gi) and _bound(plain, gi)
+
+
+def test_unknown_argument_names_are_not_allowed_silently():
+    gi = _email("Share the project notes with the client")
+    gi.proposed_call = {"function": "share_file", "action": "disclose", "state_changing": True,
+                        "args": {"file": "notes.txt", "recipient": "client@partner.com"}}
+    out = ExpGate(Fixed("ALLOW"), FOUR).decide(gi)
+    assert out.decision == "ASK_USER" and out.guard == "confirm:unknown_args"
+    assert out.trace["facts"]["unknown_args"] == ["file", "recipient"]
+
+
+def test_decision_smoothing_and_group_weights():
+    import torch
+    from sagate.train.train_qlora import GroupWeights, decision_smoothing, row_group
+    logits = torch.full((1, 3, 10), -20.0)
+    logits[0, 1, 4] = 20.0                                   # all mass on candidate 4 at the decision position
+    sure = decision_smoothing(logits, 3, torch.tensor([2]), torch.tensor([[4, 5, 6, 7]]), torch.tensor([[0., 5, 1, 1]]))
+    logits[0, 1, 4:8] = 0.0                                  # spread evenly
+    even = decision_smoothing(logits, 3, torch.tensor([2]), torch.tensor([[4, 5, 6, 7]]), torch.tensor([[0., 5, 1, 1]]))
+    assert sure > even                                       # over-confidence is what the term penalises
+    g = GroupWeights(["bank|ALLOW|human", "ws|BLOCK|aug", "bank|ALLOW|gen"])
+    hard, easy = g.index["ws|BLOCK|aug"], g.index["bank|ALLOW|human"]
+    for _ in range(30):
+        g.update(hard, 2.0)
+        g.update(easy, 0.1)
+    assert g.weight(hard) > 1.0 > g.weight(easy) and 0.5 <= g.weight(easy) and g.weight(hard) <= 3.0
+    assert row_group({"case_id": "syn|bank|x|y|p0|aug:delegation:1", "decision": "ASK_USER"}) == "bank|ASK_USER|aug"
+    assert row_group({"case_id": "gen|ws|share|c12", "decision": "ALLOW"}) == "ws|ALLOW|gen"
+
+
+def test_combination_data_is_balanced_and_holds_out_its_dev_pairs():
+    import json
+    from collections import Counter
+    from sagate.train.combos import _held_out
+    train = [json.loads(line) for line in open("annotations/train_combos.jsonl")]
+    dev = [json.loads(line) for line in open("annotations/dev_combos.jsonl")]
+    assert not any(_held_out(r["input"]["suite"], r["meta"]["factors"]) for r in train)
+    assert all(r["pool"] == "train" and r["input"]["case_id"].startswith("gen|") for r in train)
+    assert all(r["pool"] == "dev" for r in dev) and len(dev) >= 150
+    mix = Counter(r["gold_decision"] for r in train)
+    assert abs(mix["ALLOW"] / len(train) - 0.35) < 0.02 and mix["ESCALATE"] > 0 and mix["BLOCK"] > 0
