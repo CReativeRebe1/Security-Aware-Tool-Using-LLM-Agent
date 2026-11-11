@@ -174,3 +174,14 @@ Kaggle: `bash kaggle/stage_code.sh`, then `kaggle datasets version -p build/saga
 (first time: `kaggle datasets create`), then `kaggle kernels push -p build/kernels/nb00_setup_smoke --accelerator
 NvidiaTeslaT4`. Kernels in `kaggle/`: NB00 (smoke), NB01 (B0 traces), NB02 (B1/B2/B3), NB03 (QLoRA, 8 adapters), NB04 (learned gates +
 B4 threshold), NB05 (end-to-end B0 vs B5), NB06 (statistics + report, CPU).
+
+## Contributors
+
+CL3410 (Language Models and Agents, IIIT Hyderabad, Monsoon 2026) group project team:
+
+| Name | GitHub |
+|---|---|
+| Prabhash Padhan | [@prabhash1889](https://github.com/prabhash1889) |
+| Rinkesh Verma | [@rinkeshverma27](https://github.com/rinkeshverma27) |
+| Shubham Kumar Sunny | [@ShubhamKumarSunny](https://github.com/ShubhamKumarSunny) |
+| Yogendra Patel | [@CReativeRebe1](https://github.com/CReativeRebe1) |
