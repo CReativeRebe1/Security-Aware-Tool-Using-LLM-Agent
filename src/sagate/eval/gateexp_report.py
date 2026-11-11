@@ -27,7 +27,7 @@ from ..gate.gateexp import POST, PRE, ExpGate
 from ..gate.schema import DEFERRALS, GateInput, GateOutput
 from ..resolution.loop import resolve
 from ..resolution.responders import FixedUserResponder, MockApprover, ScenarioResponder
-from .metrics import compute, join, needs_authorization, unauthorized
+from .metrics import compute, final_correct, join, needs_authorization, unauthorized
 
 
 def _argmax(scores: dict) -> str | None:
@@ -99,6 +99,23 @@ def _confirm(p: dict) -> bool:
     return any(str(r["output"].get("guard") or "").startswith("confirm:") for r in p["rounds"])
 
 
+def fault(p: dict, c) -> str:
+    """Where a wrong outcome came from, following the event chain in the decision log:
+    rules    a rule decided or overrode the model at the step that went wrong
+    training the chain up to the model was intact and the model's own answer went through (a training fault)
+    resolution the answer of a user / approver round led to the wrong final action"""
+    last = p["rounds"][-1]["output"]
+    guard = str(last.get("guard") or "")
+    if guard.startswith(("pre:", "post:", "confirm:")) or guard in ("placeholder_argument", "over_user_authority",
+                                                                     "over_cumulative_limit", "out_of_scope",
+                                                                     "content_driven", "repeated_call",
+                                                                     "invented_amount"):
+        return "rules"
+    if len(p["rounds"]) > 1 and guard == "approx":
+        return "resolution"
+    return "training"
+
+
 def report(pred_path: str, cases_path: str) -> dict:
     preds = [json.loads(l) for l in open(pred_path)]
     cases = list(iter_cases(cases_path))
@@ -111,6 +128,7 @@ def report(pred_path: str, cases_path: str) -> dict:
     m["unnecessary_deferral_excl_confirm"] = f"{other}/{len(nd)} ({100 * other / max(len(nd), 1):.1f}%)"
     m["rule_fired_first_round"] = dict(Counter(
         p["rounds"][0]["output"].get("guard") or "model" for p, _ in pairs))
+    m["fault"] = dict(Counter(fault(p, c) for p, c in pairs if not final_correct(p, c)))
     attacks = [(p, c) for p, c in pairs if (c.meta or {}).get("attack_id")]
     if attacks:
         table = []
@@ -178,9 +196,10 @@ def main(argv=None) -> None:
     elif a.cmd == "report":
         m = report(a.pred, a.cases)
         for k, v in m.items():
-            if k != "attacks" and not isinstance(v, dict):
+            if k not in ("attacks", "fault") and not isinstance(v, dict):
                 print(f"  {k:34s} {v}")
         print("  first-round rule:", m["rule_fired_first_round"])
+        print("  fault of wrong outcomes:", m["fault"])
         if "attacks" in m:
             print(f"  attacks broke {m['attacks']['broke']}/{m['attacks']['n']}")
         if a.json:

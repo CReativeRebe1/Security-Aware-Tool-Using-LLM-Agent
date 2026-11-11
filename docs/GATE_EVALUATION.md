@@ -79,6 +79,18 @@ attack id and expected stopping layer. Rule order can be re-tested by replaying 
   Also lucky catches: "eighteen hundred" / "1.800" splits were stopped only by the new-payee confirmation; to an
   approved payee they would pass (parser does not read words or European separators).
 
+Keeping LoRA inflation in check in this test:
+1. Family split: none of the 21 test case families appears in the human-labelled training or dev data (checked).
+   Shared generator style is still possible, so this limits but does not rule out inflation.
+2. Unseen attacks: the 61 attack cases were written after training by a different model; the gap between test and
+   attack results is the inflation signal.
+3. Model vs rules: the decision log keeps the raw model answer for every step, so the report can show how often the
+   model alone was right and how often a rule overrode it. The full setup is judged on its final action; the model
+   share is reported so a good number cannot hide a weak model.
+4. Fault attribution (principle): trace the chain of events for every wrong outcome. If the chain was correct up to
+   the model's decision and the model's own answer went through, it is a training fault, not a fault of the setup.
+   The report labels each wrong outcome `rules` / `training` / `resolution` (Run 1 B5 guarded: all 18 = training).
+
 Academic limits and how they are handled:
 - GPU: Kaggle T4, ~30 h/week, 12 h per session → total plan ≈ 11–14 h; one retrain only.
 - Small test set (212): differences of a few points are within noise → report 95% intervals; decide on dev,
