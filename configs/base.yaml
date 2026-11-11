@@ -26,6 +26,7 @@ context:
   gate_read_only: false        # false = read-only tools bypass the gate (logged)
   max_untrusted_blocks: 3      # keep only the most recent tool outputs
   untrusted_max_chars: 1500    # ~384 tokens per untrusted block
+  rag_tags: true               # clause coverage tags in retrieval (A/B: NB08 v7); env SAGATE_RAG_TAGS overrides
   rag_k: 8                     # BM25 + evidence words + fact index: Recall@8 0.95 on dev (+~300 prompt tokens vs 3)
 
 counterfactual:
