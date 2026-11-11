@@ -33,8 +33,11 @@ def end_token(tok) -> str:
     return "<|im_end|>" if "<|im_end|>" in tok.get_vocab() else tok.eos_token
 
 
-def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool = False) -> tuple[list[dict], dict]:
-    """[{input_ids, labels}] with the prompt masked out; examples over max_length are dropped (and counted)."""
+def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool = False,
+                  loss_weights: dict | None = None) -> tuple[list[dict], dict]:
+    """[{input_ids, labels, weight}] with the prompt masked out; examples over max_length are dropped (and counted).
+    `loss_weights` (decision -> weight) makes the costly mistakes count more: an example whose gold decision is
+    ASK_USER / ESCALATE / BLOCK weighs more than an ALLOW, so a wrong ALLOW costs more than a needless question."""
     end = end_token(tok)
     out, lengths, dropped = [], [], []
     for r in rows:
@@ -46,7 +49,8 @@ def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool 
         if len(ids) > max_length:
             dropped.append(r["case_id"])
             continue
-        out.append({"input_ids": ids, "labels": [IGNORE] * n_prompt + ids[n_prompt:]})
+        weight = float((loss_weights or {}).get(r.get("decision"), 1.0))
+        out.append({"input_ids": ids, "labels": [IGNORE] * n_prompt + ids[n_prompt:], "weight": weight})
     stats = {"examples": len(rows), "kept": len(out), "dropped_over_max_length": len(dropped),
              "dropped_ids": dropped[:50], "median_tokens": statistics.median(lengths) if lengths else 0,
              "max_tokens": max(lengths, default=0), "train_tokens": sum(len(x["input_ids"]) for x in out)}
@@ -72,7 +76,8 @@ class Collator:
         keep = max(sum(t != IGNORE for t in b["labels"]) for b in batch)
         pos = [[0] * p + list(range(len(b["input_ids"]))) for p, b in zip(pad, batch)]   # RoPE ignores padding
         return {"input_ids": torch.tensor(ids), "labels": torch.tensor(labels), "attention_mask": torch.tensor(mask),
-                "position_ids": torch.tensor(pos), "logits_to_keep": torch.tensor(keep)}
+                "position_ids": torch.tensor(pos), "logits_to_keep": torch.tensor(keep),
+                "weight": torch.tensor([float(b.get("weight", 1.0)) for b in batch])}
 
 
 def completion_loss(model, inputs: dict, num_items_in_batch=None):
@@ -81,11 +86,15 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None):
 
     labels = inputs.pop("labels")
     keep = int(inputs.pop("logits_to_keep"))
+    weight = inputs.pop("weight", None)
     out = model(**inputs, logits_to_keep=keep + 1, use_cache=False)
     logits = out.logits[:, :-1].float()                 # position j predicts token j + 1
     tgt = labels[:, -keep:].to(logits.device)
-    loss = torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), tgt.reshape(-1),
-                                             ignore_index=IGNORE, reduction="sum")
+    per_token = torch.nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), tgt.reshape(-1),
+                                                  ignore_index=IGNORE, reduction="none").view(tgt.shape)
+    if weight is not None:                              # per-example weight (decision-weighted loss)
+        per_token = per_token * weight.to(per_token.device, per_token.dtype).unsqueeze(1)
+    loss = per_token.sum()
     n = num_items_in_batch if num_items_in_batch is not None else (tgt != IGNORE).sum()
     return loss / n, out
 
@@ -188,7 +197,11 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
         raise ValueError(f"{sft_path} holds SFT rows for {sorted(bad)}, not {cond.name}")
     model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
                                  load_in_4bit, trainer)
-    examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False))
+    ctrain = cond.extra.get("train") or {}             # per-condition overrides (e.g. b5_v2: 1 epoch, loss weights)
+    tcfg = {**tcfg, **{k: v for k, v in ctrain.items() if k in ("epochs", "lr")}}
+    examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False),
+                                    ctrain.get("loss_weights"))
+    stats["loss_weights"] = ctrain.get("loss_weights")
     print(json.dumps({k: v for k, v in stats.items() if k != "dropped_ids"}), flush=True)
 
     class _DS(Dataset):

@@ -140,3 +140,34 @@ def test_trace_records_every_rule():
     names = [s["rule"] for s in out.trace["steps"]]
     assert names[:3] == ["declined", "untrusted_provenance", "authority"] and "route_authority" in names
     assert out.trace["model"]["decision"] == "ALLOW"
+
+
+def test_weighted_loss_rows():
+    from sagate.train.train_qlora import tokenize_rows
+
+    class Tok:
+        def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True, enable_thinking=False):
+            return "P:"
+
+        def __call__(self, text, add_special_tokens=False):
+            return {"input_ids": [ord(ch) for ch in text]}
+
+        eos_token = "<e>"
+
+        def get_vocab(self):
+            return {}
+    rows = [{"case_id": "a", "messages": [], "target": "{}", "decision": "ASK_USER"},
+            {"case_id": "b", "messages": [], "target": "{}", "decision": "ALLOW"}]
+    out, _ = tokenize_rows(Tok(), rows, 100, loss_weights={"ALLOW": 1.0, "ASK_USER": 3.0})
+    assert [o["weight"] for o in out] == [3.0, 1.0]
+
+
+def test_augmentation_is_balanced_and_train_only():
+    import json
+    from collections import Counter
+    rows = [json.loads(line) for line in open("annotations/train_augmented.jsonl")]
+    human = [json.loads(line) for line in open("annotations/train_human.jsonl")]
+    mix = Counter(r["gold_decision"] for r in rows + human)
+    n = sum(mix.values())
+    assert abs(mix["ALLOW"] / n - 0.35) < 0.01 and abs(mix["ASK_USER"] / n - 0.20) < 0.01
+    assert all(r["pool"] == "train" and "|aug:" in r["input"]["case_id"] for r in rows)

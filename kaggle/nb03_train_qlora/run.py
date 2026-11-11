@@ -11,7 +11,8 @@ import bootstrap  # noqa: E402
 
 # One group per Kaggle account, so teammates can train in parallel (docs/RUN_GUIDE.md). A = the primary run.
 GROUPS = {"A": ["b5_qlora_4way", "b4_qlora_binary"], "B": ["b5_no_prov", "b5_no_auth"],
-          "C": ["b5_no_rag", "b5_no_inter"], "D": ["b5_no_ask", "b5_no_esc"]}
+          "C": ["b5_no_rag", "b5_no_inter"], "D": ["b5_no_ask", "b5_no_esc"],
+          "V2": ["b5_v2"]}       # retrained B5: + annotations/train_augmented.jsonl, 1 epoch, weighted loss
 GROUP = "A"
 CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2
@@ -42,6 +43,8 @@ human = os.path.join(root, "annotations", "train_human.jsonl")    # frozen human
 if not os.path.exists(human):
     sys.exit("annotations/train_human.jsonl not staged (python -m sagate.data.human_labels)")
 train_cases.append(human)
+if GROUP == "V2":                     # rule-based copies of the human cases (sagate.train.augment)
+    train_cases.append(os.path.join(root, "annotations", "train_augmented.jsonl"))
 print(f"group {GROUP}: {CONDITIONS}", flush=True)
 code = bootstrap.run([py, "-m", "sagate.train.build_sft", "--condition", *CONDITIONS, "--cases", *train_cases,
                       "--out", sft])

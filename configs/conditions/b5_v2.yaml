@@ -1,0 +1,10 @@
+name: b5_v2
+gate: {kind: llm, adapter: adapters/b5_v2}   # retrained B5 (docs/GATE_EVALUATION.md, training plan)
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}
+train:
+  epochs: 1                 # Run 1 (2 epochs) ended at train loss 0.029: memorised
+  gateexp_facts: true       # inputs carry the GateExp facts (intent, risk, data source, split, data label)
+  loss_weights: {ALLOW: 1.0, BLOCK: 2.0, ASK_USER: 3.0, ESCALATE: 3.0}   # a wrong ALLOW costs more than a needless ask

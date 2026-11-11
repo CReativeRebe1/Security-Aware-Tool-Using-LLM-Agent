@@ -1,0 +1,10 @@
+name: b5_v2_gateexp
+gate: {kind: llm, adapter: adapters/b5_v2}   # retrained B5 inside the GateExp layers
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}
+gateexp:
+  pre: [declined, untrusted_provenance, authority]
+  post: [guards, no_reask, intent_confirm, new_payee_confirm, unlabelled_external, route_authority]
+  show_facts: true
