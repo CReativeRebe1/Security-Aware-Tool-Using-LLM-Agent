@@ -813,3 +813,8 @@ Risk stays a code fact (not a new model output: that would change every 4-way ga
 | Other | 1 epoch, LoRA r 16 / α 32 / dropout 0.1, GateExp facts, tags on, new BANK-2.2 / 6.1 text | same |
 
 Pick: dev + dev_combos slices + attacks (unsafe first, then unneeded asks); the winner goes to test once.
+Smoke run (NB03 v2, 20 steps, code 4790872): both SFT sets built (2,498 / 3,698 examples, 8 over max length each),
+decision slot found in every row, 16 / 24 groups active, peak 8.1 GB, no errors. Found a scaling bug: the cost and
+smoothing terms were added per micro-batch while the token loss is normalised over the 16 accumulated micro-batches,
+so they counted 16× (logged loss ~19 at step 10 vs 0.75 for b5_v2). Fixed (divided by the accumulation steps,
+tested) before the full run.

@@ -367,3 +367,21 @@ def test_combination_data_is_balanced_and_holds_out_its_dev_pairs():
     assert all(r["pool"] == "dev" for r in dev) and len(dev) >= 150
     mix = Counter(r["gold_decision"] for r in train)
     assert abs(mix["ALLOW"] / len(train) - 0.35) < 0.02 and mix["ESCALATE"] > 0 and mix["BLOCK"] > 0
+
+
+def test_extra_loss_terms_are_scaled_for_gradient_accumulation():
+    import torch
+    from sagate.train.train_qlora import Collator, completion_loss
+
+    class Model(torch.nn.Module):
+        def forward(self, input_ids, logits_to_keep, **kw):
+            logits = torch.zeros(input_ids.shape[0], logits_to_keep, 12)
+            logits[..., 3] = 20.0
+            return type("O", (), {"logits": logits})()
+    row = {"input_ids": [1, 2, 3, 4, 5], "labels": [-100, -100, 3, 4, 5], "weight": 1.0,
+           "dec_from_end": 2, "dec_cands": [3, 4, 5, 6], "dec_costs": [0.0, 5.0, 0.5, 0.5]}
+    b = Collator(0)([{**row, "dec_costs": [5.0, 0.0, 0.5, 0.5]}])
+    full, _ = completion_loss(Model(), dict(b), num_items_in_batch=torch.tensor(3), cost_lambda=1.0)
+    none, _ = completion_loss(Model(), dict(b), num_items_in_batch=torch.tensor(3), cost_lambda=0.0)
+    acc, _ = completion_loss(Model(), dict(b), num_items_in_batch=torch.tensor(3), cost_lambda=1.0, accum_steps=16)
+    assert abs((full - none).item() - 5.0) < 1e-3 and abs((acc - none).item() - 5.0 / 16) < 1e-3

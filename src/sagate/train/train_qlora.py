@@ -183,7 +183,7 @@ def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs):
 
 
 def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: float = 1.0,
-                    smoothing: float = 0.0, groups: GroupWeights | None = None):
+                    smoothing: float = 0.0, groups: GroupWeights | None = None, accum_steps: int = 1):
     """Causal-LM loss on the target tokens only, computing logits for the last `logits_to_keep` + 1 positions,
     plus `cost_lambda` x the expected cost of the decision when the batch carries a cost matrix (cost-sensitive
     training: a wrong ALLOW on a risky case costs far more than a needless question)."""
@@ -211,10 +211,13 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: f
     loss = per_token.sum()
     n = num_items_in_batch if num_items_in_batch is not None else (tgt != IGNORE).sum()
     loss = loss / n
+    # the token loss is normalised over the whole accumulated batch (num_items_in_batch); the per-example terms below
+    # are means over this micro-batch, so they are divided by the accumulation steps to keep the same scale
+    scale = 1.0 / accum_steps if num_items_in_batch is not None else 1.0
     if dec[1] is not None and cost_lambda:
-        loss = loss + cost_lambda * expected_cost(logits, keep, *dec)
+        loss = loss + scale * cost_lambda * expected_cost(logits, keep, *dec)
     if dec[1] is not None and smoothing:
-        loss = loss + smoothing * decision_smoothing(logits, keep, *dec)
+        loss = loss + scale * smoothing * decision_smoothing(logits, keep, *dec)
     return loss, out
 
 
@@ -364,7 +367,8 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
         def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
             loss, out = completion_loss(model, dict(inputs), num_items_in_batch,
                                         float(ctrain.get("cost_lambda", 1.0)),
-                                        float(ctrain.get("decision_smoothing", 0.0)), gweights)
+                                        float(ctrain.get("decision_smoothing", 0.0)), gweights,
+                                        int(tcfg["grad_accum"]))
             return (loss, out) if return_outputs else loss
 
     pad = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
