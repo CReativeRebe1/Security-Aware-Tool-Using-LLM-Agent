@@ -3,6 +3,7 @@ escapes and then turns `code` spans into <code>), so nothing from a case file ca
 
 from __future__ import annotations
 
+import base64
 import html
 import json
 import re
@@ -52,9 +53,33 @@ def verdict(v: X.Verdict | None) -> str:
     return f'<span class="sg-verdict {v.tone}">{icon} {esc(v.short)}</span>'
 
 
-def hero(eyebrow: str, title: str, text: str) -> None:
-    show(f'<div class="sg-hero"><div class="sg-eyebrow">{esc(eyebrow)}</div><h1>{esc(title)}</h1>'
-         f'<p>{esc(text)}</p></div>')
+def hero(eyebrow: str, title: str, text: str, art: str | None = None) -> None:
+    pic = ""
+    if art:   # st.html strips inline <svg>; an <img> with a data URL survives the sanitizer
+        b64 = base64.b64encode(D.asset(art).encode()).decode()
+        pic = f'<div class="sg-hero-art"><img alt="" src="data:image/svg+xml;base64,{b64}"></div>'
+    show(f'<div class="sg-hero{" with-art" if art else ""}"><div><div class="sg-eyebrow">{esc(eyebrow)}</div>'
+         f'<h1>{esc(title)}</h1><p>{esc(text)}</p></div>{pic}</div>')
+
+
+def numbers(items: list[tuple[str, str]]) -> None:
+    """A strip of big numbers: [(value, label)]."""
+    cells = "".join(f'<div class="sg-num"><b>{esc(v)}</b><span>{esc(lbl)}</span></div>' for v, lbl in items)
+    show(f'<div class="sg-numbers">{cells}</div>')
+
+
+def scoreboard(runs, case) -> None:
+    """One line: each gate's verdict on this case."""
+    bits = []
+    for r in runs:
+        if r.trace is None:
+            bits.append(f'<span class="sg-score none" title="{esc(r.note)}">{esc(r.gate.code)} –</span>')
+            continue
+        v = X.verdict(r.trace, case)
+        sym = {"success": "✓", "warning": "!", "error": "✕"}[v.tone]
+        bits.append(f'<span class="sg-score {v.tone}" title="{esc(r.gate.name)}: {esc(v.label)}">'
+                    f'{esc(r.gate.code)} {sym}</span>')
+    show(f'<div class="sg-scoreboard"><span class="lbl">Who got it right</span>{"".join(bits)}</div>')
 
 
 def callout(kind: str, label: str, text: str) -> None:
@@ -84,14 +109,14 @@ def stat_tile(label: str, value: str, sub: str, target: tuple[str, str] | None =
 
 # ---------------------------------------------------------------- evidence
 
-def evidence_cards(items: list[X.EvidenceItem]) -> None:
+def evidence_cards(items: list[X.EvidenceItem], compact: bool = False) -> None:
     sym = {"ok": "✓", "warn": "!", "bad": "✕", "info": "i"}
     out = []
     for it in items:
         pts = "".join(f'<li><span class="sg-dot {s}">{sym[s]}</span><span>{md(t)}</span></li>' for s, t in it.points)
         out.append(f'<div class="sg-card {it.status}"><div class="sg-kicker">{it.icon} {esc(it.kind)}</div>'
                    f'<h4>{md(it.headline)}</h4><ul>{pts}</ul></div>')
-    show(f'<div class="sg-grid two">{"".join(out)}</div>')
+    show(f'<div class="sg-grid {"compact" if compact else "two"}">{"".join(out)}</div>')
 
 
 def user_bubble(text: str) -> None:

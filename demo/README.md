@@ -4,11 +4,13 @@ A website that shows what the project does, using **real Run 1 results**. It has
 
 | Page | What it shows |
 |---|---|
-| Home | The problem, the gate idea, the four decisions, headline numbers |
-| Playground | 7 hand-picked test cases, step by step: request → agent action → evidence → every gate's decision → right answer → live "try it" panel |
-| Explore all cases | Every test/dev case with each gate's result; filter, click a row to open it |
-| Results | Main metrics table, the safety-vs-annoyance chart, success by kind of case, honest caveats |
-| How it works | Pipeline, evidence, RAG, the question loop, the gates, training, how the test is kept honest |
+| Home | The problem, the gate idea, the four decisions, the project in numbers, headline results, a guide to the site |
+| Playground | 7 hand-picked test cases told in six steps (request → agent → evidence → every gate's decision → right answer → live "try it"), guided with Back/Next or all on one page |
+| Gate Lab | The visitor designs a bank payment (payee, amount, where it came from, a fake approval note, their own answer) and the real pipeline handles it live |
+| Explore all cases | Every test/dev case with each gate's result; filters, including "only this gate's mistakes" |
+| How it works | Pipeline, evidence, RAG, the question loop, training, fair testing (tabs) |
+| Results | B5 against the targets, the safety-vs-annoyance chart, every number, success by kind of case, links to each gate's mistakes, caveats |
+| The research | Hypotheses and where they stand, how the dataset was built, experiments and run plan, project journey, known limits |
 
 ## Where the numbers come from
 
@@ -21,6 +23,10 @@ Nothing is copied or typed in. The app reads the repo's own files when it starts
 When a new run is committed to `results/data/run1/` (for example B4), the site shows it automatically, with no
 code change. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
 checked against the recorded predictions for code `da42a96`. Re-check them after a new run.
+
+**Gate Lab:** only the conversation is made up (the user's words and what the bank tools return). The project's real
+`ContextBuilder` turns it into evidence, exactly the way the 2,000 dataset cases were built, then `EvidenceMask`,
+`RulesGate`/`GuardedGate`, the resolution loop and `MockApprover` run unchanged (`sagate_demo/lab.py`).
 
 **Live part:** the B1 rules gate runs for real on the server (CPU only, `sagate_demo/gates.py`) through `sagate.eval.run_gate`'s path:
 `EvidenceMask` → `RulesGate` / `GuardedGate` → resolution loop. With the default settings it reproduces the recorded
@@ -65,7 +71,7 @@ through FastAPI and an ngrok tunnel.
 ```
 demo/
   streamlit_app.py          entry point: page navigation, stylesheet, logo, sidebar
-  views/                    the five pages (home, playground, explore, results, how_it_works)
+  views/                    the seven pages (home, playground, lab, explore, how_it_works, results, research)
   sagate_demo/
     data.py                 loading only: cases, recorded predictions, reports, handbook, featured.yaml
     gates.py                where decisions come from: RecordedSource (Run 1 files) and LiveRulesSource (B1 now);
@@ -73,8 +79,9 @@ demo/
     explain.py              plain-language evidence summaries and the ✓/✕ verdict (same rules as eval/metrics.py)
     components.py           small HTML pieces (chips, cards, decision table, flows); all data text is escaped
     scenario.py             one case as six steps: guided (Back/Next) or all on one page
+    lab.py                  Gate Lab engine: made-up conversation -> the project's real ContextBuilder and gate
   assets/style.css          the design: colours, cards, chips, tables (classes start with sg-)
-  assets/logo.svg
+  assets/logo.svg, hero.svg  sidebar logo and the home-page illustration
   featured.yaml             the 7 Playground scenarios and their explanations
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
   .streamlit/config.toml    light theme

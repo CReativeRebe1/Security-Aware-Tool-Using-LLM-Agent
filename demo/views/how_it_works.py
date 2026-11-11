@@ -38,6 +38,8 @@ with tabs[0]:
          "body": "The gate first says what is missing and who must decide, and only then gives the decision, like "
                  "showing your working in maths."},
     ])
+    st.page_link("views/lab.py", label="See this pipeline run live, on a payment you design, in the Gate Lab",
+                 icon=":material/science:")
 
 with tabs[1]:
     st.markdown("#### Four kinds of facts the gate gets")

@@ -13,13 +13,17 @@ C.load_css()
 st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")
 
 pages = {
-    "": [
-        st.Page("views/home.py", title="Home", icon=":material/home:", default=True),
+    "": [st.Page("views/home.py", title="Home", icon=":material/home:", default=True)],
+    "See it in action": [
         st.Page("views/playground.py", title="Playground", icon=":material/play_circle:"),
+        st.Page("views/lab.py", title="Gate Lab", icon=":material/science:"),
         st.Page("views/explore.py", title="Explore all cases", icon=":material/search:"),
-        st.Page("views/results.py", title="Results", icon=":material/monitoring:"),
+    ],
+    "Understand it": [
         st.Page("views/how_it_works.py", title="How it works", icon=":material/account_tree:"),
-    ]
+        st.Page("views/results.py", title="Results", icon=":material/monitoring:"),
+        st.Page("views/research.py", title="The research", icon=":material/biotech:"),
+    ],
 }
 nav = st.navigation(pages)
 

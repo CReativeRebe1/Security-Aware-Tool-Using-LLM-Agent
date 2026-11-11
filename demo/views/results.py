@@ -163,6 +163,17 @@ if not bd.empty:
         st.dataframe(t.pivot(index="kind", columns="gate", values="result").reindex(order), width="stretch")
     st.caption("Small groups (4–5 cases) swing a lot: one case is 20–25 points.")
 
+# ------------------------------------------------------------ mistakes
+st.markdown("### Look at the mistakes yourself")
+st.markdown("Every wrong decision can be opened and inspected case by case: the request, the evidence, and what "
+            "each gate did.")
+m1, m2, m3, _ = st.columns([1, 1, 1, 1])
+for col, code in zip((m1, m2, m3), ("B5", "B5+G", "B1")):
+    if col.button(f"Open {code}'s mistakes", icon=":material/search:", width="stretch", key=f"mist_{code}"):
+        st.session_state["ex_split"] = split
+        st.session_state["ex_wrong"] = code
+        st.switch_page("views/explore.py")
+
 # ------------------------------------------------------------ honest notes
 st.markdown("### Read these numbers carefully")
 dev5, test5 = D.reports("dev").get(OURS, {}), D.reports("test").get(OURS, {})

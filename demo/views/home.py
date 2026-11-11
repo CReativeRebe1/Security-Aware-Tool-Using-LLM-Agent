@@ -4,17 +4,22 @@ from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
 
-C.hero("CL3410 project · Run 1 results",
+C.hero("CL3410 course project · Run 1 results",
        "SA-Gate: a security gate for AI assistants",
        "AI assistants can now send emails, share files and move money. SA-Gate checks every risky action before "
-       "it happens. It allows it, blocks it, asks the user, or asks a manager.")
+       "it happens. It allows it, blocks it, asks the user, or asks a manager.", art="hero.svg")
 
-a, b, _ = st.columns([1.2, 1, 2])
-if a.button("▶  Watch it in action", type="primary", width="stretch"):
+a, b, c, _ = st.columns([1.15, 1.15, 1, 1.2])
+if a.button("Try the Gate Lab", icon=":material/science:", type="primary", width="stretch"):
+    st.switch_page("views/lab.py")
+if b.button("Watch real cases", icon=":material/play_circle:", width="stretch"):
     st.switch_page("views/playground.py")
-if b.button("See the results", width="stretch"):
+if c.button("See the results", icon=":material/monitoring:", width="stretch"):
     st.switch_page("views/results.py")
 
+C.numbers([("1,497", "cases labelled by the team"), ("142", "scenario families"),
+           ("2", "worlds: office and bank"), ("15", "risky tools checked"), ("48", "written policy rules"),
+           ("6", "gate designs compared (B0–B5)")])
 st.write("")
 C.section("The problem")
 st.markdown("### Three ways an assistant can go wrong")
@@ -78,3 +83,28 @@ st.markdown("Training clearly helps: B5 beats the same AI used with instructions
             "it almost never asks a needless question. But it still lets **too many unsafe actions through**, so "
             "the work continues.")
 st.page_link("views/results.py", label="See all numbers and honest caveats", icon=":material/arrow_forward:")
+
+C.section("Explore the site")
+st.markdown("### Where to go next")
+GUIDE = [
+    ("views/lab.py", ":material/science:", "Gate Lab",
+     "Design a payment yourself (amount, payee, a hidden attack, a fake approval) and watch the real pipeline "
+     "decide, live."),
+    ("views/playground.py", ":material/play_circle:", "Playground",
+     "Seven real test cases, step by step: what the user asked, what the agent tried, the evidence, and what "
+     "every gate decided."),
+    ("views/explore.py", ":material/search:", "Explore all cases",
+     "All 448 test and dev cases with every gate's result. Filter by kind, or show only one gate's mistakes."),
+    ("views/how_it_works.py", ":material/account_tree:", "How it works",
+     "The pipeline, the four kinds of evidence, RAG, the question loop and how the trained gate is made."),
+    ("views/results.py", ":material/monitoring:", "Results",
+     "Every number from Run 1, the safety-vs-annoyance trade-off, and the honest caveats."),
+    ("views/research.py", ":material/biotech:", "The research",
+     "Our hypotheses, how the dataset was built, what has been run, the project journey, and known limits."),
+]
+for row in range(0, len(GUIDE), 3):
+    cols = st.columns(3)
+    for col, (page, icon, title, text) in zip(cols, GUIDE[row:row + 3]):
+        with col.container(border=True, height="stretch"):
+            st.page_link(page, label=f"**{title}**", icon=icon)
+            st.caption(text)

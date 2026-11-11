@@ -221,19 +221,19 @@ def sensitivity_item(gi) -> EvidenceItem:
                         [("info", f"`{res}` data → `{dest}` destination")] + basis)
 
 
-def rules_item(gi, c: Case) -> EvidenceItem:
-    gold = set(c.gold_clause_ids or [])
+def rules_item(gi, c: Case | None = None) -> EvidenceItem:
+    gold = set((c.gold_clause_ids if c else None) or [])
     got = [x for x in gi.policy_clauses or []]
     found = len(gold & {x["id"] for x in got})
     status = "ok" if gold and found == len(gold) else ("warn" if gold else "info")
     points = [("ok" if x["id"] in gold else "info", f"`{x['id']}` {x['title']}") for x in got[:4]]
     if len(got) > 4:
         points.append(("info", f"… and {len(got) - 4} more"))
-    head = f"Found {found} of the {len(gold)} key rules" if gold else f"{len(got)} relevant rules found"
+    head = f"Found {found} of the {len(gold)} key rules" if gold else f"The {len(got)} most relevant rules"
     return EvidenceItem("Handbook rules (RAG)", "📖", status, head, points)
 
 
-def evidence(gi, c: Case) -> list[EvidenceItem]:
+def evidence(gi, c: Case | None = None) -> list[EvidenceItem]:
     return [provenance_item(gi), authority_item(gi), sensitivity_item(gi), rules_item(gi, c)]
 
 

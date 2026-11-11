@@ -34,6 +34,12 @@ def cases(split: str) -> dict[str, Case]:
 
 
 @st.cache_resource(show_spinner=False)
+def train_cases() -> dict[str, Case]:
+    """The frozen training split (only used for dataset statistics; never shown as a scored case)."""
+    return {c.case_id: c for c in load_cases(REPO / "annotations" / "train_human.jsonl")}
+
+
+@st.cache_resource(show_spinner=False)
 def predictions(split: str, cond: str, noisy: bool = False) -> dict[str, dict] | None:
     path = RUN_DIR / split / f"{cond}{'_noisy' if noisy else ''}.jsonl"
     if not path.exists():

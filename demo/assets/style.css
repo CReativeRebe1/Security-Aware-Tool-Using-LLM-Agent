@@ -36,6 +36,7 @@
 .sg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 6px 0 10px; }
 .sg-grid.two { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .sg-grid.four { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.sg-grid.compact { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .sg-card { background: var(--sg-card); border: 1px solid var(--sg-line); border-radius: 14px; padding: 16px 18px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
 .sg-card h4 { margin: 0 0 6px; padding: 0; font-size: 1rem; font-weight: 700; color: var(--sg-ink); }
@@ -47,6 +48,7 @@
 .sg-card.bad { border-left: 4px solid var(--sg-bad-line); }
 .sg-card.info { border-left: 4px solid var(--sg-blue); }
 .sg-card ul { margin: 8px 0 0; padding-left: 0; list-style: none; }
+.sg-card code, .sg-reply, .sg-step .sub { overflow-wrap: anywhere; }
 .sg-card li { font-size: .88rem; color: var(--sg-ink2); margin: 4px 0; display: flex; gap: 6px; line-height: 1.4; }
 
 .sg-dot { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center;
@@ -124,7 +126,30 @@
 .sg-callout.right { background: var(--sg-ok-soft); color: #0f4d2b; }
 .sg-callout b { font-weight: 700; }
 
+
+/* ---------- hero with art, numbers strip, scoreboard */
+.sg-hero.with-art { display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; align-items: center; }
+.sg-hero-art img { width: 100%; height: auto; max-height: 240px; display: block; }
+.sg-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0;
+  background: var(--sg-card); border: 1px solid var(--sg-line); border-radius: 14px; margin: 14px 0 6px; overflow: hidden; }
+.sg-num { padding: 14px 16px; border-right: 1px solid var(--sg-line); }
+.sg-num:last-child { border-right: none; }
+.sg-num b { display: block; font-size: 1.55rem; font-weight: 800; color: var(--sg-ink); line-height: 1.15;
+  font-variant-numeric: tabular-nums; }
+.sg-num span { font-size: .8rem; color: var(--sg-ink3); line-height: 1.3; display: block; margin-top: 2px; }
+.sg-scoreboard { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 10px; }
+.sg-scoreboard .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; color: var(--sg-ink3);
+  font-weight: 700; margin-right: 4px; }
+.sg-score { font-size: .8rem; font-weight: 700; padding: .15em .6em; border-radius: 8px; border: 1px solid; }
+.sg-score.success { color: var(--sg-ok); background: var(--sg-ok-soft); border-color: #bfe3cd; }
+.sg-score.warning { color: var(--sg-warn); background: var(--sg-warn-soft); border-color: #f2d49b; }
+.sg-score.error { color: var(--sg-bad); background: var(--sg-bad-soft); border-color: #f6c7c3; }
+.sg-score.none { color: var(--sg-ink3); background: var(--sg-soft); border-color: var(--sg-line); }
+
 @media (max-width: 640px) {
+  .sg-hero.with-art { grid-template-columns: 1fr; }
+  .sg-hero-art { display: none; }
+  .sg-num { border-right: none; border-bottom: 1px solid var(--sg-line); }
   .sg-hero { padding: 24px 20px; } .sg-hero h1 { font-size: 1.9rem; }
   .sg-table td, .sg-table th { padding: 9px 10px; }
   .sg-table .gname { min-width: 110px; }

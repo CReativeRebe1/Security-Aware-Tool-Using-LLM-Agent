@@ -200,13 +200,15 @@ def technical(split, case_id):
 
 # ---------------------------------------------------------------- layouts
 
-def header(split, case_id, meta):
+def header(split, case_id, meta, score: bool = True):
     c = D.cases(split)[case_id]
     title = meta["title"] if meta else X.CATEGORY_PLAIN.get(c.category, c.category)
     kind = meta["kind"] if meta else X.CATEGORY_PLAIN.get(c.category, c.category)
     st.markdown(f"## {title}")
     C.show(C.tag(kind, "violet") + C.tag(c.input.suite) + C.tag(f"{split} set") +
            f'<span class="sg-tag" style="font-family:monospace;font-weight:500">{C.esc(case_id)}</span>')
+    if score:
+        C.scoreboard(recorded.all(split, case_id), c)
 
 
 def guided(split, case_id, meta=None):
@@ -219,7 +221,8 @@ def guided(split, case_id, meta=None):
     def go(delta):
         st.session_state[key] = min(max((st.session_state.get(key) or 0) + delta, 0), len(STEPS) - 1)
 
-    header(split, case_id, meta)
+    i_now = st.session_state.get(key) or 0
+    header(split, case_id, meta, score=i_now >= 3)
     st.segmented_control("Step", list(range(len(STEPS))), key=key, label_visibility="collapsed",
                          format_func=lambda i: f"{i + 1}. {STEPS[i]}")
     i = st.session_state.get(key)

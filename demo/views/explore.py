@@ -32,19 +32,28 @@ def table(split: str) -> pd.DataFrame:
             oks.append(v.ok)
             row[GATES[k].code] = SYM[v.tone]
         row["_disagree"] = len(set(oks)) > 1
+        row["_wrong"] = [GATES[k].code for k in conds if row[GATES[k].code] == SYM["error"]]
         row["_gold_first"] = c.gold_decision
         rows.append(row)
     return pd.DataFrame(rows)
 
 
 f0, f1, f2, f3 = st.columns([1.3, 1.4, 1.2, 1.3], vertical_alignment="bottom")
-split = f0.segmented_control("Dataset", list(D.SPLITS), default="test", format_func=lambda s: D.SPLITS[s],
+st.session_state.setdefault("ex_split", "test")
+split = f0.segmented_control("Dataset", list(D.SPLITS), format_func=lambda s: D.SPLITS[s],
                              key="ex_split", help=D.SPLIT_HELP) or "test"
 df = table(split)
 kinds = f1.multiselect("Kind of case", sorted(df["Kind"].unique()), key="ex_kind", placeholder="All kinds")
 gold = f2.multiselect("Right first decision", X.DECISIONS, key="ex_gold", placeholder="Any")
 q = f3.text_input("Search the request", key="ex_q", placeholder="e.g. invoice, password")
-only = st.toggle("Only cases where the gates disagree", key="ex_dis")
+t1, t2 = st.columns([1, 1.3], vertical_alignment="center")
+only = t1.toggle("Only cases where the gates disagree", key="ex_dis")
+codes_all = [GATES[k].code for k in recorded.available(split)]
+if st.session_state.get("ex_wrong") not in [None] + codes_all:
+    st.session_state["ex_wrong"] = None
+wrong = t2.selectbox("Show only the mistakes (❌) of", [None] + codes_all, key="ex_wrong",
+                     format_func=lambda c: "— any gate —" if c is None else
+                     f"{c} · {next(g.name for g in GATES.values() if g.code == c)}")
 
 view = df
 if kinds:
@@ -55,12 +64,14 @@ if only:
     view = view[view["_disagree"]]
 if q:
     view = view[view["Request"].str.contains(q, case=False, regex=False)]
+if wrong:
+    view = view[view["_wrong"].map(lambda w: wrong in w)]
 
 codes = [GATES[k].code for k in recorded.available(split)]
 st.caption(f"**{len(view)}** of {len(df)} cases · ✅ correct · 🟡 right outcome but with an unneeded question, or "
            "ran without the user's confirmation · ❌ wrong · – not scored for that gate")
 sel = st.dataframe(
-    view.drop(columns=["_disagree", "_gold_first"]), hide_index=True, width="stretch", height=380,
+    view.drop(columns=["_disagree", "_gold_first", "_wrong"]), hide_index=True, width="stretch", height=380,
     on_select="rerun", selection_mode="single-row", key=f"ex_table_{split}",
     column_config={
         "case_id": None,
