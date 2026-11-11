@@ -203,7 +203,7 @@ def main(argv=None) -> None:
         if "attacks" in m:
             print(f"  attacks broke {m['attacks']['broke']}/{m['attacks']['n']}")
         if a.json:
-            Path(a.json).write_text(json.dumps(m, indent=1))
+            Path(a.json).write_text(json.dumps(m, indent=1, default=str))
     else:
         print(f"{export_log(a.pred, a.cases, a.out)} log rows -> {a.out}")
 

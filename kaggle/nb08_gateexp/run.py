@@ -14,6 +14,7 @@ import bootstrap  # noqa: E402
 
 BUDGET_S = 2 * 3600
 LIMIT = None            # e.g. 20 for a quick dry run
+POOLS = ("test", "attacks", "dev")   # set to ("attacks",) to rerun only the attack cases
 OUT = "/kaggle/working/outputs/gateexp"
 t_end = int(time.time()) + BUDGET_S
 
@@ -31,7 +32,7 @@ limit = f" --limit {LIMIT}" if LIMIT else ""
 
 
 def job(pool, responses="clean"):
-    if pool not in cases:
+    if pool not in cases or pool not in POOLS:
         return None
     cmd = (f"{py} -m sagate.eval.run_gate --condition b5_gateexp --cases {cases[pool]} "
            f"--pool {'test' if pool == 'attacks' else pool} --responses {responses} --adapter-dir {adapters} "
