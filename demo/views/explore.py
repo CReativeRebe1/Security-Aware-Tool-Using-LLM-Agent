@@ -1,0 +1,80 @@
+import pandas as pd
+import streamlit as st
+
+from sagate_demo import data as D
+from sagate_demo import explain as X
+from sagate_demo import scenario as S
+from sagate_demo.gates import GATES, recorded
+
+st.title("Explore all cases")
+st.markdown("Every case in the frozen dataset and what each gate decided. Filter the list, then **tick a row** to "
+            "open that case below.")
+
+SYM = {"success": "✅", "warning": "🟡", "error": "❌"}
+
+
+@st.cache_data(show_spinner="Loading cases…")
+def table(split: str) -> pd.DataFrame:
+    conds = recorded.available(split)
+    rows = []
+    for cid, c in D.cases(split).items():
+        row = {"case_id": cid, "Kind": X.CATEGORY_PLAIN.get(c.category, c.category),
+               "Request": c.input.user.get("prompt", ""),
+               "2nd round": "yes" if c.input.resolution_history else "",
+               "Right answer": f"{c.gold_decision} → {c.gold_final_action}"}
+        oks = []
+        for k in conds:
+            p = (D.predictions(split, k) or {}).get(cid)
+            if p is None:
+                row[GATES[k].code] = "–"
+                continue
+            v = X.verdict(p, c)
+            oks.append(v.ok)
+            row[GATES[k].code] = SYM[v.tone]
+        row["_disagree"] = len(set(oks)) > 1
+        row["_gold_first"] = c.gold_decision
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+f0, f1, f2, f3 = st.columns([1.3, 1.4, 1.2, 1.3], vertical_alignment="bottom")
+split = f0.segmented_control("Dataset", list(D.SPLITS), default="test", format_func=lambda s: D.SPLITS[s],
+                             key="ex_split", help=D.SPLIT_HELP) or "test"
+df = table(split)
+kinds = f1.multiselect("Kind of case", sorted(df["Kind"].unique()), key="ex_kind", placeholder="All kinds")
+gold = f2.multiselect("Right first decision", X.DECISIONS, key="ex_gold", placeholder="Any")
+q = f3.text_input("Search the request", key="ex_q", placeholder="e.g. invoice, password")
+only = st.toggle("Only cases where the gates disagree", key="ex_dis")
+
+view = df
+if kinds:
+    view = view[view["Kind"].isin(kinds)]
+if gold:
+    view = view[view["_gold_first"].isin(gold)]
+if only:
+    view = view[view["_disagree"]]
+if q:
+    view = view[view["Request"].str.contains(q, case=False, regex=False)]
+
+codes = [GATES[k].code for k in recorded.available(split)]
+st.caption(f"**{len(view)}** of {len(df)} cases · ✅ correct · 🟡 right outcome but with an unneeded question, or "
+           "ran without the user's confirmation · ❌ wrong · – not scored for that gate")
+sel = st.dataframe(
+    view.drop(columns=["_disagree", "_gold_first"]), hide_index=True, width="stretch", height=380,
+    on_select="rerun", selection_mode="single-row", key=f"ex_table_{split}",
+    column_config={
+        "case_id": None,
+        "Kind": st.column_config.TextColumn(width="small"),
+        "Request": st.column_config.TextColumn(width="large"),
+        "2nd round": st.column_config.TextColumn(width="small", help="The case starts after one question was "
+                                                                    "already asked and answered."),
+        "Right answer": st.column_config.TextColumn(width="small", help="First decision → final action"),
+        **{c: st.column_config.TextColumn(c, width=40, help=next(g.name for g in GATES.values() if g.code == c))
+           for c in codes},
+    })
+picked = sel.selection.rows if sel and sel.selection else []
+st.divider()
+if picked and picked[0] < len(view):
+    S.guided(split, view.iloc[picked[0]]["case_id"])
+else:
+    st.info("Tick a row in the table to open that case here.", icon=":material/touch_app:")
