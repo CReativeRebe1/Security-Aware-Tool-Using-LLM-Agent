@@ -10,3 +10,5 @@
 Each folder: `<pool>/<condition>[_noisy].jsonl` predictions, `.report.json` metrics, `.decision_log.jsonl`
 (facts, rule steps, model answer per round), `.manifest.json`. Results and analysis: docs/GATE_EVALUATION.md.
 `run1/`, `dev/`, `test/`, `training/` are the earlier Run 1 results (valhalla).
+| `2026-11-12_gateexp_ledger_b5v2/` | 2026-11-12 | Live: B5 v2 + GateExp + ledger fixes + payment principle (owner-personal rule and 4 history relabels later reverted) | b5_v2 | ce86875-dirty-ledger | C1 + amount relabel |
+| `2026-11-12_gateexp_tags_ab_b5v2/` | 2026-11-12 | Live A/B: same code, clause coverage tags off (`notags/`) vs on (`tags/`), clean responses | b5_v2 | ce86875-dirty-tagsab | C1 + amount relabel (history cases restored) |
