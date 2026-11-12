@@ -16,3 +16,4 @@ Each folder: `<pool>/<condition>[_noisy].jsonl` predictions, `.report.json` metr
 | `2026-11-12_compare_b5v3_vs_combo/` | 2026-11-12 | Live selection run: b5_v3 vs b5_v3_combo inside GateExp on dev, combos, attacks, user cases (clean) | b5_v3, b5_v3_combo | 11eadd8 (+ NB08 compare mode) | C1 + amount relabel |
 | `2026-11-12_e2e_smoke/` | 2026-11-12 | NB05 smoke (2 scenarios per GPU per condition): live AgentDojo with GateExp | b5_v3, b5_v3_combo | 11eadd8 | – |
 | `2026-11-12_replay_review_fixes/` | 2026-11-12 | CPU replay of the selection-run answers through the review fixes (`.base` = current code, `.new` = fixes) | b5_v3, b5_v3_combo | 11eadd8 + review fixes | C1 + amount relabel |
+| `2026-11-12_e2e_agentdojo_b5v3/` | 2026-11-12 | Live AgentDojo (NB05 v2): 142 test scenarios, b5_v3_combo and b5_v3 inside GateExp, noisy user | b5_v3_combo, b5_v3 | 11eadd8 | – |
