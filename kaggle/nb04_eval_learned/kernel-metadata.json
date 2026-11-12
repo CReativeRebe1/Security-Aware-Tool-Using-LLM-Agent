@@ -8,8 +8,17 @@
   "enable_gpu": "true",
   "enable_tpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["__OWNER__/sagate-code"],
-  "kernel_sources": ["__OWNER__/sagate-nb02-baselines-prompted", "__OWNER__/sagate-nb03-train-qlora"],
+  "dataset_sources": [
+    "__OWNER__/sagate-code",
+    "__OWNER__/sagate-adapters-run-a",
+    "__OWNER__/sagate-adapters-run-b",
+    "__OWNER__/sagate-adapters-run-c",
+    "__OWNER__/sagate-adapters-run-d"
+  ],
+  "kernel_sources": [
+    "__OWNER__/sagate-nb03-train-qlora"
+  ],
   "competition_sources": [],
-  "model_sources": []
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
 }

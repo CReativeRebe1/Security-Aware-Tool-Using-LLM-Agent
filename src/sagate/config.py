@@ -93,7 +93,7 @@ class Condition:
     authority: bool = True
     sensitivity: bool = True
     rag: bool = True
-    history: str = "full"                # full | answers_only | none
+    history: str = "full"                # full | answers_only | none | in_space
     amount_source: bool = True
     duplicate_check: bool = True
     trust_degree: bool = True

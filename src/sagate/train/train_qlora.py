@@ -87,7 +87,7 @@ class GroupWeights:
 
 def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool = False,
                   loss_weights: dict | None = None, cost_matrix: dict | None = None,
-                  groups: GroupWeights | None = None) -> tuple[list[dict], dict]:
+                  groups: GroupWeights | None = None, space=DECISIONS) -> tuple[list[dict], dict]:
     """[{input_ids, labels, weight}] with the prompt masked out; examples over max_length are dropped (and counted).
     `loss_weights` (decision -> weight) makes the costly mistakes count more: an example whose gold decision is
     ASK_USER / ESCALATE / BLOCK weighs more than an ALLOW, so a wrong ALLOW costs more than a needless question.
@@ -115,6 +115,7 @@ def tokenize_rows(tok, rows: list[dict], max_length: int, enable_thinking: bool 
                 row["dec_from_end"] = len(ids) - slot[0]          # left padding: count from the end
                 row["dec_cands"] = slot[1]
                 row["dec_costs"] = [float(cost_matrix[gold].get(d, 0.0)) for d in DECISIONS]
+                row["dec_mask"] = [1.0 if d in space else 0.0 for d in DECISIONS]   # decisions this model can output
             else:
                 no_slot += 1
         out.append(row)
@@ -150,35 +151,44 @@ class Collator:
                 **({"group": torch.tensor([b["group"] for b in batch])} if all("group" in b for b in batch) else {}),
                 **({"dec_from_end": torch.tensor([b.get("dec_from_end", 0) for b in batch]),
                     "dec_cands": torch.tensor([b.get("dec_cands", [0] * 4) for b in batch]),
-                    "dec_costs": torch.tensor([b.get("dec_costs", [0.0] * 4) for b in batch])}
+                    "dec_costs": torch.tensor([b.get("dec_costs", [0.0] * 4) for b in batch]),
+                    "dec_mask": torch.tensor([b.get("dec_mask", [1.0] * 4) for b in batch])}
                    if any("dec_cands" in b for b in batch) else {})}
 
 
-def _decision_probs(logits, keep: int, dec_from_end, dec_cands):
+def _decision_probs(logits, keep: int, dec_from_end, dec_cands, dec_mask=None):
+    """log p over the decision tokens at the decision position, normalised over the decisions the model can output
+    (dec_mask; all four for a four-way gate)."""
     import torch
 
     idx = (keep - dec_from_end).clamp(min=0, max=logits.shape[1] - 1).to(logits.device)
     rows = torch.arange(logits.shape[0], device=logits.device)
-    return torch.log_softmax(logits[rows, idx].gather(1, dec_cands.to(logits.device)), dim=-1)
+    at = logits[rows, idx].gather(1, dec_cands.to(logits.device))
+    if dec_mask is not None:
+        at = at.masked_fill(dec_mask.to(logits.device) == 0, float("-inf"))
+    return torch.log_softmax(at, dim=-1)
 
 
-def decision_smoothing(logits, keep: int, dec_from_end, dec_cands, dec_costs):
-    """Label smoothing on the decision only: mean over the 4 decisions of -log p(d), restricted to the decision
+def decision_smoothing(logits, keep: int, dec_from_end, dec_cands, dec_costs, dec_mask=None):
+    """Label smoothing on the decision only: mean over the model's decisions of -log p(d), restricted to the decision
     tokens. Added with a small factor, it keeps some probability on the alternatives (against over-confidence)."""
     has = (dec_costs.abs().sum(-1) > 0).to(logits.device, logits.dtype)    # rows that carry a decision slot
-    term = -_decision_probs(logits, keep, dec_from_end, dec_cands).mean(-1)
+    logp = _decision_probs(logits, keep, dec_from_end, dec_cands, dec_mask)
+    m = torch_ones_like(logp) if dec_mask is None else dec_mask.to(logp.device, logp.dtype)
+    term = -(logp.masked_fill(m == 0, 0.0) * m).sum(-1) / m.sum(-1).clamp(min=1)
     return (term * has).sum() / has.sum().clamp(min=1)
 
 
-def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs):
-    """Mean over the batch of sum_d p(d) * cost(gold, d), with p the model's distribution over the 4 decision tokens
-    at the decision position. Rows without a slot (all costs 0) add nothing."""
+def torch_ones_like(x):
     import torch
 
-    idx = (keep - dec_from_end).clamp(min=0, max=logits.shape[1] - 1).to(logits.device)
-    rows = torch.arange(logits.shape[0], device=logits.device)
-    at = logits[rows, idx]                                              # (batch, vocab)
-    probs = torch.softmax(at.gather(1, dec_cands.to(logits.device)), dim=-1)
+    return torch.ones_like(x)
+
+
+def expected_cost(logits, keep: int, dec_from_end, dec_cands, dec_costs, dec_mask=None):
+    """Mean over the batch of sum_d p(d) * cost(gold, d), with p the model's distribution over its decision tokens at
+    the decision position. Rows without a slot (all costs 0) add nothing."""
+    probs = _decision_probs(logits, keep, dec_from_end, dec_cands, dec_mask).exp()
     return (probs * dec_costs.to(logits.device, probs.dtype)).sum(-1).mean()
 
 
@@ -192,7 +202,7 @@ def completion_loss(model, inputs: dict, num_items_in_batch=None, cost_lambda: f
     labels = inputs.pop("labels")
     keep = int(inputs.pop("logits_to_keep"))
     weight = inputs.pop("weight", None)
-    dec = [inputs.pop(k, None) for k in ("dec_from_end", "dec_cands", "dec_costs")]
+    dec = [inputs.pop(k, None) for k in ("dec_from_end", "dec_cands", "dec_costs", "dec_mask")]
     group = inputs.pop("group", None)
     out = model(**inputs, logits_to_keep=keep + 1, use_cache=False)
     logits = out.logits[:, :-1].float()                 # position j predicts token j + 1
@@ -305,12 +315,13 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     from transformers.trainer_utils import get_last_checkpoint
 
     cond = load_condition(condition)
+    seed = int((cond.extra.get("train") or {}).get("seed", cfg["seed"]))   # per-condition seed (seed runs)
+    set_seed(seed)
     model_id = model_id or mcfg["base_id"]
     root = Path(out) if out else cfg.outputs_dir
     adapter_dir = root / "adapters" / cond.name
     ckpt_dir = root / "checkpoints" / cond.name
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    set_seed(cfg["seed"])
     hf_cache = cfg.path("hf_cache")
 
     rows = [r for r in read_jsonl(sft_path)]
@@ -321,12 +332,13 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     tcfg = {**tcfg, **{k: v for k, v in ctrain.items() if k in ("epochs", "lr")}}
     if ctrain.get("lora_dropout") is not None:
         tcfg["lora"] = {**tcfg["lora"], "dropout": float(ctrain["lora_dropout"])}
-    model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, cfg["seed"],
+    model, tok = load_peft_model(model_id, tcfg, mcfg, str(hf_cache) if hf_cache else None, seed,
                                  load_in_4bit, trainer)
     gweights = GroupWeights([row_group(r) for r in rows], eta=float(ctrain.get("group_eta", 1.0))) \
         if ctrain.get("group_weights") else None
     examples, stats = tokenize_rows(tok, rows, tcfg["max_length"], mcfg.get("enable_thinking", False),
-                                    ctrain.get("loss_weights"), ctrain.get("cost_matrix"), gweights)
+                                    ctrain.get("loss_weights"), ctrain.get("cost_matrix"), gweights,
+                                    cond.decision_space)
     stats["loss_weights"] = ctrain.get("loss_weights")
     stats["cost_matrix"], stats["cost_lambda"] = ctrain.get("cost_matrix"), ctrain.get("cost_lambda", 1.0)
     stats["decision_smoothing"] = ctrain.get("decision_smoothing", 0.0)
@@ -359,7 +371,7 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
         save_steps=tcfg.get("save_steps", 100),
         save_total_limit=2,
         report_to=[],
-        seed=cfg["seed"],
+        seed=seed,
         remove_unused_columns=False,
         dataloader_num_workers=0,
     )
@@ -381,7 +393,7 @@ def train(condition: str, sft_path: str, cfg_path: str | None = None, out: str |
     model.save_pretrained(str(adapter_dir))
     if gweights is not None:
         stats["group_loss_end"] = gweights.state()
-    summary = {"condition": cond.name, "model_id": model_id, "trainer": trainer, "sft": str(sft_path),
+    summary = {"condition": cond.name, "model_id": model_id, "trainer": trainer, "sft": str(sft_path), "seed": seed,
                **stats, "train_loss": result.training_loss, "global_step": result.global_step,
                "runtime_s": time.time() - t0, "resumed_from": last, "log_history": tr.state.log_history,
                "peak_gpu_gb": torch.cuda.max_memory_allocated() / 2**30 if cuda else None}

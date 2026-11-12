@@ -504,3 +504,12 @@ def test_untraced_delete_target_is_confirmed():
                                   "resource_owner": "current_user", "basis": [], "prior_approvals": []})
     out = ExpGate(Fixed("ALLOW"), FOUR).decide(gi)
     assert out.decision == "ASK_USER" and out.guard == "confirm:untraced_target"
+
+
+def test_in_space_history_keeps_rounds_of_decisions_the_condition_has():
+    from sagate.evidence.mask import EvidenceMask
+    m = EvidenceMask(history="in_space", space=("ALLOW", "BLOCK", "ASK_USER"))
+    asked = _pay("Pay 200", resolution_history=[{"round": 1, "kind": "ASK_USER", "confirmed": True}])
+    escalated = _pay("Pay 200", resolution_history=[{"round": 1, "kind": "ESCALATE", "approved": True}])
+    assert not m.skips(asked) and m.skips(escalated) and not m.skips(_pay("Pay 200"))
+    assert m.apply(asked).resolution_history                     # the answered round stays visible

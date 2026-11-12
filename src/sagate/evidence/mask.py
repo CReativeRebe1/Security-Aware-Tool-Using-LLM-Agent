@@ -56,18 +56,21 @@ class EvidenceMask:
     authority: bool = True
     sensitivity: bool = True
     rag: bool = True
-    history: str = "full"          # full | answers_only | none (pre-answered rounds in the case, not the live loop)
+    history: str = "full"          # full | answers_only | none | in_space (pre-answered rounds in the case, not the live loop)
     amount_source: bool = True
     duplicate_check: bool = True
     trust_degree: bool = True
+    space: tuple = ("ALLOW", "BLOCK", "ASK_USER", "ESCALATE")
 
     @classmethod
     def from_condition(cls, cond: Condition) -> "EvidenceMask":
         return cls(cond.provenance, cond.authority, cond.sensitivity, cond.rag, cond.history,
-                   cond.amount_source, cond.duplicate_check, cond.trust_degree)
+                   cond.amount_source, cond.duplicate_check, cond.trust_degree, tuple(cond.decision_space))
 
     def skips(self, gi: GateInput) -> bool:
         """A pre-answered case means nothing to a condition that may not see the answer: it is neither trained nor scored."""
+        if self.history == "in_space":       # an earlier round of a decision this condition cannot make never happens
+            return any(h.get("kind") not in self.space for h in gi.resolution_history)
         return self.history == "none" and bool(gi.resolution_history)
 
     def apply(self, gi: GateInput, alt_provenance: dict | None = None) -> GateInput:

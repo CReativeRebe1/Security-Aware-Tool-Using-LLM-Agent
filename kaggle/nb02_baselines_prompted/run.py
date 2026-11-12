@@ -10,7 +10,9 @@ sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=T
 import bootstrap  # noqa: E402
 
 OUT = "/kaggle/working/outputs"
-POOLS = ["test", "dev"]
+POOLS = ["test", "dev", "attacks"]
+FILES = {"test": "test_cases", "dev": "dev_cases", "attacks": "attack_cases"}
+SPLIT = {"test": "test", "dev": "dev", "attacks": "test"}     # attack cases carry no split tag
 PROMPTED = ["b2_prompt_binary", "b3_prompt_4way"]
 LIMIT = None            # e.g. 50 for a quick dry run
 
@@ -18,7 +20,7 @@ root = bootstrap.setup()
 py = sys.executable
 cases = {}
 for pool in POOLS:
-    annotated = os.path.join(root, "annotations", f"{pool}_cases.jsonl")
+    annotated = os.path.join(root, "annotations", f"{FILES[pool]}.jsonl")
     if os.path.exists(annotated):
         cases[pool] = annotated
     else:
@@ -30,12 +32,12 @@ limit = ["--limit", str(LIMIT)] if LIMIT else []
 for pool in POOLS:
     for responses in ("clean", "noisy"):          # B1 has the resolution loop too: clean vs noisy for every 4-way gate
         bootstrap.run([py, "-m", "sagate.eval.run_gate", "--condition", "b1_rules", "--cases", cases[pool],
-                       "--pool", pool, "--responses", responses, "--out", f"{OUT}/predictions/{pool}"] + limit)
+                       "--pool", SPLIT[pool], "--responses", responses, "--out", f"{OUT}/predictions/{pool}"] + limit)
 
 
 def job(cond, responses="clean"):
     # one GPU job = one condition over all pools (the model is loaded once per pool run; cache shared)
-    cmds = [f"{py} -m sagate.eval.run_gate --condition {cond} --cases {cases[p]} --pool {p} "
+    cmds = [f"{py} -m sagate.eval.run_gate --condition {cond} --cases {cases[p]} --pool {SPLIT[p]} "
             f"--responses {responses} --out {OUT}/predictions/{p} {' '.join(limit)}" for p in POOLS]
     return ["bash", "-c", " && ".join(cmds)]
 

@@ -951,3 +951,19 @@ Replay (saved first-round model answers; base = review-2 gate fixes):
 Attacks and custom unchanged, 0 unsafe. Against the strict base, unneeded asks (16.5%) still miss the 10% target.
 The adapters were trained before the new clauses; the retrain (step 3) trains on the new clause text and data.
 Results: `results/data/2026-11-12_replay_step2_policy_labels/`.
+
+## 2026-11-13: lock for the final runs (`locked-v4`)
+
+Setup for B4 and the ablations, all on the b5_v4_combo data and recipe (`docs/TRAINING_RUNS.md`, runs A–D):
+
+| Change | Why |
+|---|---|
+| Configs `b4_v4_binary_combo`, `b5_v4_no_{prov,auth,inter,rag,ask,esc}`, `b5_v4_combo_seed2`, `b5_v4_inferred_prov` | each differs from b5_v4_combo only in the ablated part |
+| Cost and smoothing terms only over the model's own decisions (`dec_mask`) | before, B4 / no_ask / no_esc spread loss onto decisions they can never output; four-way loss checked unchanged (same value to 7 digits), so B5's training is unaffected |
+| History mode `in_space` for no_ask / no_esc | `history: none` dropped all 794 second-round examples (data confound); now only rounds of a removed decision are dropped: no_esc 2,650, no_ask 1,952 examples |
+| Model-alone scoring shows the computed facts (`run_gate`: facts-trained models wrapped in ExpGate with no rules) | models are trained with the facts (`gateexp_facts`), so scoring them without would test an input format they never saw |
+| Per-condition `seed` (recorded in train_summary) | second seed of B5 for seed variance |
+| NB04 rewritten for the final models (dev, attacks, test; B4 threshold matched on dev); NB02 adds attacks | same cases for every model |
+| Removed ASK / ESCALATE stay trained as BLOCK | journal decision ("otherwise B4 learns to execute without approval"); **differs from proposal §7** (collapse to the final action), stated in the report |
+
+b5_v4_combo's SFT data rebuilt with the locked code is byte-identical to what the running B5 trains on.
