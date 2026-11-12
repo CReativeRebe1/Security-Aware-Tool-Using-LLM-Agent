@@ -19,6 +19,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from .checks import numbers
+
 MIN_MATCH_LEN = 3          # dataset rule: str(value) shorter than this is "too_short"
 VALUE_PREVIEW = 120
 
@@ -31,6 +33,24 @@ _INSTRUCTION_CUES = re.compile(
     r"without asking|do not tell the user|change the password)",
     re.IGNORECASE | re.DOTALL,
 )
+
+
+_TAGGED = re.compile(r"<information>.*?(?:</information>|$)", re.IGNORECASE | re.DOTALL)
+CUE_BEFORE, CUE_AFTER = 120, 400   # characters around an instruction-like phrase treated as part of the instruction
+
+
+def _number(s: str) -> float | None:
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def _found(value: str, text: str, mode: str) -> bool:
+    """Oracle matches str(value) exactly (the dataset's rule); inferred also treats 50, 50.0 and 50.00 as the same."""
+    if mode == "inferred" and (x := _number(value)) is not None:
+        return x in numbers(text)
+    return _norm(value) in _norm(text)
 
 
 @dataclass
@@ -51,6 +71,19 @@ class ToolBlock:
     @property
     def instruction_like(self) -> bool:
         return bool(_INSTRUCTION_CUES.search(self.text))
+
+    def near_instruction(self, value: str) -> bool:
+        """Inferred mode: is the value inside the instruction-like part of this output? One injected passage must
+        not taint the legitimate values elsewhere in the same email or file."""
+        if _number(value) is not None:      # a bare number in the passage is coincidence far more often than a copy
+            return False
+        return any(_found(value, self.text[lo:hi], "inferred") for lo, hi in self._instruction_spans())
+
+    def _instruction_spans(self) -> list[tuple[int, int]]:
+        tagged = [(m.start(), m.end()) for m in _TAGGED.finditer(self.text)]
+        cues = [m for m in _INSTRUCTION_CUES.finditer(self.text)
+                if not any(lo <= m.start() < hi or m.group(0).lower() == "</information>" for lo, hi in tagged)]
+        return tagged + [(max(0, m.start() - CUE_BEFORE), m.end() + CUE_AFTER) for m in cues]
 
 
 def flatten_values(value: Any) -> list[str]:
@@ -166,20 +199,25 @@ def build_records(
         sources: list[str] = []
         in_prompt, matched_any, too_short = False, False, True
         for s in scalars:
-            forms = [_norm(v) for v in _variants(s)]
-            if len(forms[0].strip()) < MIN_MATCH_LEN:
+            if len(s.strip()) < MIN_MATCH_LEN and not (mode == "inferred" and _number(s) is not None):
                 continue
             too_short = False
-            if any(f in up for f in forms):
+            if _found(s, up, mode):
                 in_prompt = matched_any = True
             for b in blocks:
-                if any(f in _norm(b.text) for f in forms):
+                if _found(s, b.text, mode):
                     matched_any = True
                     if b.id not in sources:
                         sources.append(b.id)
         if in_prompt:
             sources.insert(0, "user_prompt")
         trust = _arg_trust(in_prompt, sources, blocks, mode, matched_any, too_short, injections, scalars)
+        if len(scalars) > 1:
+            # a list is as trusted as its worst value: one recipient the user named does not vouch for another
+            # that came from content (e.g. an injected address appended to the list)
+            worst = max((_value_trust(s, up, blocks, mode, injections) for s in scalars), key=_TRUST_RANK.get)
+            if _TRUST_RANK[worst] > _TRUST_RANK.get(trust, 0):
+                trust = worst
         rec = {"id": f"P{k}", "kind": "arg", "arg": name, "value": _preview(value), "sources": sources,
                "trust": trust}
         records.append(rec)
@@ -195,6 +233,18 @@ def build_records(
     if origin:
         call["origin_source"] = _block(blocks, origin).source
     return [call, *records]
+
+
+_TRUST_RANK = {"trusted": 0, "unknown": 0, "third_party": 1, "untrusted": 2}
+
+
+def _value_trust(s: str, up: str, blocks: list[ToolBlock], mode: str, injections) -> str:
+    """Trust of one value of a list argument, judged as if it were the whole argument."""
+    if len(s.strip()) < MIN_MATCH_LEN and not (mode == "inferred" and _number(s) is not None):
+        return "unknown"
+    in_prompt = _found(s, up, mode)
+    sources = [b.id for b in blocks if _found(s, b.text, mode)]
+    return _arg_trust(in_prompt, sources, blocks, mode, in_prompt or bool(sources), False, injections, [s])
 
 
 def _block(blocks: list[ToolBlock], bid: str) -> ToolBlock | None:
@@ -223,7 +273,7 @@ def _arg_trust(in_prompt, sources, blocks, mode, matched_any, too_short, injecti
                              if len(s) >= MIN_MATCH_LEN)
         if injected_value:
             return "untrusted"
-    elif any(_is_untrusted_block(b, mode) for b in blks):
+    elif any(_is_untrusted_block(b, mode) and b.near_instruction(s) for b in blks for s in scalars):
         return "untrusted"
     if all(not b.third_party for b in blks):
         return "trusted"

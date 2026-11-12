@@ -8,8 +8,14 @@
   "enable_gpu": "true",
   "enable_tpu": "false",
   "enable_internet": "true",
-  "dataset_sources": ["__OWNER__/sagate-code"],
-  "kernel_sources": ["__OWNER__/sagate-nb01-b0-traces", "__OWNER__/sagate-nb03-train-qlora"],
+  "dataset_sources": [
+    "__OWNER__/sagate-code",
+    "__OWNER__/sagate-b5-adapter"
+  ],
+  "kernel_sources": [
+    "__OWNER__/sagate-nb01-b0-traces"
+  ],
   "competition_sources": [],
-  "model_sources": []
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
 }

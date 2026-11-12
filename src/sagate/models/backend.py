@@ -146,7 +146,10 @@ class HFBackend:
         else:
             self._reset_cache()
             keep = 0
-        logits = self._forward(prefix_ids[keep:])
+        rest = prefix_ids[keep:]
+        size = self.PREFILL_CHUNK if len(rest) > self.CHUNK_ABOVE else len(rest)   # agent conversations reach 16k tokens
+        for i in range(0, len(rest), size):
+            logits = self._forward(rest[i:i + size])
         self._cache_ids = list(prefix_ids)
         self._last_logits = logits[-1]
 
@@ -175,6 +178,7 @@ class HFBackend:
 
     # --- generation -----------------------------------------------------------------------------------
     PREFILL_CHUNK = 1024
+    CHUNK_ABOVE = 4096
 
     def _prefill(self, ids: list[int]):
         """KV cache for `ids`, built in PREFILL_CHUNK pieces. On a T4, SDPA has no flash kernel and materialises the

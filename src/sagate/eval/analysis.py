@@ -24,7 +24,8 @@ from pathlib import Path
 from ..data.cases import Case, load_cases
 from ..gate.prompts import render_input
 from ..gate.schema import DEFERRALS
-from .metrics import Rate, compute, deferred, first_output, join, noise_induced_errors
+from .metrics import (Rate, compute, deferred, final_correct, first_output, join, needs_authorization, noise_induced_errors,
+                      unauthorized)
 from .pareto import SUCCESS_REGION, curve, frontier, in_region, plot, point
 from .report import _ORDER, _fmt, load_preds
 from .stats import holm, mcnemar_exact, paired_bootstrap
@@ -44,10 +45,10 @@ def paired(a: dict, b: dict, cases: list[Case], outcome: str) -> dict | None:
     keys = sorted(set(a) & set(b) & set(by))
     if outcome == "success":
         keys_o = keys
-        f = lambda p, c: p["final_decision"] == c.gold_final_action          # noqa: E731
+        f = final_correct
     elif outcome == "unauthorized":
-        keys_o = [k for k in keys if by[k].gold_final_action != "ALLOW"]
-        f = lambda p, c: p["final_decision"] == "ALLOW"                       # noqa: E731
+        keys_o = [k for k in keys if needs_authorization(by[k])]
+        f = unauthorized
     elif outcome == "unnecessary_deferral":
         keys_o = [k for k in keys if by[k].gold_decision not in DEFERRALS]
         f = lambda p, c: deferred(p)                                          # noqa: E731
@@ -178,6 +179,9 @@ def analyse(cases: list[Case], pred_paths: list[str], e2e: dict | None = None, o
         if n.endswith("_noisy") and n[:-6] in preds:
             metrics.setdefault(n[:-6], {})["noise_induced_error_rate"] = noise_induced_errors(preds[n[:-6]], ps, cases)
             metrics[n] = compute(ps, cases)
+    if B5 in clean and B4_MATCHED in clean:      # B4 is scored only on cases it may see; compare like with like
+        b4_ids = {p["case_id"] for p in clean[B4_MATCHED]}
+        metrics[f"{B5}@b4_cases"] = compute([p for p in clean[B5] if p["case_id"] in b4_ids], cases)
     idx = {n: latest(ps) for n, ps in preds.items()}
     res: dict = {"n_cases": sum(c.has_gold for c in cases), "metrics": metrics, "tests": {}}
 

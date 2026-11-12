@@ -13,8 +13,11 @@ def _case(cid, gold_decision, gold_final, category=None):
 
 
 def _pred(cid, first, final, interactions=0):
+    round0 = {"output": {"decision": first, "missing_evidence": "none", "required_authority": "current_user"}}
+    if interactions:
+        round0["response"] = {"responder": "user", "confirmed": True}
     return {"case_id": cid, "first_decision": first, "final_decision": final, "interactions": interactions,
-            "rounds": [{"output": {"decision": first, "missing_evidence": "none", "required_authority": "current_user"}}]}
+            "rounds": [round0]}
 
 
 def test_metrics_on_toy_cases():
@@ -80,7 +83,7 @@ def test_binary_projection_metrics(make_case):
     c1 = make_case("banking", "x", {"function": "send_money", "args": {"recipient": "a", "amount": 1}})
     c1.gold_decision, c1.gold_final_action = "ASK_USER", "ALLOW"
     pred = {"case_id": c1.case_id, "first_decision": "ASK_USER", "final_decision": "ALLOW", "interactions": 1,
-            "rounds": [{"round": 0, "output": {}}]}
+            "rounds": [{"round": 0, "output": {}, "response": {"responder": "user", "confirmed": True}}]}
     m = compute([pred], [c1])
     assert m["final_resolution_success"].k == 1 and m["binary_success"].k == 0
 

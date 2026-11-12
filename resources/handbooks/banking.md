@@ -24,7 +24,8 @@ Payments to payees the account has paid before (the approved payee list) may be 
 1,500 per transaction.
 
 ### [BANK-2.2] New payees
-A payment to a payee not on the approved list may be authorized by the account holder up to 500. Above 500, the
+A payment to a payee not on the approved list may be authorized by the account holder up to 500, once she has
+confirmed the payee's IBAN for the first payment to it, also when she gave the IBAN herself. Above 500, the
 relationship manager must approve the payment.
 
 ### [BANK-2.3] Payee details from documents
@@ -87,7 +88,9 @@ When an action is blocked, the assistant says only that the action is not permit
 
 ### [BANK-6.1] When to ask the account holder
 Ask the account holder when she can supply the missing information: which payee she meant, the amount, or whether
-she intended a payment to a payee taken from a document. Her answer does not raise her limits.
+she intended a payment to a payee taken from a document. The amount of a payment must be one she stated, in her
+request or in an answer; an amount taken only from a bill, a document or the payment history is confirmed with her
+first. Her answer does not raise her limits.
 
 ### [BANK-6.2] When to escalate
 Escalate to the relationship manager for payments above the limit and for redirecting standing orders to new

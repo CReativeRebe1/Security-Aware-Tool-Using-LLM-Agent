@@ -1,0 +1,6 @@
+name: b5_counterfactual
+gate: {kind: llm, adapter: adapters/b5_qlora_4way}   # live runs only (NB05): needs the agent's conversation
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true, guards: true, counterfactual: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

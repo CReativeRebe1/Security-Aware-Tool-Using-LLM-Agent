@@ -9,6 +9,7 @@ disabled, the gate with its LoRA adapter (LLMGate switches it per call).
 
 from __future__ import annotations
 
+import json
 from ast import literal_eval
 from collections.abc import Sequence
 
@@ -22,7 +23,7 @@ from agentdojo.types import ChatAssistantMessage, ChatMessage, ChatToolResultMes
 
 from ..data.cases import Case
 from ..data.loaders import message_text
-from ..evidence.tools_registry import needs_gate
+from ..evidence.tools_registry import needs_gate, spec
 from ..models.chat import parse_tool_calls, to_hf_messages, tool_schemas
 from ..resolution.loop import resolve
 
@@ -66,6 +67,28 @@ class QwenLLM(BasePipelineElement):
         return query, runtime, env, [*messages, msg], extra_args
 
 
+class CounterfactualProbe:
+    """Would the agent propose this call without the user's request? Scores the call with the request and with it
+    masked, on the base model, keeping the tool outputs. log_ratio = log P(call | masked) - log P(call | request)."""
+
+    MASK = "Please continue with the task, using the information above."
+
+    def __init__(self, backend, min_log_ratio: float = 0.0):
+        self.backend, self.min_log_ratio = backend, min_log_ratio
+
+    def _score(self, chat: list[dict], tools: list[dict], text: str) -> float:
+        # a second continuation that differs at the first token: score() scores only what follows the common prefix
+        return self.backend.score(self.backend.chat_prefix(chat, tools=tools), [text, "I"])[0]
+
+    def assess(self, call: dict, messages: Sequence[ChatMessage], tools: list[dict]) -> dict:
+        self.backend.use_adapter(None)
+        chat = to_hf_messages(messages)
+        masked = [{**m, "content": self.MASK} if m["role"] == "user" else m for m in chat]
+        text = "<tool_call>\n" + json.dumps({"name": call["function"], "arguments": call["args"]}) + "\n</tool_call>"
+        ratio = self._score(masked, tools, text) - self._score(chat, tools, text)
+        return {"log_ratio": round(ratio, 4), "content_driven": ratio >= self.min_log_ratio}
+
+
 class Recorder(BasePipelineElement):
     """Keeps the final message list (AgentDojo's run_task_with_pipeline returns only utility/security)."""
 
@@ -91,15 +114,17 @@ class GatedToolsExecutor(BasePipelineElement):
     name = "gated_tools_executor"
 
     def __init__(self, gate, builder, user, approver, condition: str, mask=None, max_rounds: int = 2,
-                 resolution: bool = True, gate_read_only: bool = False, max_refusals: int = MAX_REFUSALS):
+                 resolution: bool = True, gate_read_only: bool = False, max_refusals: int = MAX_REFUSALS,
+                 probe: CounterfactualProbe | None = None):
         self.gate, self.builder, self.user, self.approver = gate, builder, user, approver
         self.condition, self.mask, self.max_rounds, self.resolution = condition, mask, max_rounds, resolution
-        self.gate_read_only, self.max_refusals = gate_read_only, max_refusals
+        self.gate_read_only, self.max_refusals, self.probe = gate_read_only, max_refusals, probe
         self.start_task(None, None)
 
     def start_task(self, suite: str | None, scenario_id: str | None) -> None:
         self.suite, self.scenario_id = suite, scenario_id
         self.log: list[dict] = []
+        self.paid: list[dict] = []
         self.refusals = 0
         self.aborted: list | None = None
 
@@ -111,6 +136,10 @@ class GatedToolsExecutor(BasePipelineElement):
         gi, _ = self.builder.build(cid, self.suite, prompt, call, prior, plain, None, modes=("inferred",))
         if self.mask is not None:
             gi = self.mask.apply(gi, {"inferred": gi.provenance})
+        gi.executed_payments = list(self.paid)
+        if self.probe is not None:
+            last = max(i for i, m in enumerate(messages) if m["role"] == "assistant")
+            gi.counterfactual = self.probe.assess(call, messages[:last], self.tools)
         case = Case(input=gi, pool="test", subset="live", scenario_id=self.scenario_id)
         tr = resolve(case, gi, self.gate, self.user, self.approver, self.condition, self.max_rounds, self.resolution)
         entry = {"step": step, "function": call["function"], "args": call["args"], **tr.to_dict()}
@@ -122,6 +151,8 @@ class GatedToolsExecutor(BasePipelineElement):
         if not messages or messages[-1]["role"] != "assistant" or not messages[-1]["tool_calls"]:
             return query, runtime, env, messages, extra_args
         known = {t.name for t in runtime.functions.values()}
+        if self.probe is not None:
+            self.tools = tool_schemas(runtime.functions.values())
         prior = [{"function": tc.function, "args": dict(tc.args)} for m in messages[:-1]
                  if m["role"] == "assistant" for tc in (m.get("tool_calls") or [])]
         results = []
@@ -146,6 +177,8 @@ class GatedToolsExecutor(BasePipelineElement):
                                                      tool_call_id=tc.id, tool_call=tc, error=REFUSAL))
                 continue
             out, err = runtime.run_function(env, tc.function, tc.args)
+            if err is None and spec(tc.function).action == "transfer":
+                self.paid.append(call)
             results.append(ChatToolResultMessage(role="tool", content=[text_content_block_from_string(
                 tool_result_to_str(out))], tool_call_id=tc.id, tool_call=tc, error=err))
         messages = [*messages, *results]

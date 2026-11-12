@@ -89,7 +89,8 @@ def _assert_dev(preds: list[dict], cases: list[Case]) -> None:
 
 def select(b4_dev: list[dict], b5_dev: list[dict], dev_cases: list[Case]) -> dict:
     _assert_dev(b4_dev + b5_dev, dev_cases)
-    target = compute(b5_dev, dev_cases)["unauthorized_action_rate"]
+    b4_ids = {p["case_id"] for p in b4_dev}       # B4 skips pre-answered cases; compare on the same cases
+    target = compute([p for p in b5_dev if p["case_id"] in b4_ids], dev_cases)["unauthorized_action_rate"]
     pts = curve(b4_dev, dev_cases)
 
     def key(pt):

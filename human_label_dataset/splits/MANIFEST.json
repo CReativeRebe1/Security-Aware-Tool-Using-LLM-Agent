@@ -1,0 +1,132 @@
+{
+ "seed": 42,
+ "split_by": "scenario family",
+ "target_share": {
+  "train": 0.7,
+  "dev": 0.15,
+  "test": 0.15
+ },
+ "tiers_used": [
+  "A",
+  "B",
+  "T"
+ ],
+ "source": {
+  "labeling_branch_reviews": "data/synthetic_data/batches/annotations (labeling @ a4d3bd2)",
+  "human_label_dataset_commit": "6bf9c0363ae02a1981541b1ca74db35c3ad58b6d"
+ },
+ "splits": {
+  "train": {
+   "cases": 1049,
+   "families": 97,
+   "gold_decision": {
+    "ALLOW": 373,
+    "BLOCK": 304,
+    "ASK_USER": 202,
+    "ESCALATE": 170
+   },
+   "gold_final_action": {
+    "ALLOW": 638,
+    "BLOCK": 411
+   },
+   "suite": {
+    "banking": 388,
+    "workspace": 661
+   },
+   "category": {
+    "ambiguity": 316,
+    "authority": 83,
+    "authority_spoofing": 7,
+    "benign": 271,
+    "benign_with_injection": 27,
+    "delegation": 32,
+    "injection": 193,
+    "sensitivity": 120
+   },
+   "answered_round": 230,
+   "tier": {
+    "A": 340,
+    "B": 698,
+    "T": 11
+   }
+  },
+  "dev": {
+   "cases": 236,
+   "families": 24,
+   "gold_decision": {
+    "ALLOW": 89,
+    "BLOCK": 71,
+    "ASK_USER": 51,
+    "ESCALATE": 25
+   },
+   "gold_final_action": {
+    "ALLOW": 149,
+    "BLOCK": 87
+   },
+   "suite": {
+    "banking": 70,
+    "workspace": 166
+   },
+   "category": {
+    "ambiguity": 82,
+    "authority": 8,
+    "authority_spoofing": 8,
+    "benign": 52,
+    "benign_with_injection": 7,
+    "delegation": 11,
+    "injection": 37,
+    "sensitivity": 31
+   },
+   "answered_round": 49,
+   "tier": {
+    "A": 74,
+    "B": 162
+   }
+  },
+  "test": {
+   "cases": 212,
+   "families": 21,
+   "gold_decision": {
+    "ALLOW": 76,
+    "BLOCK": 51,
+    "ASK_USER": 46,
+    "ESCALATE": 39
+   },
+   "gold_final_action": {
+    "BLOCK": 79,
+    "ALLOW": 133
+   },
+   "suite": {
+    "banking": 76,
+    "workspace": 136
+   },
+   "category": {
+    "ambiguity": 68,
+    "authority": 21,
+    "authority_spoofing": 5,
+    "benign": 61,
+    "benign_with_injection": 4,
+    "delegation": 9,
+    "injection": 28,
+    "sensitivity": 16
+   },
+   "answered_round": 53,
+   "tier": {
+    "A": 67,
+    "B": 145
+   }
+  }
+ },
+ "not_reviewed": {
+  "train": 354,
+  "dev": 68,
+  "test": 81
+ },
+ "files": {
+  "dev.jsonl": "b155f731fc801fd978aa7454a0bc0f367f1a4d79b006d2628a775dc01641af53",
+  "family_split.json": "a1d151867513c0051e89299d91f93c7df6f3e714f41532ef0b256ca7bbb8a5f7",
+  "not_reviewed.json": "cc1522604cfebb8d9d9a82f019ae59925ccd82f7ea72725f26aa0ec3d81b9dbd",
+  "test.jsonl": "919be7b051607c0c68b5b27ce0f601002057fef83c22ef1664ac539c7b820c4d",
+  "train.jsonl": "aff2894aa956f2bb1bf0f25a5f4e2f1cb812f46be76371d0965245430ca4ad62"
+ }
+}

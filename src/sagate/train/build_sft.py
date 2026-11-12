@@ -3,8 +3,8 @@
 The same EvidenceMask and prompt renderer as evaluation (P3), and the decoder's skeleton as the target text, so
 the model is trained on exactly the format it is scored on. Labels per condition:
   four-way (B5, -prov/-auth/-RAG/-intermediate): gold_decision
-  binary (B4):                                   gold_final_action
-  three-way (b5_no_ask / b5_no_esc):             removed class -> gold_final_action
+  binary (B4), three-way (b5_no_ask / b5_no_esc): gold_decision, a deferral the gate cannot make -> BLOCK
+Conditions with `history: none` skip pre-answered cases: without the answer their label would be contradictory.
 `b5_no_inter` drops missing_evidence / required_authority from the target. B4 and B5 see the same examples.
 Every case is asserted against pool train_only (train-source minus the dev pool used for the B4 threshold).
 
@@ -22,21 +22,18 @@ from typing import Iterable
 from ..config import Condition, load_condition, load_config
 from ..data.cases import Case, load_cases
 from ..data.loaders import AgentDojoData, write_jsonl
-from ..data.splits import Splits
+from ..data.splits import LeakageError, Splits
 from ..evidence.mask import EvidenceMask
 from ..gate.prompts import chat_messages, target_text
 from ..gate.schema import GateOutput, collapse_decision
 from .nl_examples import load_nl_examples
 
 TRAINED = ("b4_qlora_binary", "b5_qlora_4way", "b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc",
-           "b5_no_inter")
+           "b5_no_inter", "b5_v2", "b5_v3", "b5_v3_combo")
 
 
 def target_for(case: Case, cond: Condition) -> GateOutput:
-    if cond.binary:
-        decision = case.gold_final_action
-    else:
-        decision = collapse_decision(case.gold_decision, cond.decision_space, case.gold_final_action)
+    decision = collapse_decision(case.gold_decision, cond.decision_space)
     return GateOutput(decision=decision, missing_evidence=case.gold_missing_evidence or "none",
                       required_authority=case.gold_required_authority or "none")
 
@@ -52,7 +49,12 @@ def sft_rows(cases: Iterable[Case], cond: Condition, splits: Splits) -> list[dic
         splits.assert_pool(c, "train_only")
         if not c.has_gold:
             raise ValueError(f"training case {c.case_id} has no gold labels")
+        if mask.skips(c.input):
+            continue
         gi = mask.apply(c.input, c.alt_provenance)
+        if (cond.extra.get("train") or {}).get("gateexp_facts"):
+            from ..gate.gateexp import augment       # train on the same facts the GateExp layers show at test time
+            gi = augment(gi)[0]
         tgt = target_for(c, cond)
         rows.append({
             "case_id": c.case_id, "condition": cond.name,
@@ -76,10 +78,25 @@ def load_training_cases(paths: Iterable[str | Path]) -> list[Case]:
     return out
 
 
+def assert_not_held_out(cases: list[Case], annotations_dir: Path) -> None:
+    """No training case, and no scenario family, may appear in the frozen dev or test set."""
+    ids, families = set(), set()
+    for name in ("dev_cases.jsonl", "test_cases.jsonl"):
+        if (annotations_dir / name).exists():
+            for c in load_cases(annotations_dir / name):
+                ids.add(c.case_id)
+                if c.meta.get("family"):
+                    families.add(c.meta["family"])
+    leaked = [c.case_id for c in cases if c.case_id in ids or c.meta.get("family") in families]
+    if leaked:
+        raise LeakageError(f"{len(leaked)} training cases are in the frozen dev/test set, e.g. {leaked[:3]}")
+
+
 def build(conditions: list[str], case_paths: list[str], out_dir: str | Path, cfg_path: str | None = None) -> dict:
     cfg = load_config(cfg_path)
     splits = Splits(AgentDojoData(cfg.data_dir))
     cases = load_training_cases([p for p in case_paths if Path(p).exists()])
+    assert_not_held_out(cases, cfg.path("annotations_dir"))
     out_dir = Path(out_dir)
     paths = {}
     for name in conditions:

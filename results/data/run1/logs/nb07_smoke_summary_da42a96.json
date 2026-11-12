@@ -1,0 +1,62 @@
+[
+ {
+  "step": "B0 agent, 1 scenario",
+  "ok": true,
+  "minutes": 2.3
+ },
+ {
+  "step": "B1 rules",
+  "ok": true,
+  "minutes": 0.7
+ },
+ {
+  "step": "B2 / B3 prompted",
+  "ok": true,
+  "minutes": 1.0
+ },
+ {
+  "step": "training data",
+  "ok": true,
+  "minutes": 1.0
+ },
+ {
+  "step": "longest examples",
+  "ok": true,
+  "minutes": 0.7
+ },
+ {
+  "step": "B5 / B4 training (longest examples)",
+  "ok": true,
+  "minutes": 4.7
+ },
+ {
+  "step": "B5 / B4 on dev",
+  "ok": true,
+  "minutes": 1.3
+ },
+ {
+  "step": "B5 test: clean, noisy, guarded, inferred",
+  "ok": true,
+  "minutes": 2.7
+ },
+ {
+  "step": "B4 threshold (dev) and matched test",
+  "ok": true,
+  "minutes": 0.7
+ },
+ {
+  "step": "report",
+  "ok": true,
+  "minutes": 0.7
+ },
+ {
+  "step": "statistics (NB06 path)",
+  "ok": true,
+  "minutes": 0.7
+ },
+ {
+  "step": "end-to-end B5 + counterfactual, banking scenarios (payments reach the gate)",
+  "ok": true,
+  "minutes": 2.7
+ }
+]

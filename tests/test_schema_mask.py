@@ -33,7 +33,7 @@ def test_projections():
 def test_all_condition_files_parse():
     for name in ["b1_rules", "b2_prompt_binary", "b3_prompt_4way", "b4_qlora_binary", "b5_qlora_4way",
                  "b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc", "b5_no_inter",
-                 "b5_inferred_prov"]:
+                 "b5_inferred_prov", "b5_guarded", "b5_counterfactual"]:
         c = load_condition(name)
         assert c.name == name
     assert load_condition("b2_prompt_binary").binary

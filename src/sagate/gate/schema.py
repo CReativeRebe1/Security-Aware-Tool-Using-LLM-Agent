@@ -87,6 +87,9 @@ class GateInput:
     policy_clauses: list | None = field(default_factory=list)
     untrusted_content: list = field(default_factory=list)
     resolution_history: list = field(default_factory=list)
+    checks: dict | None = None                   # computed by EvidenceMask (evidence/checks.py)
+    executed_payments: list | None = None        # live runs: payments that really ran (prior_calls includes refused ones)
+    counterfactual: dict | None = None           # live runs: {log_ratio, content_driven}; read by the guards, not rendered
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -114,6 +117,8 @@ class GateOutput:
     evidence_cited: list = field(default_factory=list)
     p_allow: float | None = None
     scores: dict = field(default_factory=dict)       # field -> {value: log-prob}; decoder diagnostics
+    guard: str | None = None                         # the guard that overrode the model's ALLOW, if any
+    trace: dict | None = None                        # GateExp decision log: facts, rule steps, raw model output
 
     def __post_init__(self) -> None:
         if self.decision not in FIELD_VALUES["decision"]:

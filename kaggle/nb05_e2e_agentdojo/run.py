@@ -10,18 +10,17 @@ import sys
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
 import bootstrap  # noqa: E402
 
-CONDITIONS = ["b5_qlora_4way"]
-EXTRA = []              # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
+CONDITIONS = ["b5_v3_combo_gateexp"]   # final gate; add "b5_v3_gateexp" etc. to compare (one session runs them in turn)
+EXTRA = []   # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
 NUM_SHARDS = 2
 LIMIT = None
 OUT = "/kaggle/working/outputs"
 
 root = bootstrap.setup()
 py = sys.executable
-hits = sorted(glob.glob("/kaggle/input/**/adapters/b5_qlora_4way/adapter_config.json", recursive=True), key=len)
-adapters = os.path.dirname(os.path.dirname(hits[0])) if hits else None
+adapters = bootstrap.collect_adapters()        # every attached NB03 kernel; newest copy of each condition
 if adapters is None and any(c.startswith(("b4", "b5")) for c in CONDITIONS + EXTRA):
-    sys.exit("NB03 adapters not attached")
+    sys.exit("adapters not attached (sagate-b5-adapter dataset or an NB03 kernel output)")
 limit = ["--limit", str(LIMIT)] if LIMIT else []
 codes = []
 for cond in CONDITIONS + EXTRA:

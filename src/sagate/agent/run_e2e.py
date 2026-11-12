@@ -13,6 +13,7 @@ ScenarioResponder (confirms calls matching the user task's ground truth, 15% see
 from __future__ import annotations
 
 import argparse
+import dataclasses
 from pathlib import Path
 
 from ..config import load_condition, load_config
@@ -53,7 +54,7 @@ def main(argv=None) -> None:
     from ..evidence.mask import EvidenceMask
     from ..models.backend import backend_from_config
     from ..resolution.responders import MockApprover, ScenarioResponder
-    from .pipeline import GatedToolsExecutor, make_b0_pipeline
+    from .pipeline import CounterfactualProbe, GatedToolsExecutor, make_b0_pipeline
 
     scen = scenario_list(data, a.pools.split(","), a.suites.split(",") if a.suites else None)
     scen = [s for i, s in enumerate(scen) if i % a.num_shards == a.shard]
@@ -61,13 +62,14 @@ def main(argv=None) -> None:
     gate, _ = make_gate(cond, cfg, out_dir, a.model_id, a.adapter_dir, backend=backend)
     res = cfg["resolution"]
     # live: only inferred provenance exists (oracle conditions run on it too); -provenance still drops it
-    mask = EvidenceMask("none" if cond.provenance == "none" else "inferred", cond.authority, cond.sensitivity,
-                        cond.rag)
+    mask = dataclasses.replace(EvidenceMask.from_condition(cond),
+                               provenance="none" if cond.provenance == "none" else "inferred")
     executor = GatedToolsExecutor(
         gate, ContextBuilder(cfg, data),
         ScenarioResponder(data, res["user_noise"], a.responses == "noisy", cfg["seed"]),
         MockApprover(cfg.resources_dir), cond.name, mask, res["max_rounds"], cond.resolution,
-        cfg["context"].get("gate_read_only", False))
+        cfg["context"].get("gate_read_only", False),
+        probe=CounterfactualProbe(backend, cfg["counterfactual"]["min_log_ratio"]) if cond.counterfactual else None)
     pipeline, recorder, llm = make_b0_pipeline(backend, cfg, executor=executor)
     attack, version = cfg["agent"]["attack"], cfg["agent"]["benchmark_version"]
     write_manifest(out_dir / f"manifest_shard{a.shard}.json", cfg,

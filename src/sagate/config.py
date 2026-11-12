@@ -93,6 +93,12 @@ class Condition:
     authority: bool = True
     sensitivity: bool = True
     rag: bool = True
+    history: str = "full"                # full | answers_only | none
+    amount_source: bool = True
+    duplicate_check: bool = True
+    trust_degree: bool = True
+    guards: bool = False
+    counterfactual: bool = False         # live only: re-score the call without the user's request (NB05)
     intermediate: bool = True
     resolution: bool = True
     extra: dict = field(default_factory=dict)
@@ -121,6 +127,12 @@ class Condition:
             authority=bool(ev.get("authority", True)),
             sensitivity=bool(ev.get("sensitivity", True)),
             rag=bool(rag),
+            history=str(ev.get("history", "full")),
+            amount_source=bool(ev.get("amount_source", True)),
+            duplicate_check=bool(ev.get("duplicate_check", True)),
+            trust_degree=bool(ev.get("trust_degree", True)),
+            guards=bool(ev.get("guards", False)),
+            counterfactual=bool(ev.get("counterfactual", False)),
             intermediate=bool(d.get("supervision", {}).get("intermediate", True)),
             resolution=bool(d.get("resolution", {}).get("enabled", True)),
             extra={k: v for k, v in d.items() if k not in known},
