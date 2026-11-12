@@ -6,9 +6,10 @@ from sagate_demo import components as C
 from sagate_demo import explain as X
 from sagate_demo import lab as L
 
-st.title("Gate Lab")
-st.markdown("Design a bank payment yourself and watch the system react. **Nothing here is pre-recorded:** the "
-            "project's own evidence builder, rule retriever and rules gate run live on every change.")
+C.page_hero("Gate Lab", "Design a payment, watch the gate decide",
+            "Choose who gets paid, how much, and where the request came from: typed by you, from a bill, or a "
+            "hidden [[prompt injection]]. **Nothing here is pre-recorded:** the project's own evidence builder, "
+            "rule retriever and rules gate run live on every change.")
 
 DEFAULTS = {"lab_payee": "friend", "lab_amount": 200, "lab_source": "you", "lab_fake": False, "lab_answer": "Yes",
             "lab_prov": "known", "lab_guards": False}

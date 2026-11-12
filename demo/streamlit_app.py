@@ -16,7 +16,9 @@ pages = {
     "": [st.Page("views/home.py", title="Home", icon=":material/home:", default=True)],
     "See it in action": [
         st.Page("views/playground.py", title="Playground", icon=":material/play_circle:"),
+        st.Page("views/simulation.py", title="Simulation", icon=":material/sports_score:"),
         st.Page("views/lab.py", title="Gate Lab", icon=":material/science:"),
+        st.Page("views/game.py", title="Be the gate", icon=":material/stadia_controller:"),
         st.Page("views/explore.py", title="Explore all cases", icon=":material/search:"),
     ],
     "Understand it": [
@@ -28,8 +30,10 @@ pages = {
 nav = st.navigation(pages)
 
 with st.sidebar:
-    st.caption(f"**Run 1** results · code `{D.CODE_HASH}`  \n"
-               "Provisional: B4 is not trained yet and the code is still under review.")
+    src = D.gateexp_source()
+    st.caption(f"**Results shown**  \nRun 1 · code `{D.CODE_HASH}` (10–11 Nov)  \n"
+               f"GateExp · commit `{src.get('commit', '?')}` (12 Nov)")
+    st.caption("All scored against the team's frozen labels. Work in progress: B4 and the ablations are not run yet.")
     st.caption("CL3410 course project  \nPrabhash Padhan · Rinkesh Verma  \nShubham Kumar Sunny · Yogendra Patel")
 
 nav.run()

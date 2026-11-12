@@ -1,14 +1,15 @@
 import pandas as pd
 import streamlit as st
 
+from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
 from sagate_demo import scenario as S
 from sagate_demo.gates import GATES, recorded
 
-st.title("Explore all cases")
-st.markdown("Every case in the frozen dataset and what each gate decided. Filter the list, then **tick a row** to "
-            "open that case below.")
+C.page_hero("Explore", "Every case, every decision",
+            "All test, dev and red-team cases with what each gate decided. Filter the list, then **tick a row** to "
+            "open that case below, told step by step.")
 
 SYM = {"success": "✅", "warning": "🟡", "error": "❌"}
 
@@ -24,7 +25,7 @@ def table(split: str) -> pd.DataFrame:
                "Right answer": f"{c.gold_decision} → {c.gold_final_action}"}
         oks = []
         for k in conds:
-            p = (D.predictions(split, k) or {}).get(cid)
+            p = (recorded.preds(split, k) or {}).get(cid)
             if p is None:
                 row[GATES[k].code] = "–"
                 continue

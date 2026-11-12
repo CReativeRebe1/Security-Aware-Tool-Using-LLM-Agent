@@ -1,9 +1,27 @@
 [theme]
 base = "light"
 primaryColor = "#2a78d6"
-backgroundColor = "#fcfcfb"
-secondaryBackgroundColor = "#f1f0ec"
-textColor = "#0b0b0b"
+backgroundColor = "#f7f8fb"
+secondaryBackgroundColor = "#eef1f6"
+textColor = "#0f172a"
+linkColor = "#1c5cab"
+borderColor = "#e2e6ee"
+showWidgetBorder = true
+baseRadius = "0.6rem"
+buttonRadius = "0.6rem"
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap, sans-serif"
+headingFont = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap, sans-serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
+headingFontWeights = [800, 700, 700, 700, 600, 600]
+dataframeHeaderBackgroundColor = "#f1f4f9"
+
+[theme.sidebar]
+backgroundColor = "#0f1b33"
+secondaryBackgroundColor = "#1a2a4a"
+textColor = "#d7e1f2"
+primaryColor = "#8fbcff"
+borderColor = "#24365a"
+linkColor = "#8fbcff"
 
 [client]
 toolbarMode = "viewer"

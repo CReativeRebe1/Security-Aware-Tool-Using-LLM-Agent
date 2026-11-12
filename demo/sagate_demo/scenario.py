@@ -14,7 +14,7 @@ import streamlit as st
 from . import components as C
 from . import data as D
 from . import explain as X
-from .gates import GATES, OURS, LiveSettings, live, recorded
+from .gates import GATES, NEWEST, OURS, LiveSettings, live, recorded
 
 STEPS = ["The request", "The agent acts", "The evidence", "The decisions", "The right answer", "Try it live"]
 
@@ -61,13 +61,26 @@ def step_decisions(split, case_id, meta):
     k = _k(split, case_id)
     has_noisy = bool((c.user_response or {}).get("noisy"))
     left, right = st.columns([3, 2])
-    left.markdown("Each gate's first decision, any question and answer, and the final outcome. "
-                  "The highlighted row is **our gate (B5)**.")
+    with left:
+        C.show('<p class="sg-lead" style="font-size:.95rem">' + C.md(
+            "Each gate's first decision, any question and answer, and the final outcome. The highlighted row is the "
+            "**newest design ([[GateExp]])**; B5 is the Run 1 version of our trained gate.") + "</p>")
     noisy = right.toggle("Use the confusing user reply", key=f"noisy{k}", disabled=not has_noisy,
                          help="15% of cases also have a deliberately confusing reply, to test robustness. "
                               "Only those cases can use it.")
     runs = recorded.all(split, case_id, noisy)
     C.comparison(runs, c)
+    gx = next((r for r in runs if r.gate.key == NEWEST and r.trace is not None), None)
+    if gx is not None:
+        with st.container(border=True):
+            st.markdown("**How the newest gate decided, layer by layer**")
+            st.caption("GateExp computes facts, applies hard rules, asks the trained model only if no rule "
+                       "decided, then runs checks that can only make the answer stricter. The highlighted layer "
+                       "made the decision. Hover a rule name to see what it means.")
+            for r in gx.trace["rounds"]:
+                if len(gx.trace["rounds"]) > 1:
+                    st.markdown(f"Round {r['round'] + 1}" + (" (after the answer)" if r["round"] else ""))
+                C.show(C.gx_path(r["output"]))
     scored = [r for r in runs if r.trace is not None]
     with st.expander("Look closer at one gate: how sure was it?", icon=":material/zoom_in:"):
         pick = st.selectbox("Gate", [r.gate.key for r in scored], key=f"pick{k}",
@@ -97,8 +110,11 @@ def gate_detail(run, c):
         if probs:
             st.markdown("**How sure the model was** (first decision)")
             C.show(C.prob_bars(probs))
-        else:
+        elif run.gate.family == "rules":
             st.markdown("**Rules have no probabilities.** They either fire or they don't.")
+        else:
+            st.markdown("**A hard rule decided before the model was asked**, so there are no model scores for "
+                        "this round.")
     v = X.verdict(run.trace, c)
     getattr(st, v.tone)(f"**{v.label}.** {v.why}")
 
@@ -116,6 +132,13 @@ def step_answer(split, case_id, meta):
     if meta:
         C.callout("right", "Why:", meta["right"])
         C.callout("lesson", "What this shows:", meta["lesson"])
+    rl = D.relabels().get(case_id)
+    if rl:
+        what = "; ".join(f"{k.replace('gold_', '').replace('_', ' ')}: {a} → {b}" for k, (a, b) in rl.items())
+        C.callout("new", "Note:", f"on the [[GateExp]] branch this case was relabelled ({what}). The new policy "
+                                  "asks the user to confirm before a first payment to a new payee, or an amount "
+                                  "the user never stated. This site scores every gate against the team's "
+                                  "[[frozen labels]].")
     if c.gold_clause_ids:
         book = D.handbook()
         st.markdown("**The handbook rules that apply**")

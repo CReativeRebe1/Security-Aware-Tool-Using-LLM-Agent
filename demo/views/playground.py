@@ -1,10 +1,13 @@
 import streamlit as st
 
+from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import scenario as S
 
-st.title("Playground")
-st.markdown("Seven real cases from the test set, each showing one idea. Pick one, then go through it step by step.")
+C.page_hero("Playground", "Seven real cases, told step by step",
+            "Each case shows one idea: a hidden attack, a fake approval, an unclear request, secret data and more. "
+            "Pick one, then press **Next →** to walk through what the user asked, what the agent tried, the "
+            "evidence, and what every gate decided.")
 
 scen = D.featured()
 by_short = {s["short"]: s for s in scen}

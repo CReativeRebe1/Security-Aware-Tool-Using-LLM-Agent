@@ -7,15 +7,16 @@ import streamlit as st
 from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
-from sagate_demo.gates import GATES
+from sagate_demo.gates import GATES, NEWEST, reports
 
-st.title("The research")
-st.markdown("What we set out to test, the data we built, what has been run so far, and what is still open.")
+C.page_hero("The research", "What we set out to test, and where we are",
+            "The hypotheses, how the dataset was built, what has been run so far, how the project got here, and "
+            "what is still open.")
 
 tabs = st.tabs([":material/help: Questions", ":material/dataset: Data", ":material/science: Experiments",
                 ":material/timeline: Journey", ":material/report: Known limits"])
 
-rep = D.reports("test")
+rep = reports("test")
 
 
 def r(cond, key):
@@ -52,17 +53,20 @@ with tabs[0]:
     ])
     st.markdown("#### Where we stand")
     C.show('<div class="sg-grid four">'
+           + C.stat_tile("Newest design GX", r(NEWEST, "unauthorized_action_rate"), "unsafe",
+                         ("ok", "✓ target ≤ 5%"), f"needless questions {r(NEWEST, 'unnecessary_deferral_rate')}")
            + C.stat_tile("Trained gate B5", r("b5_qlora_4way", "unauthorized_action_rate"), "unsafe",
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b5_qlora_4way', 'unnecessary_deferral_rate')}")
            + C.stat_tile("B5 + safety guards", r("b5_guarded", "unauthorized_action_rate"), "unsafe",
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b5_guarded', 'unnecessary_deferral_rate')}")
            + C.stat_tile("Rules gate B1", r("b1_rules", "unauthorized_action_rate"), "unsafe",
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b1_rules', 'unnecessary_deferral_rate')}")
-           + C.stat_tile("Untrained AI B3", r("b3_prompt_4way", "unauthorized_action_rate"), "unsafe",
-                         ("bad", "✕ target ≤ 5%"), f"needless questions {r('b3_prompt_4way', 'unnecessary_deferral_rate')}")
            + "</div>")
-    st.caption("All on the frozen test set (212 cases), Run 1. Nobody meets the target yet; B5 + guards is the "
-               "team's main candidate.")
+    C.note("All on the frozen test set (212 cases), scored the same way. The newest design (GateExp, 12 Nov) meets "
+           "the safety target, but asks more questions than allowed under the frozen labels, and some of its rules "
+           "were found on test failures. On dev it is at "
+           f"{reports('dev').get(NEWEST, {}).get('unauthorized_action_rate', '?')} unsafe. The team has not yet "
+           "decided whether it becomes the main design.")
 
 # ------------------------------------------------------------------ data
 with tabs[1]:
@@ -71,9 +75,10 @@ with tabs[1]:
         {"kicker": "1 · Benchmark", "title": "AgentDojo",
          "body": "Two simulated worlds, an office (email, calendar, files) and a bank. 56 user tasks, 23 attacker "
                  "goals, 760 scenarios."},
-        {"kicker": "2 · Agent runs", "title": "23,602 logged traces",
-         "body": "Our agent (Qwen3-8B) ran through the scenarios with no gate. This shows what it really does, "
-                 "and how often attacks work without protection."},
+        {"kicker": "2 · Agent runs", "title": "23,602 published traces",
+         "body": "AgentDojo's own run logs from 29 model and defence set-ups (GPT, Claude, Gemini, Llama and "
+                 "others). 12.7% of the attacked runs reached the attacker's goal. Our own agent (Qwen3-8B) was run "
+                 "separately for the no-gate baseline."},
         {"kicker": "3 · Hand-written cases", "title": "2,000 cases in 142 families",
          "body": "Each family is one situation over the real AgentDojo worlds. Its variants change one fact so the "
                  "right answer flips: internal vs outside recipient, 1,400 vs 1,850, an IBAN from the user vs from a "
@@ -174,8 +179,8 @@ with tabs[2]:
 with tabs[3]:
     st.markdown("#### How the project got here")
     events = [
-        ("26 Oct", "Benchmark exported", "AgentDojo office and bank worlds: 760 scenarios, 23,602 logged agent "
-                                          "traces. The scenario split was fixed."),
+        ("26 Oct", "Benchmark exported", "AgentDojo office and bank worlds: 760 scenarios and 23,602 published "
+                                          "agent traces from 29 set-ups. The scenario split was fixed."),
         ("26–30 Oct", "Pipeline built", "Evidence builder, gates B1–B5, the question loop and the Kaggle "
                                          "notebooks. B0 measured: attacks succeed 8.3% of the time."),
         ("29 Oct", "First trained results", "B5 on 160 provisional cases: 87.5% correct, but 19% unsafe."),
@@ -188,6 +193,11 @@ with tabs[3]:
         ("10–11 Nov", "Run 1", "Smoke test, baselines B1–B3, and B5 trained and evaluated on the frozen test set."),
         ("11 Nov", "Code review and stress test", "A full code review, and 90 hand-made tricky cases that target "
                                                   "the weak spots."),
+        ("11–12 Nov", "GateExp (newest design)", "B5 retrained as B5 v2 and placed inside layers of facts, hard rules "
+                                                 "and after-checks; 61 new red-team attacks; a confirmation policy "
+                                                 "for new payees (25 cases relabelled). Test: 0% unsafe; dev: 2.7%."),
+        ("12 Nov", "Prepared next", "A retrain with a cost-matrix loss (b5_v3), aimed at fewer needless questions. "
+                                    "Not run yet."),
     ]
     html = "".join(f'<div class="sg-step"><div class="ico" style="width:92px;font-size:.8rem;'
                    f'font-weight:700;color:#1c5cab;background:#eef4fd">{C.esc(d)}</div><div class="body">'
@@ -213,9 +223,16 @@ with tabs[4]:
         {"kicker": "Handled in reporting", "status": "info", "title": "The scoring can reward asking",
          "body": "The simulated user always answers correctly, so asking everything looks great. That's why "
                  "'needless questions' is always reported next to 'unsafe'."},
-        {"kicker": "Handled in reporting", "status": "info", "title": "Guards saw test cases",
-         "body": "Some guard rules were designed while looking at test cases, so 'B5 + guards' is reported "
-                 "separately and marked optimistic."},
+        {"kicker": "Handled in reporting", "status": "info", "title": "Some rules saw test cases",
+         "body": "Some guard rules and some GateExp rules were designed while looking at test failures. Their test "
+                 "numbers are marked optimistic; dev and the red-team set are the fairer check."},
+        {"kicker": "Open · team decision", "status": "warn", "title": "Two sets of labels",
+         "body": "GateExp relabelled 25 test and dev cases to its new “confirm a new payee” policy. This site scores "
+                 "every gate against the frozen labels and shows GateExp's own count next to it, until the team "
+                 "decides."},
+        {"kicker": "Open", "status": "warn", "title": "The newest gate, live",
+         "body": "GateExp has only been measured offline with known provenance. A live AgentDojo run, where "
+                 "provenance must be guessed, is still to come; for Run 1's B5 that raised unsafe actions to 20%."},
         {"kicker": "Planned", "status": "info", "title": "Small test, one run",
          "body": "212 test cases in 21 families and one training seed. Family-level confidence intervals come "
                  "before the final statistics."},

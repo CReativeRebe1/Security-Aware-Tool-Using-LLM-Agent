@@ -1,0 +1,22 @@
+{
+ "branch_ref": "origin/GateExp",
+ "commit": "85d872d",
+ "run_folder": "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags",
+ "condition": "b5_v2_gateexp",
+ "copied": [
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/test/b5_v2_gateexp.jsonl",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/test/b5_v2_gateexp.report.json",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/test/b5_v2_gateexp.manifest.json",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/dev/b5_v2_gateexp.jsonl",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/dev/b5_v2_gateexp.report.json",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/dev/b5_v2_gateexp.manifest.json",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/attacks/b5_v2_gateexp.jsonl",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/attacks/b5_v2_gateexp.report.json",
+  "results/data/2026-11-12_gateexp_tags_ab_b5v2/tags/attacks/b5_v2_gateexp.manifest.json",
+  "annotations/attack_cases.jsonl",
+  "annotations/test_cases.jsonl (label differences only)",
+  "annotations/dev_cases.jsonl (label differences only)"
+ ],
+ "relabelled_cases": 25,
+ "note": "Predictions are scored in the demo against the frozen labels (annotations/*_cases.jsonl on this branch). GateExp's own reports, made with its revised labels, are copied unchanged."
+}

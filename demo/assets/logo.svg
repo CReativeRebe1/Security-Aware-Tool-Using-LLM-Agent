@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="168" height="40" viewBox="0 0 168 40">
-  <path d="M20 3 L34 8 V19 C34 28 28 34 20 37 C12 34 6 28 6 19 V8 Z" fill="#2a78d6"/>
+  <path d="M20 3 L34 8 V19 C34 28 28 34 20 37 C12 34 6 28 6 19 V8 Z" fill="#3f8fe6"/>
   <path d="M14 20 L18.5 24.5 L26.5 15.5" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="44" y="27" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#0b0b0b">SA-Gate</text>
+  <text x="44" y="27" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="800" fill="#ffffff">SA-Gate</text>
 </svg>

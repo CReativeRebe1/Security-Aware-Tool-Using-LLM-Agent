@@ -4,15 +4,17 @@ from sagate_demo import components as C
 from sagate_demo import explain as X
 
 G = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
-     'color="#d8d7d2" fillcolor="#ffffff" fontcolor="#0b0b0b" margin="0.18,0.08"]; edge [color="#9a9993" '
-     'fontname="Helvetica" fontsize=10 fontcolor="#52514e"];')
+     'color="#d6dbe4" fillcolor="#ffffff" fontcolor="#0f172a" margin="0.18,0.08"]; edge [color="#94a3b8" '
+     'fontname="Helvetica" fontsize=10 fontcolor="#475569"];')
 BLUE = 'fillcolor="#2a78d6" fontcolor="white" color="#2a78d6"'
 
-st.title("How it works")
-st.markdown("The system, from the user's request to the final decision, in plain words.")
+C.page_hero("How it works", "From a request to a decision, in plain words",
+            "Each tab explains one part. Words with a dotted underline, like [[provenance]], show a short "
+            "explanation when you hover over them.")
 
 tabs = st.tabs([":material/route: Pipeline", ":material/fact_check: Evidence", ":material/menu_book: RAG",
-                ":material/forum: Questions", ":material/model_training: Training", ":material/balance: Fair testing"])
+                ":material/forum: Questions", ":material/model_training: Training",
+                ":material/layers: Newest design", ":material/balance: Fair testing"])
 
 with tabs[0]:
     st.markdown("#### From request to decision")
@@ -122,14 +124,41 @@ with tabs[4]:
     ], hide_index=True, width="stretch")
 
 with tabs[5]:
+    st.markdown("#### The newest design: three layers around one trained model")
+    C.lead("Branch [[GateExp]] (Rinkesh, 11–12 Nov). The idea: **the model judges intent and risk; code keeps "
+           "exact state.** An AI is good at reading a request and the text around it, and bad at exact bookkeeping, "
+           "like comparing two IBANs digit by digit or adding up today's payments. So exact checks moved into code.")
+    C.cards([
+        {"kicker": "Layer 1", "status": "info", "title": "Facts",
+         "body": "Computed by code and shown to the model: did the user ask (or leave it to an email)? How risky is "
+                 "it? Where did the deciding details come from? Is this part of a bigger, split payment? What was "
+                 "already paid today?"},
+        {"kicker": "Layer 2", "status": "info", "title": "Hard rules first",
+         "body": "Policy that no argument may override. If one fires, it decides and the model is not asked: the "
+                 "user already said no · a password or reset link would leave · the details came from injected "
+                 "content · the user may not approve this alone."},
+        {"kicker": "Layer 3", "status": "info", "title": "The trained model (B5 v2)",
+         "body": "Qwen3-8B with a retrained adapter. It reads everything and picks one of the four decisions."},
+        {"kicker": "Layer 4", "status": "info", "title": "Checks after",
+         "body": "Can only make the answer stricter: confirm a first payment to a new payee, confirm an amount the "
+                 "user never stated, confirm a risky action the user did not ask for, and route to an approver "
+                 "when only an approver can decide."},
+    ], two=True)
+    C.note("Every decision keeps a trace of all four layers. In the Playground and Explore, the decisions step "
+           "shows it as a coloured path, so you can see exactly which layer decided.")
+    st.page_link("views/playground.py", label="See a decision path in the Playground (step 4)",
+                 icon=":material/arrow_forward:")
+
+with tabs[6]:
     st.markdown("#### How we keep the test honest")
     C.cards([
         {"kicker": "✂️ Split by family", "title": "No near-copies in the test",
          "body": "Cases are split by scenario family, so near-identical cases never appear in both training and "
                  "test."},
-        {"kicker": "🔒 Test is the final exam", "title": "No tuning on test",
-         "body": "Thresholds and the rule index come from training and dev data only. Test results are never used to "
-                 "change the design."},
+        {"kicker": "🔒 Test is the final exam", "title": "No tuning on test (with one exception)",
+         "body": "Thresholds and the rule index come from training and dev data only. Exception: some GateExp rules "
+                 "were found by looking at test failures, so for that design the dev set and the 61 new red-team "
+                 "attacks are the fairer check."},
         {"kicker": "🧾 Traceable", "title": "Every result is stamped",
          "body": "Every result file records the code version and settings it came from."},
     ])

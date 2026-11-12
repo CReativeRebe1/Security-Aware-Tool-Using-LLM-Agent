@@ -46,9 +46,16 @@ GATES: dict[str, GateInfo] = {g.key: g for g in [
              "B5, then hard rules that can only make an ALLOW stricter, never looser."),
     GateInfo("b5_inferred_prov", "B5-R", "B5 · realistic provenance", "trained",
              "B5 when 'where did this come from' is guessed by string matching, as a real system must."),
+    GateInfo("b5_v2_gateexp", "GX", "B5 v2 + GateExp (newest)", "trained",
+             "Newest design (GateExp branch, 12 Nov): a retrained B5 v2 inside layers of facts, hard rules and "
+             "after-checks."),
 ]}
 OURS = "b5_qlora_4way"
+NEWEST = "b5_v2_gateexp"
 FAMILY_COLOR = {"trained": "#2a78d6", "prompted": "#eb6834", "rules": "#1baf7a"}   # validated palette
+# Per-gate colours for grouped bars (order B1, B3, B5, GX validated for adjacent pairs).
+GATE_COLOR = {"b1_rules": "#1baf7a", "b3_prompt_4way": "#eb6834", "b5_qlora_4way": "#2a78d6",
+              "b5_v2_gateexp": "#e87ba4"}
 
 
 @dataclass
@@ -60,13 +67,25 @@ class GateRun:
 
 
 class RecordedSource:
-    """Real predictions from Run 1."""
+    """Real predictions: Run 1 (results/data/run1) and the GateExp run (demo/data/gateexp). On the red-team set,
+    which Run 1 never saw, B1 is computed here with the same code (it needs no GPU)."""
 
     def available(self, split: str) -> list[str]:
-        return [k for k in GATES if D.predictions(split, k) is not None]
+        return [k for k in GATES if self.preds(split, k) is not None]
+
+    def preds(self, split: str, key: str, noisy: bool = False) -> dict | None:
+        if split == "attacks" and key == "b1_rules" and not noisy:
+            return _b1_on(split)
+        return D.predictions(split, key, noisy)
 
     def run(self, split: str, key: str, case_id: str, noisy: bool = False) -> GateRun:
         g = GATES[key]
+        if split == "attacks":
+            p = self.preds(split, key)
+            if p is None:
+                return GateRun(g, None, "recorded", "Not run on the red-team set.")
+            return GateRun(g, p.get(case_id), "live" if key == "b1_rules" else "recorded",
+                           None if case_id in p else "Not scored here.")
         preds = D.predictions(split, key, noisy) if noisy else None
         note = None
         if preds is None:
@@ -131,5 +150,21 @@ class LiveRulesSource:
         return all(live[k] == rec[k] for k in ("first_decision", "final_decision", "interactions"))
 
 
+@st.cache_resource(show_spinner="Running the rules gate on the red-team set…")
+def _b1_on(split: str) -> dict:
+    return {cid: live.run(split, cid).trace for cid in D.cases(split)}
+
+
 recorded = RecordedSource()
 live = LiveRulesSource()
+
+
+def reports(split: str) -> dict[str, dict]:
+    """Every gate's metrics on this split, all against the same labels (see data.reports)."""
+    out = dict(D.reports(split))
+    if split == "attacks":
+        from sagate.eval import metrics as M
+
+        out["b1_rules"] = {k: (str(v) if not isinstance(v, (int, float, dict)) else v)
+                           for k, v in M.compute(_b1_on(split).values(), D.cases(split).values()).items()}
+    return out

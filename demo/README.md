@@ -6,8 +6,10 @@ A website that shows what the project does, using **real Run 1 results**. It has
 |---|---|
 | Home | The problem, the gate idea, the four decisions, the project in numbers, headline results, a guide to the site |
 | Playground | 7 hand-picked test cases told in six steps (request → agent → evidence → every gate's decision → right answer → live "try it"), guided with Back/Next or all on one page |
+| Simulation | The gates race through the same real cases, animated in the browser: one square per case, live counters |
+| Be the gate | A game: the visitor decides real test cases and is scored against B1, B5 and the newest gate |
 | Gate Lab | The visitor designs a bank payment (payee, amount, where it came from, a fake approval note, their own answer) and the real pipeline handles it live |
-| Explore all cases | Every test/dev case with each gate's result; filters, including "only this gate's mistakes" |
+| Explore all cases | Every test, dev and red-team case with each gate's result; filters, including "only this gate's mistakes" |
 | How it works | Pipeline, evidence, RAG, the question loop, training, fair testing (tabs) |
 | Results | B5 against the targets, the safety-vs-annoyance chart, every number, success by kind of case, links to each gate's mistakes, caveats |
 | The research | Hypotheses and where they stand, how the dataset was built, experiments and run plan, project journey, known limits |
@@ -21,7 +23,14 @@ Nothing is copied or typed in. The app reads the repo's own files when it starts
 - `resources/handbooks/*.md`: the rule texts
 
 When a new run is committed to `results/data/run1/` (for example B4), the site shows it automatically, with no
-code change. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
+code change.
+
+**Newest design (GateExp).** The GateExp branch is not merged into this branch. Its current run (B5 v2 inside the
+GateExp layers: test, dev and the 61 red-team cases) is copied into `demo/data/gateexp/` by
+`python demo/tools/sync_gateexp.py`, which also records the commit (`SOURCE.json`) and the 25 cases GateExp
+relabelled (`relabels.json`). The site scores GateExp's predictions against the same frozen labels as every other
+gate, and shows GateExp's own report (its labels, confirmations counted apart) next to it. Re-run the script
+after a new GateExp run. On the red-team set, B1 is computed live with this branch's code. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
 checked against the recorded predictions for code `da42a96`. Re-check them after a new run.
 
 **Gate Lab:** only the conversation is made up (the user's words and what the bank tools return). The project's real
@@ -71,7 +80,8 @@ through FastAPI and an ngrok tunnel.
 ```
 demo/
   streamlit_app.py          entry point: page navigation, stylesheet, logo, sidebar
-  views/                    the seven pages (home, playground, lab, explore, how_it_works, results, research)
+  views/                    the nine pages (home, playground, simulation, lab, game, explore, how_it_works, results,
+                            research)
   sagate_demo/
     data.py                 loading only: cases, recorded predictions, reports, handbook, featured.yaml
     gates.py                where decisions come from: RecordedSource (Run 1 files) and LiveRulesSource (B1 now);
@@ -80,11 +90,14 @@ demo/
     components.py           small HTML pieces (chips, cards, decision table, flows); all data text is escaped
     scenario.py             one case as six steps: guided (Back/Next) or all on one page
     lab.py                  Gate Lab engine: made-up conversation -> the project's real ContextBuilder and gate
+    simulation.py           the race: payload from recorded predictions + a self-contained HTML/JS page
   assets/style.css          the design: colours, cards, chips, tables (classes start with sg-)
   assets/logo.svg, hero.svg  sidebar logo and the home-page illustration
   featured.yaml             the 7 Playground scenarios and their explanations
+  data/gateexp/             GateExp predictions, reports, red-team cases, relabels, SOURCE.json (copied, not merged)
+  tools/sync_gateexp.py     refreshes data/gateexp from the GateExp branch
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
-  .streamlit/config.toml    light theme
+  .streamlit/config.toml    theme: Inter / Plus Jakarta Sans / JetBrains Mono (Google Fonts), navy sidebar
 ```
 
 Chart colors (green = rules, orange = prompted AI, blue = trained AI) were checked for colour-blind safety. Every

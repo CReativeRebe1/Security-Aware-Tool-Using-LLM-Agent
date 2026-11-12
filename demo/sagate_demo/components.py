@@ -12,7 +12,7 @@ import streamlit as st
 
 from . import data as D
 from . import explain as X
-from .gates import OURS, GateRun
+from .gates import NEWEST, GateRun
 
 
 def esc(s) -> str:
@@ -23,7 +23,14 @@ def md(s) -> str:
     """Escape, then render `code`, **bold** and *italic*."""
     out = re.sub(r"`([^`]+)`", r"<code>\1</code>", esc(s))
     out = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", out)
-    return re.sub(r"(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])", r"<i>\1</i>", out)
+    out = re.sub(r"(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])", r"<i>\1</i>", out)
+    return re.sub(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]", lambda m: term(m.group(2) or m.group(1), m.group(1)), out)
+
+
+def term(text: str, key: str | None = None) -> str:
+    """A word with a hover explanation from the glossary (text is already escaped when called from md)."""
+    tip = X.GLOSSARY.get((key or text).strip().lower())
+    return f'<span class="sg-term" data-tip="{esc(tip)}">{text}</span>' if tip else text
 
 
 def show(markup: str) -> None:
@@ -60,6 +67,59 @@ def hero(eyebrow: str, title: str, text: str, art: str | None = None) -> None:
         pic = f'<div class="sg-hero-art"><img alt="" src="data:image/svg+xml;base64,{b64}"></div>'
     show(f'<div class="sg-hero{" with-art" if art else ""}"><div><div class="sg-eyebrow">{esc(eyebrow)}</div>'
          f'<h1>{esc(title)}</h1><p>{esc(text)}</p></div>{pic}</div>')
+
+
+def page_hero(eyebrow: str, title: str, text: str) -> None:
+    """The banner at the top of every page: what this page is and what you can do here."""
+    show(f'<div class="sg-page-hero"><div class="sg-eyebrow">{esc(eyebrow)}</div><h1>{esc(title)}</h1>'
+         f'<p>{md(text)}</p></div>')
+
+
+def versus(left: tuple[str, str, str], right: tuple[str, str, str], tone=("bad", "ok")) -> None:
+    """Before/after: (kicker, big value, caption) on each side."""
+    cards = [f'<div class="sg-card {t}"><div class="sg-kicker">{esc(k)}</div><div class="big">{esc(v)}</div>'
+             f'<p>{md(c)}</p></div>' for (k, v, c), t in zip((left, right), tone)]
+    show(f'<div class="sg-vs">{cards[0]}<div class="arrow">→</div>{cards[1]}</div>')
+
+
+def gx_path(output: dict) -> str:
+    """GateExp's layers for one round: facts -> rules before the model -> the model -> checks after it."""
+    tr = output.get("trace") or {}
+    facts = tr.get("facts") or {}
+    steps = tr.get("steps") or []
+    model = tr.get("model")
+    pre = [s for s in steps if s["rule"] in X.GX_PRE]
+    post = [s for s in steps if s["rule"] not in X.GX_PRE]
+    pre_fired = next((s["rule"] for s in pre if s.get("fired")), None)
+    post_fired = [s["rule"] for s in post if s.get("fired")]
+    lbl = lambda k: X.FACT_PLAIN.get(k, k) + ("" if X.FACT_PLAIN.get(k, k).endswith("?") else ":")
+    f_html = "".join(f'<span class="sg-fact">{esc(lbl(k))} <b>{esc(X.fact_value(k, v))}</b></span>'
+                     for k, v in facts.items() if k in X.FACT_PLAIN) or '<span class="sg-fact">—</span>'
+    rules = lambda ss: "".join(f'<span class="sg-rule {"fired" if s.get("fired") else ""}" title="'
+                               f'{esc(X.GX_RULE_PLAIN.get(s["rule"], s["rule"]))}">{esc(s["rule"])}</span>'
+                               for s in ss)
+    if model:
+        m_html = (f'{chip(model.get("decision"))}<span class="sg-fact" style="margin-top:6px">'
+                  f'sure it may run: <b>{(model.get("p_allow") or 0):.0%}</b></span>')
+    else:
+        m_html = '<span class="sg-fact">Not asked: a hard rule already decided.</span>'
+    why = ""
+    if pre_fired:
+        why = X.GX_RULE_PLAIN.get(pre_fired, pre_fired)
+    elif post_fired:
+        why = X.GX_RULE_PLAIN.get(post_fired[0], post_fired[0])
+    layers = [
+        ("1 · Facts", f_html, False, False),
+        ("2 · Hard rules first", rules(pre) + (f'<span class="sg-fact">decided: {chip(output["decision"])}</span>'
+                                                if pre_fired else ""), bool(pre_fired), False),
+        ("3 · Trained model", m_html, bool(model) and not post_fired, not model),
+        ("4 · Checks after", rules(post) if post else '<span class="sg-fact">skipped</span>', bool(post_fired),
+         not post),
+    ]
+    cells = "".join(f'<div class="sg-layer {"decided" if d else ""} {"skipped" if sk else ""}"><div class="lt">{t}</div>'
+                    f'{body}</div>' for t, body, d, sk in layers)
+    note = f'<p style="margin:6px 2px 0;font-size:.85rem;color:var(--sg-ink2)">Why: {md(why)}</p>' if why else ""
+    return f'<div class="sg-path">{cells}</div>{note}'
 
 
 def numbers(items: list[tuple[str, str]]) -> None:
@@ -178,12 +238,14 @@ def comparison(runs: list[GateRun], case) -> None:
     body = []
     for r in runs:
         g = r.gate
-        name = f'<div class="gname">{esc(g.code)} · {esc(g.name)}<small>{esc(g.blurb)}</small></div>'
+        new = ' <span class="sg-tag new">new</span>' if g.key == NEWEST else ""
+        live = ' <span class="sg-tag">computed live</span>' if r.source == "live" else ""
+        name = f'<div class="gname">{esc(g.code)} · {esc(g.name)}{new}{live}<small>{esc(g.blurb)}</small></div>'
         if r.trace is None:
             body.append(f'<tr><td>{name}</td><td colspan="3" class="muted">{esc(r.note)}</td></tr>')
             continue
         v = X.verdict(r.trace, case)
-        cls = "ours" if g.key == OURS else ""
+        cls = "ours" if g.key == NEWEST else ""
         body.append(f'<tr class="{cls}"><td>{name}</td><td>{flow(r.trace)}</td>'
                     f'<td>{chip(r.trace["final_decision"])}</td><td class="res">{verdict(v)}</td></tr>')
     show(f'<div class="sg-table-wrap"><table class="sg-table">{head}{"".join(body)}</table></div>')
@@ -198,3 +260,13 @@ def prob_bars(probs: dict[str, float]) -> str:
         rows.append(f'<div class="sg-bar"><span>{chip(d)}</span><div class="track"><div class="fill" '
                     f'style="width:{max(p * 100, 0.5):.1f}%"></div></div><span class="v">{p:.0%}</span></div>')
     return f'<div class="sg-bars">{"".join(rows)}</div>'
+
+
+def note(text: str) -> None:
+    """Small grey text that understands **bold**, `code` and [[glossary]] tooltips."""
+    show(f'<p style="font-size:.85rem;color:var(--sg-ink3);margin:4px 0 10px;line-height:1.5">{md(text)}</p>')
+
+
+def lead(text: str) -> None:
+    """A paragraph that understands **bold**, `code` and [[glossary]] tooltips."""
+    show(f'<p class="sg-lead">{md(text)}</p>')
