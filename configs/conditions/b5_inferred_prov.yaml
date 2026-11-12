@@ -1,0 +1,6 @@
+name: b5_inferred_prov
+gate: {kind: llm, adapter: adapters/b5_qlora_4way}   # test-time swap, no retraining
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: inferred, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

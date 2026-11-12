@@ -1,0 +1,6 @@
+name: b1_rules
+gate: {kind: rules}
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}

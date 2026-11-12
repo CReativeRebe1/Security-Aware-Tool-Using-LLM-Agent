@@ -1,0 +1,30 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_inferred_prov] 25 cases (4.53s/case)
+[b5_inferred_prov] 50 cases (5.32s/case)
+[b5_inferred_prov] 75 cases (5.32s/case)
+[b5_inferred_prov] 100 cases (5.13s/case)
+[b5_inferred_prov] 125 cases (5.17s/case)
+[b5_inferred_prov] 150 cases (5.18s/case)
+[b5_inferred_prov] 175 cases (5.09s/case)
+[b5_inferred_prov] 200 cases (5.16s/case)
+b5_inferred_prov: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_inferred_prov.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_inferred_prov] 25 cases (0.36s/case)
+[b5_inferred_prov] 50 cases (0.31s/case)
+[b5_inferred_prov] 75 cases (0.21s/case)
+[b5_inferred_prov] 100 cases (0.19s/case)
+[b5_inferred_prov] 125 cases (0.31s/case)
+[b5_inferred_prov] 150 cases (0.35s/case)
+[b5_inferred_prov] 175 cases (0.30s/case)
+[b5_inferred_prov] 200 cases (0.26s/case)
+b5_inferred_prov: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_inferred_prov_noisy.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_guarded] 25 cases (4.90s/case)
+[b5_guarded] 50 cases (5.19s/case)
+[b5_guarded] 75 cases (5.48s/case)
+[b5_guarded] 100 cases (5.14s/case)
+[b5_guarded] 125 cases (5.09s/case)
+[b5_guarded] 150 cases (5.07s/case)
+[b5_guarded] 175 cases (4.99s/case)
+[b5_guarded] 200 cases (5.06s/case)
+b5_guarded: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_guarded.jsonl

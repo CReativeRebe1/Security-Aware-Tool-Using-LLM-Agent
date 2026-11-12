@@ -1,0 +1,32 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_qlora_4way] 25 cases (5.90s/case)
+[b5_qlora_4way] 50 cases (5.56s/case)
+[b5_qlora_4way] 75 cases (5.24s/case)
+[b5_qlora_4way] 100 cases (5.15s/case)
+[b5_qlora_4way] 125 cases (5.12s/case)
+[b5_qlora_4way] 150 cases (4.91s/case)
+[b5_qlora_4way] 175 cases (4.96s/case)
+[b5_qlora_4way] 200 cases (4.90s/case)
+[b5_qlora_4way] 225 cases (5.01s/case)
+warning: 2 gate prompts exceeded model.max_input_tokens
+b5_qlora_4way: 236 predictions -> /kaggle/working/outputs/predictions/dev/b5_qlora_4way.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_qlora_4way] 25 cases (11.66s/case)
+[b5_qlora_4way] 50 cases (12.15s/case)
+[b5_qlora_4way] 75 cases (12.34s/case)
+[b5_qlora_4way] 100 cases (11.62s/case)
+[b5_qlora_4way] 125 cases (11.54s/case)
+[b5_qlora_4way] 150 cases (11.54s/case)
+[b5_qlora_4way] 175 cases (11.57s/case)
+[b5_qlora_4way] 200 cases (11.82s/case)
+b5_qlora_4way: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_qlora_4way.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_qlora_4way] 25 cases (0.36s/case)
+[b5_qlora_4way] 50 cases (0.25s/case)
+[b5_qlora_4way] 75 cases (0.17s/case)
+[b5_qlora_4way] 100 cases (0.13s/case)
+[b5_qlora_4way] 125 cases (0.25s/case)
+[b5_qlora_4way] 150 cases (0.30s/case)
+[b5_qlora_4way] 175 cases (0.26s/case)
+[b5_qlora_4way] 200 cases (0.22s/case)
+b5_qlora_4way: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_qlora_4way_noisy.jsonl

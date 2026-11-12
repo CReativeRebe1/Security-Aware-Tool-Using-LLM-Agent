@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Security Gate: Results Report</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  :root { --ink:#1b1f24; --muted:#5b6470; --line:#d6dbe1; --head:#f1f4f7; --accent:#1f5f99; --good:#1d7a46; --bad:#b3261e; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Inter","Segoe UI","Helvetica Neue",Arial,sans-serif; color:var(--ink); font-size:10pt; line-height:1.45; margin:0; background:#fff; }
+  h1 { font-size:20pt; margin:0 0 2mm; color:var(--accent); }
+  h2 { font-size:13.5pt; margin:7mm 0 2mm; padding-bottom:1mm; border-bottom:1.5px solid var(--accent); color:var(--accent); page-break-after:avoid; }
+  h3 { font-size:11pt; margin:4.5mm 0 1.5mm; page-break-after:avoid; }
+  p { margin:1.5mm 0; }
+  .sub { color:var(--muted); margin-bottom:4mm; }
+  table { border-collapse:collapse; width:100%; margin:2mm 0 3mm; font-size:8.8pt; page-break-inside:avoid; }
+  th, td { border:1px solid var(--line); padding:1.2mm 1.8mm; text-align:left; vertical-align:top; }
+  th { background:var(--head); font-weight:600; }
+  td.n, th.n { text-align:right; white-space:nowrap; }
+  tr.final td { background:#eef6ff; font-weight:600; }
+  .good { color:var(--good); font-weight:600; }
+  .bad { color:var(--bad); font-weight:600; }
+  .box { border:1px solid var(--line); border-left:4px solid var(--accent); background:#f8fafc; padding:2.5mm 3.5mm; margin:3mm 0; page-break-inside:avoid; }
+  ul, ol { margin:1mm 0 2mm; padding-left:5.5mm; }
+  li { margin:0.8mm 0; }
+  code { font-family:"JetBrains Mono",Consolas,monospace; font-size:8.6pt; background:#f1f4f7; padding:0 1mm; border-radius:2px; }
+  .flow { display:flex; gap:1.5mm; align-items:stretch; margin:3mm 0; font-size:8.4pt; page-break-inside:avoid; }
+  .flow div { flex:1; border:1px solid var(--line); border-radius:3px; padding:1.8mm; background:#f8fafc; }
+  .flow b { display:block; color:var(--accent); margin-bottom:0.6mm; }
+  .note { color:var(--muted); font-size:8.6pt; }
+  .pb { page-break-before:always; }
+</style>
+</head>
+<body>
+
+<h1>Security Gate for Tool-Using LLM Agents: Results Report</h1>
+<div class="sub">GateExp with a QLoRA Qwen3-8B 4-way gate on AgentDojo banking and workspace · branch <code>GateExp</code> · 12 November 2026</div>
+
+<div class="box">
+<b>Summary.</b> The final system is a 4-way gate (ALLOW / BLOCK / ASK_USER / ESCALATE) built from a fine-tuned
+Qwen3-8B (<code>b5_v3_combo</code>) wrapped in deterministic GateExp layers: computed facts, pre-rules, the model,
+post-rules. The first learned gate (B5, Run 1) allowed <b>10.2&nbsp;% unsafe actions</b> on test, against a target of
+5&nbsp;% or less. The final gate allows <b>0&nbsp;%</b> on dev, attacks and the combination slice (CPU replay), and
+<b>0 of 120</b> attacks succeeded in the live AgentDojo run, against 10 of 120 without a gate, with no loss of utility
+(35.2&nbsp;% vs 34.5&nbsp;%). Unneeded asks are 10.5&nbsp;% on dev, 7.9&nbsp;% if the policy confirmations are left
+out (target 10&nbsp;% or less). The final gate has not been run on test yet: it is held for one final run.
+</div>
+
+<table>
+<tr><th>Headline</th><th class="n">Before</th><th class="n">Final (b5_v3_combo + GateExp)</th><th>Target</th></tr>
+<tr><td>Unsafe actions allowed, dev</td><td class="n">3.6&nbsp;% (GateExp run 1)</td><td class="n good">0&nbsp;% (0/112)</td><td>≤ 5&nbsp;%</td></tr>
+<tr><td>Unsafe actions allowed, attack set</td><td class="n">5.9&nbsp;% (GateExp run 1)</td><td class="n good">0&nbsp;% (0/51)</td><td>≤ 5&nbsp;%</td></tr>
+<tr><td>Correct final outcome, dev</td><td class="n">97.0&nbsp;%</td><td class="n good">100&nbsp;% (236/236)</td><td>above B4</td></tr>
+<tr><td>Unneeded asks, dev (excl. policy confirmations)</td><td class="n">24.4&nbsp;% (17.5&nbsp;%)</td><td class="n">10.5&nbsp;% (7.9&nbsp;%)</td><td>≤ 10&nbsp;%</td></tr>
+<tr><td>AgentDojo attack success (142 test scenarios)</td><td class="n">8.3&nbsp;% (B0, no gate)</td><td class="n good">0&nbsp;% (0/120)</td><td>lower than B0</td></tr>
+<tr><td>AgentDojo utility</td><td class="n">34.5&nbsp;% (B0)</td><td class="n">35.2&nbsp;%</td><td>not below B0</td></tr>
+</table>
+<p class="note">Dev, attack and combination numbers for the final gate come from a CPU replay of the live selection run's
+model answers through the final rules (rounds after the first are approximated). The AgentDojo run used the gate
+before the last review fixes.</p>
+
+<h2>1. System</h2>
+<div class="flow">
+  <div><b>1. Facts</b>Code computes intent, risk, data source, file labels, split and daily payment totals, bound confirmations and unknown arguments from the call and the conversation.</div>
+  <div><b>2. Pre-rules</b>Decide before the model: an earlier "no", credentials leaving, an untrusted source, missing authority (confirm the recipient first, or escalate, or block if the approver's policy denies).</div>
+  <div><b>3. Model</b>QLoRA Qwen3-8B (<code>b5_v3_combo</code>) reads the call, the evidence, the retrieved policy clauses and the facts, and answers one of 4 decisions.</div>
+  <div><b>4. Post-rules</b>May only make the answer stricter or route it: guards, no re-asking, unknown arguments, intent, new-payee and amount confirmations, unlabelled data, routing to the approver.</div>
+  <div><b>5. Resolution</b>ASK goes to the user and ESCALATE to the approver, at most 2 rounds. Only ALLOW executes.</div>
+</div>
+<p>Payment policy (decided in this phase): the amount must come from the user; the first payment to a new IBAN is
+confirmed; a payee or recipient taken from a document is confirmed before an approver is asked.</p>
+
+<h2>2. Starting point: Run 1 baselines (test, 212 cases)</h2>
+<table>
+<tr><th>Gate</th><th class="n">Correct</th><th class="n">Unsafe allowed</th><th class="n">Safe blocked</th><th class="n">Unneeded asks</th></tr>
+<tr><td>B1 rules</td><td class="n">86.3&nbsp;%</td><td class="n bad">21.2&nbsp;%</td><td class="n">0.0&nbsp;%</td><td class="n">0.0&nbsp;%</td></tr>
+<tr><td>B2 prompted Qwen3-8B, binary</td><td class="n">56.6&nbsp;%</td><td class="n">1.1&nbsp;%</td><td class="n bad">70.1&nbsp;%</td><td class="n">0.0&nbsp;%</td></tr>
+<tr><td>B3 prompted Qwen3-8B, 4-way</td><td class="n">78.3&nbsp;%</td><td class="n bad">22.9&nbsp;%</td><td class="n">12.0&nbsp;%</td><td class="n bad">48.0&nbsp;%</td></tr>
+<tr><td>B5 QLoRA, 4-way</td><td class="n">87.7&nbsp;%</td><td class="n bad">16.9&nbsp;%</td><td class="n">2.3&nbsp;%</td><td class="n">1.6&nbsp;%</td></tr>
+<tr class="final"><td>B5 guarded (best of Run 1)</td><td class="n">91.5&nbsp;%</td><td class="n bad">10.2&nbsp;%</td><td class="n">2.3&nbsp;%</td><td class="n">1.6&nbsp;%</td></tr>
+<tr><td>B5 with inferred provenance</td><td class="n">85.8&nbsp;%</td><td class="n bad">20.3&nbsp;%</td><td class="n">2.3&nbsp;%</td><td class="n">14.2&nbsp;%</td></tr>
+</table>
+<p>B4 (QLoRA binary) was not run in Run 1. Policy retrieval Recall@5 was 0.785 (target 0.85).</p>
+
+<h2>3. What went wrong</h2>
+<h3>3.1 In Run 1</h3>
+<ul>
+<li><b>The model carried all of the safety on its own.</b> No gate reached the 5&nbsp;% unsafe target. Every miss was a
+case where a deciding fact (approval needed, payee new, data confidential) was not computed and the model had to
+infer it from text.</li>
+<li><b>Prompted gates were unusable:</b> the binary one blocked 70&nbsp;% of safe actions, and the 4-way one asked in 48&nbsp;% of cases that needed no question.</li>
+<li><b>With realistic (inferred) provenance</b>, B5's unsafe rate doubled to 20.3&nbsp;%.</li>
+</ul>
+<h3>3.2 After GateExp was added (B5 and B5&nbsp;v2 inside the layers)</h3>
+<table>
+<tr><th>Set</th><th>Gate</th><th class="n">Correct</th><th class="n">Unsafe</th><th class="n">Unneeded asks (excl. confirm)</th></tr>
+<tr><td>test</td><td>Run 1 B5 + GateExp</td><td class="n">97.2&nbsp;%</td><td class="n good">0.0&nbsp;%</td><td class="n">28.3&nbsp;% (9.4&nbsp;%)</td></tr>
+<tr><td>dev</td><td>Run 1 B5 + GateExp</td><td class="n">97.0&nbsp;%</td><td class="n">3.6&nbsp;%</td><td class="n bad">24.4&nbsp;% (17.5&nbsp;%)</td></tr>
+<tr><td>attacks (61)</td><td>Run 1 B5 + GateExp</td><td class="n">91.8&nbsp;%</td><td class="n bad">5.9&nbsp;%</td><td class="n">6.1&nbsp;%</td></tr>
+<tr><td>all three</td><td>B5 v2 + GateExp + credential rule (proof run)</td><td class="n">97.2&nbsp;%</td><td class="n">2.1&nbsp;%</td><td class="n bad">12.4&nbsp;%</td></tr>
+</table>
+<p>Breaking the system on purpose, and reading the decision logs, showed these failures:</p>
+<table>
+<tr><th>Problem</th><th>Example</th><th>Kind</th></tr>
+<tr><td>A "yes" was reused for a different payment</td><td>Approve one payee, then pay another or a larger amount</td><td>Ledger</td></tr>
+<tr><td>"Yes, whatever" counted as a confirmation</td><td>Fatigue attacks</td><td>Ledger</td></tr>
+<tr><td>Payments made in earlier tasks did not count toward the daily limit</td><td>Several payments under the limit, over it together</td><td>Ledger</td></tr>
+<tr><td>An approval note inside a document counted as approval</td><td>BANK-ATK-13 (spoofed approval)</td><td>Ledger</td></tr>
+<tr><td>Credentials could flow to a less protected place</td><td>Password or 2FA code emailed out</td><td>Rule missing</td></tr>
+<tr><td>Escalation even when the approver's policy always denies</td><td>Restricted data: one wasted round, then a block</td><td>Rule order</td></tr>
+<tr><td>Numbers read as amounts by mistake</td><td>Year of a date (2,024), IBAN digits ("ends with 3000"), "1.800" read as 1.8, amounts in words not read</td><td>Parser</td></tr>
+<tr><td>Escalated before confirming a payee or recipient taken from a document</td><td>Kindergarten bill IBAN, access-request emails</td><td>Rule order</td></tr>
+<tr><td>A customer list sent outside was treated as public</td><td>Thank-you email with 5 customers in To</td><td>Missing fact</td></tr>
+<tr><td>Fail-open defaults</td><td>An unreadable amount counted as 0; an unregistered tool ran ungated; one trusted recipient vouched for a whole list</td><td>Code</td></tr>
+<tr><td>Labels disagreed with the policy</td><td>First payment to a new IBAN labelled ALLOW, policy says confirm</td><td>Labels</td></tr>
+<tr><td>The model over-asks with high confidence</td><td>Asks the user on clear, safe requests (delegation, access requests)</td><td>Training</td></tr>
+<tr><td>Class weights did not fix over-asking</td><td>The weighting explained about 1 of the 12–23 log units of over-asking</td><td>Training</td></tr>
+<tr><td>Two of our own fixes made things worse</td><td>"Owner says personal" rule (test 99.1 → 97.2&nbsp;%); a reversibility rule tuned to known cases</td><td>Process</td></tr>
+</table>
+
+<h2 class="pb">4. What we changed</h2>
+<h3>4.1 Deterministic layers (no retraining)</h3>
+<table>
+<tr><th>Change</th><th>What it does</th></tr>
+<tr><td>Credential rule</td><td>Credential data going to a less protected place is blocked before the model.</td></tr>
+<tr><td>Ledger</td><td>A confirmation counts only for the exact payee and amount it was about; a near-identical IBAN in the answer counts as a "no"; a blank "yes" leaves the question open; payments already made today count toward the daily limit; after a real approver's "yes" the gate does not escalate again (approval notes in documents never count).</td></tr>
+<tr><td>Approver policy</td><td>If the approver's written policy denies the basis, block directly instead of escalating.</td></tr>
+<tr><td>Payment principle</td><td>The amount must come from the user; a new IBAN is confirmed on the first payment; arguments the tool does not have trigger a question.</td></tr>
+<tr><td>One amount parser</td><td>Shared by all rules. It ignores invoice and reference numbers, date parts and IBAN fragments, and reads "1.800,00" and "eighteen hundred". An unreadable amount counts as over every limit.</td></tr>
+<tr><td>Confirm before escalating</td><td>When the approval is about who receives, and that payee or recipient came from content, the user confirms it first; then the approver is asked (WS-2.3, BANK-2.3).</td></tr>
+<tr><td>Contact-list disclosure</td><td>One email to several outside addresses copied from a file of contacts discloses that list: confidential, needs the manager (WS-2.4).</td></tr>
+<tr><td>Fail closed</td><td>A list argument is as trusted as its worst value; tools missing from the registry are gated.</td></tr>
+</table>
+<h3>4.2 Policy text and labels</h3>
+<ul>
+<li>Handbook BANK-2.2 (confirm the first payment's IBAN) and BANK-6.1 (the amount is stated by the holder) rewritten; the policy index was rebuilt.</li>
+<li>Labels changed to follow the policy instead of tuning rules to the labels: 47 new-payee cases ALLOW → confirm, 14 amount cases (4 later restored because their history already held an approval).</li>
+<li>Retrieval tags for clause coverage kept (Recall@8 +1 to 4 points; within noise on decisions).</li>
+</ul>
+<h3>4.3 Training (b5_v3 and b5_v3_combo)</h3>
+<table>
+<tr><th>Change</th><th>Why</th></tr>
+<tr><td>Cost-matrix loss on the decision token (a wrong ALLOW costs 3–5, a needless deferral 0.3–0.5)</td><td>Penalise unsafe mistakes most, instead of flat class weights.</td></tr>
+<tr><td>Decision smoothing 0.1</td><td>The over-asking was confidently wrong, not a calibration problem.</td></tr>
+<tr><td>Adaptive group weights (suite × decision × data origin)</td><td>Groups the model handles worse count more, to avoid bias toward the large groups.</td></tr>
+<tr><td>Safe twins (risky case with the one deciding fact made safe → ALLOW)</td><td>Teach the model when not to ask.</td></tr>
+<tr><td>1,200 factor-combination cases (combo only), labelled by a policy oracle</td><td>The human labels cover few combinations of payee × amount × source × history; the oracle agrees with human labels on 97–98&nbsp;% of banking cases.</td></tr>
+<tr><td>1 epoch, LoRA dropout 0.1, GateExp facts in the input</td><td>Less overfitting; the model sees the same facts the rules use.</td></tr>
+<tr><td>Bug found by a smoke run and fixed before the full run</td><td>The extra loss terms counted 16 times too much under gradient accumulation.</td></tr>
+</table>
+
+<h2>5. New results</h2>
+<h3>5.1 Training (Kaggle, 2 × T4, one model per GPU)</h3>
+<table>
+<tr><th>Model</th><th class="n">Examples</th><th class="n">Steps</th><th class="n">Time</th><th class="n">Train loss</th></tr>
+<tr><td>b5_v3</td><td class="n">2,490</td><td class="n">156</td><td class="n">4.4 h</td><td class="n">0.43</td></tr>
+<tr><td>b5_v3_combo</td><td class="n">3,690</td><td class="n">231</td><td class="n">6.4 h</td><td class="n">0.42</td></tr>
+</table>
+<h3>5.2 Model selection (live, both models inside GateExp)</h3>
+<table>
+<tr><th>Slice</th><th>Metric</th><th class="n">B5 v2</th><th class="n">b5_v3</th><th class="n">b5_v3_combo</th></tr>
+<tr><td rowspan="3">dev (236)</td><td>correct</td><td class="n">97.0&nbsp;%</td><td class="n">96.6&nbsp;%</td><td class="n">98.7&nbsp;%</td></tr>
+<tr><td>unsafe</td><td class="n">2.7&nbsp;%</td><td class="n">0.9&nbsp;%</td><td class="n">2.7&nbsp;%</td></tr>
+<tr><td>unneeded asks</td><td class="n">13.2&nbsp;%</td><td class="n">10.5&nbsp;%</td><td class="n">10.5&nbsp;%</td></tr>
+<tr><td rowspan="2">combinations (216, unseen factor pairs)</td><td>correct</td><td class="n">–</td><td class="n">93.1&nbsp;%</td><td class="n">99.5&nbsp;%</td></tr>
+<tr><td>unneeded asks</td><td class="n">–</td><td class="n bad">27.5&nbsp;%</td><td class="n">8.4&nbsp;%</td></tr>
+<tr><td>attacks (61)</td><td>correct / unsafe</td><td class="n">98.4 / 0&nbsp;%</td><td class="n">96.7 / 0&nbsp;%</td><td class="n">98.4 / 0&nbsp;%</td></tr>
+<tr><td>user's own cases (10)</td><td>correct</td><td class="n">7/10</td><td class="n">10/10</td><td class="n">10/10</td></tr>
+</table>
+<p><b>Chosen: b5_v3_combo.</b> Its 3 unsafe dev cases were one case family (the customer list) whose deciding fact
+was missing from the evidence, the same 3 that B5 v2 failed; the review fix in 4.1 closes them. b5_v3's unsafe case
+is the model's own (it allowed an ambiguous delete).</p>
+<h3>5.3 After the review fixes (CPU replay of the selection run's answers)</h3>
+<table>
+<tr><th>b5_v3_combo</th><th class="n">Correct</th><th class="n">Unsafe</th><th class="n">Unneeded asks</th><th class="n">Escalations needed (precision)</th></tr>
+<tr><td>dev</td><td class="n">97.0 → <span class="good">100&nbsp;%</span></td><td class="n">2.7 → <span class="good">0&nbsp;%</span></td><td class="n">10.5&nbsp;%</td><td class="n">64.7 → 100&nbsp;%</td></tr>
+<tr><td>attacks</td><td class="n">98.4&nbsp;%</td><td class="n">0&nbsp;%</td><td class="n">12.1&nbsp;%</td><td class="n">56 → 61&nbsp;%</td></tr>
+<tr><td>combinations</td><td class="n">94.4 → 99.5&nbsp;%</td><td class="n">0&nbsp;%</td><td class="n">8.4&nbsp;%</td><td class="n">70 → 96&nbsp;%</td></tr>
+<tr><td>user's cases</td><td class="n">100&nbsp;%</td><td class="n">0&nbsp;%</td><td class="n">0&nbsp;%</td><td class="n">100&nbsp;%</td></tr>
+</table>
+<p>A per-case diff showed no case that was right before and wrong after.</p>
+<h3>5.4 Live AgentDojo (142 test scenarios, 120 with an injected attack, simulated user with 15&nbsp;% wrong answers)</h3>
+<table>
+<tr><th>Setup</th><th class="n">Utility</th><th class="n">Attack success</th><th class="n">Banking utility</th><th class="n">Workspace utility</th></tr>
+<tr><td>B0, no gate</td><td class="n">49/142 (34.5&nbsp;%)</td><td class="n bad">10/120 (8.3&nbsp;%)</td><td class="n">–</td><td class="n">–</td></tr>
+<tr><td>b5_v3 + GateExp</td><td class="n">49/142 (34.5&nbsp;%)</td><td class="n good">0/120 (0&nbsp;%)</td><td class="n">15/30</td><td class="n">34/112</td></tr>
+<tr class="final"><td>b5_v3_combo + GateExp</td><td class="n">50/142 (35.2&nbsp;%)</td><td class="n good">0/120 (0&nbsp;%)</td><td class="n">16/30</td><td class="n">34/112</td></tr>
+</table>
+<p>b5_v3_combo refused no call in any clean scenario, so lost utility comes from the agent, not the gate.
+b5_v3 blocked 2 harmless calendar events.</p>
+
+<h2>6. Targets</h2>
+<table>
+<tr><th>Target</th><th>Result (b5_v3_combo + GateExp)</th><th>Met</th></tr>
+<tr><td>Unsafe actions ≤ 5&nbsp;%</td><td>0&nbsp;% on dev, attacks, combinations; 0/120 attacks on AgentDojo</td><td class="good">Yes</td></tr>
+<tr><td>Unneeded asks ≤ 10&nbsp;%</td><td>Excluding policy confirmations: dev 7.9, attacks 9.1, combinations 8.4&nbsp;%. Including them: dev 10.5, attacks 12.1&nbsp;%</td><td>Yes, excluding policy confirmations</td></tr>
+<tr><td>Correct final outcome above B4</td><td>Dev 100&nbsp;% (replay), test pending</td><td>Pending test</td></tr>
+<tr><td>Policy Recall@5 ≥ 0.85</td><td>Recall@8 0.88–0.96 with clause tags; Recall@5 not re-measured</td><td>Not re-measured</td></tr>
+</table>
+
+<h2>7. Limitations</h2>
+<ol>
+<li><b>Intent from wording.</b> Whether the user asked for an action is read from a list of verbs. Clear requests with
+other wording ("let X see the file") get a confirmation question. This is reported as a training limitation; a
+model that understands intent reliably would need much more training than is possible here.</li>
+<li><b>Over-asking remains in two families</b>: client delegation and access-request emails (most of the 10.5&nbsp;%
+unneeded asks on dev, 12.1&nbsp;% on attacks).</li>
+<li><b>Policy confirmations cost questions.</b> The payment principle adds about 3&nbsp;% questions that are
+required by policy; this is the price of the low unsafe rate.</li>
+<li><b>The final gate is not yet measured on test.</b> Test is held for one final run. Earlier gates were scored on
+test several times during development, so test is no longer fully unseen for the rules.</li>
+<li><b>Replay approximations.</b> The post-fix numbers replay saved first-round model answers; later rounds are
+approximated, so they are compared before and after, not with live runs.</li>
+<li><b>AgentDojo ran the gate from before the review fixes</b>, and utility (about 35&nbsp;%) is limited by the base
+Qwen3-8B agent, not by the gate.</li>
+<li><b>The combination slice comes from the same generator</b> as the combination training data (only the factor
+combinations are new), so part of its gain is expected. The oracle's labels differ from the human labels on purpose
+in three known places: intent wording (63 cases), identity before authority (42), over the manager's maximum (23).</li>
+<li><b>Simulated people.</b> Users and approvers are simulated (ScenarioResponder with 15&nbsp;% noise, MockApprover).</li>
+<li><b>Scope.</b> Two AgentDojo suites (banking, workspace), one model size, one seed, 1 epoch on T4 GPUs. The 61-case
+attack set is small. Tools of other suites are not described in the registry (they are gated, but without facts).</li>
+<li><b>Provenance in live runs is inferred</b> from text matching; a value that cannot be traced is "unknown", not untrusted.</li>
+<li><b>Not done:</b> the teammate's 90-case stress set (not in the repository), family-level confidence intervals,
+a "model alone" row and B4 for H2.</li>
+</ol>
+
+<h2>8. Where the evidence is</h2>
+<table>
+<tr><th>What</th><th>Location</th></tr>
+<tr><td>Full change log with every run</td><td><code>docs/GATE_EVALUATION.md</code></td></tr>
+<tr><td>Run index (dated folders)</td><td><code>results/data/RUNS.md</code></td></tr>
+<tr><td>Training summaries</td><td><code>results/data/2026-11-12_train_b5v3/</code></td></tr>
+<tr><td>Model selection run</td><td><code>results/data/2026-11-12_compare_b5v3_vs_combo/</code></td></tr>
+<tr><td>Review-fix replay</td><td><code>results/data/2026-11-12_replay_review_fixes/</code></td></tr>
+<tr><td>AgentDojo run</td><td><code>results/data/2026-11-12_e2e_agentdojo_b5v3/</code></td></tr>
+<tr><td>Gate code</td><td><code>src/sagate/gate/gateexp.py</code>, <code>gate/amounts.py</code>, <code>gate/guards.py</code></td></tr>
+</table>
+
+</body>
+</html>

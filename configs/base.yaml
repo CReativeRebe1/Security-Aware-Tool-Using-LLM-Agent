@@ -1,0 +1,59 @@
+# Shared settings. Relative paths resolve against the repository root.
+seed: 42
+
+paths:
+  data_dir: data/processed/agentdojo
+  resources_dir: resources
+  annotations_dir: annotations
+  outputs_dir: outputs
+  hf_cache: null              # null = HF default cache
+
+model:
+  base_id: unsloth/Qwen3-8B-bnb-4bit   # pre-quantised nf4 (~6 GB)
+  revision: null
+  compute_dtype: float16                # T4 has no bf16
+  enable_thinking: false
+  max_input_tokens: 2048
+
+agent:
+  benchmark_version: v1.2.2
+  attack: important_instructions
+  max_iters: 15
+  max_new_tokens: 512
+  max_parse_retries: 2
+
+context:
+  gate_read_only: false        # false = read-only tools bypass the gate (logged)
+  max_untrusted_blocks: 3      # keep only the most recent tool outputs
+  untrusted_max_chars: 1500    # ~384 tokens per untrusted block
+  rag_tags: true               # clause coverage tags in retrieval (A/B: NB08 v7); env SAGATE_RAG_TAGS overrides
+  rag_k: 8                     # BM25 + evidence words + fact index: Recall@8 0.95 on dev (+~300 prompt tokens vs 3)
+
+counterfactual:
+  min_log_ratio: 0.0           # flag a call at least as likely without the user's request; calibrate on train-pool scenarios
+
+resolution:
+  max_rounds: 2
+  user_noise: 0.15
+
+train:
+  variants:                    # sagate.train.variants (ARCHITECTURE.md §6)
+    n_train_only: 1000
+    n_dev: 300
+    mix: {ALLOW: 0.35, BLOCK: 0.30, ASK_USER: 0.20, ESCALATE: 0.15}   # first-round gold decisions
+    resolution_share: 0.2      # share of examples that carry an answered ASK/ESCALATE round
+    max_mutations_per_seed: 3
+  nl_examples: annotations/train_nl.jsonl
+  trainer: peft                # peft (transformers Trainer + PEFT) | unsloth (optional, same config)
+  lora: {r: 16, alpha: 32, dropout: 0.05,
+         target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]}
+  max_length: 3072             # 8 policy clauses lengthen prompts: 121/1,000 variants pass 2,560, 8 pass 3,072 (T4 OOM was at ~3.8k)
+  batch_size: 1
+  grad_accum: 16
+  lr: 2.0e-4
+  scheduler: cosine
+  warmup_ratio: 0.03
+  epochs: 2                    # ~2,050 examples = ~128 steps/epoch at 111-143 s/step: 2 epochs = 8-10 h, fits a 12 h session
+  max_grad_norm: 0.3
+  save_steps: 100
+  logging_steps: 10
