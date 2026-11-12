@@ -29,7 +29,7 @@ from ..gate.schema import GateOutput, collapse_decision
 from .nl_examples import load_nl_examples
 
 TRAINED = ("b4_qlora_binary", "b5_qlora_4way", "b5_no_prov", "b5_no_auth", "b5_no_rag", "b5_no_ask", "b5_no_esc",
-           "b5_no_inter", "b5_v2", "b5_v3", "b5_v3_combo")
+           "b5_no_inter", "b5_v2", "b5_v3", "b5_v3_combo", "b5_v4", "b5_v4_combo")
 
 
 def target_for(case: Case, cond: Condition) -> GateOutput:

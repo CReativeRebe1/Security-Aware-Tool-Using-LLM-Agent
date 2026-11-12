@@ -13,8 +13,9 @@ import bootstrap  # noqa: E402
 GROUPS = {"A": ["b5_qlora_4way", "b4_qlora_binary"], "B": ["b5_no_prov", "b5_no_auth"],
           "C": ["b5_no_rag", "b5_no_inter"], "D": ["b5_no_ask", "b5_no_esc"],
           "V2": ["b5_v2"],        # retrained B5: + annotations/train_augmented.jsonl, 1 epoch, weighted loss
-          "V3": ["b5_v3", "b5_v3_combo"]}   # final retrain, one per GPU: prepared data / + factor-combination data
-GROUP = "V3"
+          "V3": ["b5_v3", "b5_v3_combo"],   # retrain, one per GPU: prepared data / + factor-combination data
+          "V4": ["b5_v4", "b5_v4_combo"]}   # review-2 retrain: new clauses, relabelled data, no generated variants
+GROUP = "V4"
 VARIANTS = False                  # add the ~1,000 generated variants (old runs: True)
 CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2
@@ -47,7 +48,7 @@ human = os.path.join(root, "annotations", "train_human.jsonl")    # frozen human
 if not os.path.exists(human):
     sys.exit("annotations/train_human.jsonl not staged (python -m sagate.data.human_labels)")
 train_cases.append(human)
-if GROUP in ("V2", "V3"):                  # rule-based copies of the human cases (sagate.train.augment)
+if GROUP in ("V2", "V3", "V4"):                  # rule-based copies of the human cases (sagate.train.augment)
     train_cases.append(os.path.join(root, "annotations", "train_augmented.jsonl"))
 print(f"group {GROUP}: {CONDITIONS}", flush=True)
 # one SFT build per condition; train.extra_cases (e.g. the factor-combination data) are added to that condition only
