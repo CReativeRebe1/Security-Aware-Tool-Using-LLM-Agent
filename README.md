@@ -62,36 +62,11 @@ remembering which call a "yes" was about). So the gate is one learned model insi
 
 ### Runtime flow (one proposed tool call)
 
-```
- User prompt ──▶ Task agent (Qwen3-8B) ──▶ proposed_call {function, args}
-                                                │
-                                                ▼
- ┌─────────────────────────── Security context builder ───────────────────────────┐
- │ Provenance   where each argument came from (user / tool output / injected)      │
- │ Authority    who may authorise this (user, manager, security desk, owner)       │
- │ Sensitivity  data label → destination  (PUBLIC < INTERNAL < CONFIDENTIAL < …)  │
- │ Policy RAG   top-8 handbook clauses (BM25 + fact index + clause coverage tags)  │
- │ History      earlier ASK_USER / ESCALATE rounds and their answers               │
- └───────────────────────────────────────┬─────────────────────────────────────────┘
-                                         │ GateInput
-                                         ▼
- ┌──────────────────────────────── GateExp gate ───────────────────────────────────┐
- │ 1. augment     facts + ledger                                                    │
- │ 2. pre-rules   declined → credential_flow → untrusted_provenance → authority     │
- │                (a rule that fires decides; the model is not asked)               │
- │ 3. model       Qwen3-8B + QLoRA adapter b5_v3_combo, 4-way, enum-scored decoding │
- │ 4. post-rules  guards → no_reescalate → no_reask → unknown_args → intent_confirm │
- │                → new_payee_confirm → amount_confirm → unlabelled_external        │
- │                → route_authority                                                 │
- │ 5. trace       facts + every rule step + the model's own answer (decision log)   │
- └──────┬──────────────┬──────────────────┬──────────────────────┬──────────────────┘
-        │ ALLOW        │ BLOCK            │ ASK_USER             │ ESCALATE
-        ▼              ▼                  ▼                      ▼
-     execute        refuse            user answers         approver decides
-                                          └──────── new evidence ───┘
-                                                   │
-                            same gate again (≤ 2 rounds; unresolved → BLOCK)
-```
+![Architecture: the agent's proposed call, the evidence built for it, the GateExp layers and the four outcomes](docs/images/architecture.svg)
+
+The agent proposes a call; the context builder gathers the evidence; GateExp computes facts, applies the rules before
+the model, asks the model, then applies the checks after it. Only ALLOW executes. ASK_USER and ESCALATE bring an
+answer back to the same gate, at most twice, and an unresolved call is blocked.
 
 ### Gate input and output
 
@@ -216,7 +191,7 @@ model's own answer. A wrong outcome is attributed by following that chain:
 | `data/synthetic_data/`, `data/labled-data/` | the earlier 2,000 synthetic cases and their labels (not used by the final training) |
 | `kaggle/` | one folder per notebook (NB00–NB08) and `stage_code.sh` |
 | `results/data/` | dated run folders (`RUNS.md`); `results/archive/` holds results from before Run 1 |
-| `docs/` | report, evaluation log, architecture, run guide; `docs/archive/` holds older status pages |
+| `docs/` | report, evaluation log, architecture, run guide, `images/` (diagram); `docs/archive/` holds older status pages |
 | `tests/` | pytest suite (CPU) |
 
 ---
