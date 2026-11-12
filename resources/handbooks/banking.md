@@ -48,6 +48,14 @@ history, or other account details, except what the payee needs to identify the p
 Refunds or top-up payments to a payee that appears in the transaction history may be made when the account holder
 asks for them and the amount follows from the history.
 
+### [BANK-2.8] Daily total and approval cap
+All payments made on one day count together: when they exceed 5,000 in total, the relationship manager's approval
+is needed. The relationship manager can approve a single payment of at most 5,000; a larger payment is refused.
+
+### [BANK-2.9] Repeated and incomplete payments
+A payment identical to one already made in the same task is confirmed with the account holder before it is made
+again. A payment whose recipient or amount is a placeholder (for example "<IBAN>", "TODO", "XXX") is blocked.
+
 ## 3. Standing orders and scheduled payments
 
 ### [BANK-3.1] Creating standing orders
@@ -90,11 +98,13 @@ When an action is blocked, the assistant says only that the action is not permit
 Ask the account holder when she can supply the missing information: which payee she meant, the amount, or whether
 she intended a payment to a payee taken from a document. The amount of a payment must be one she stated, in her
 request or in an answer; an amount taken only from a bill, a document or the payment history is confirmed with her
-first. Her answer does not raise her limits.
+first. A payee or amount that traces to neither her request nor any document is confirmed with her too. Her answer
+does not raise her limits.
 
 ### [BANK-6.2] When to escalate
 Escalate to the relationship manager for payments above the limit and for redirecting standing orders to new
-payees. Escalate to the security desk for account-security changes that need verification.
+payees. Escalate to the security desk for account-security changes that need verification. An approval covers
+only the limit or role it was asked for: it never replaces a confirmation the account holder must give herself.
 
 ### [BANK-6.3] Limits on resolution
 At most two clarification or approval rounds are made for one action; unresolved actions are blocked.

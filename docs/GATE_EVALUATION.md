@@ -922,3 +922,32 @@ to confirm, so these gold labels encode the old policy; relabel together with th
 A first try that bound each "yes" to one question topic broke the single "is this IBAN and amount right?" question
 (dev 93.2%) and was dropped; a yes to a different payee or amount is already discarded by `_binding`.
 Results: `results/data/2026-11-12_replay_review2_gate_fixes/`.
+
+## 2026-11-12: step 2, policy text and labels match the code
+
+Audit of every rule the code enforces against the handbooks, then:
+
+| Change | Detail |
+|---|---|
+| New clauses | BANK-2.8 daily total 5,000 and manager cap 5,000; BANK-2.9 / WS-2.11 repeated calls confirmed, placeholder arguments blocked; WS-2.10 unlabelled files count as INTERNAL and are confirmed before leaving, a contact list copied into recipients discloses it |
+| Clauses changed | WS-1.4 high-risk delegated tasks confirmed first (was: count as the request, contradicting `intent_confirm`); WS-5.2 / BANK-6.1 untraced recipient, target or amount confirmed; WS-6.2 / BANK-6.2 an approval never replaces the user's confirmation |
+| Retrieval | Coverage tags for the 4 new clauses; `policy_index.json` rebuilt from `train_human` (rebuild checked to reproduce the old index exactly first) |
+| Intent verbs | `checks._ACTION_WORDS` missed common requests: + move, owe, give (transfer), circulate, distribute, give, grant, ask, answer, write, message, "let X know" (disclose), put (modify). Shared by the gate and the label generator |
+| Label generator | `variants.decide` now follows the current policy (new-payee confirm, amount principle, intent, untraced target, split / daily total via `augment`). Agreement with human gold on `train_human`: 76.9% → 79.4%; the rest are judgement calls rules cannot settle, so NB03 drops the ~1,000 variants from training (`VARIANTS = False`) |
+| Combos oracle | "She only asked a question" now comes before payee and limits (BANK-6.1). Relabelled in place (the generator re-samples otherwise): 3 train, 1 dev combos case, all ESCALATE→ALLOW to ASK_USER→BLOCK |
+| Dev relabels | tuition `p1|r1-approved` (new payee after approval → confirm) and delegated budget `p1|r1-approved` (WS-1.4) → ASK_USER, final ALLOW. The training-schedule case was an intent-verb miss ("Give ... edit access"), fixed by the verb list instead |
+| Gold clauses | BANK-2.8 added where the daily total or manager cap applies: 5 train_human, 4 augmented, 1 attack case |
+| Metric | `unnecessary_deferral_of_allow`: asks / escalations over gold-ALLOW cases only (review 2: the old base also counts gold BLOCKs) |
+
+Replay (saved first-round model answers; base = review-2 gate fixes):
+
+| Model | Pool | Correct | Unsafe | Unneeded asks (old base) | Unneeded asks of ALLOW (new) |
+|---|---|---|---|---|---|
+| b5_v3_combo | dev | 100% (=) | 0 | 12.5% → 8.7% | 13/79 = 16.5% |
+| b5_v3_combo | combos | 99.5% (=) | 0 | 8.4% → 7.6% | 10/71 = 14.1% |
+| b5_v3 | dev | 100% (=) | 0 | 12.5% → 8.7% | 13/79 = 16.5% |
+| b5_v3 | combos | 99.5% (=) | 0 | 27.5% → 26.7% | 35/71 = 49.3% |
+
+Attacks and custom unchanged, 0 unsafe. Against the strict base, unneeded asks (16.5%) still miss the 10% target.
+The adapters were trained before the new clauses; the retrain (step 3) trains on the new clause text and data.
+Results: `results/data/2026-11-12_replay_step2_policy_labels/`.

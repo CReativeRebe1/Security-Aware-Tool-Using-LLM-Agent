@@ -15,6 +15,7 @@ GROUPS = {"A": ["b5_qlora_4way", "b4_qlora_binary"], "B": ["b5_no_prov", "b5_no_
           "V2": ["b5_v2"],        # retrained B5: + annotations/train_augmented.jsonl, 1 epoch, weighted loss
           "V3": ["b5_v3", "b5_v3_combo"]}   # final retrain, one per GPU: prepared data / + factor-combination data
 GROUP = "V3"
+VARIANTS = False                  # add the ~1,000 generated variants (old runs: True)
 CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2
 MAX_STEPS = None        # e.g. 20 for a smoke run
@@ -32,9 +33,11 @@ for kind in ("adapters", "checkpoints"):
             shutil.copytree(prev, dest)
 
 sft = f"{OUT}/sft"
-bootstrap.run([py, "-m", "sagate.train.variants", "--pool", "train_only", "--out", f"{sft}/train_only_variants.jsonl"])
-bootstrap.run([py, "-m", "sagate.train.variants", "--pool", "dev", "--out", f"{sft}/dev_cases.jsonl"])
-train_cases = [f"{sft}/train_only_variants.jsonl"]
+bootstrap.run([py, "-m", "sagate.train.variants", "--pool", "dev", "--out", f"{sft}/dev_cases.jsonl"])   # B4 threshold
+train_cases = []
+if VARIANTS:     # rule-labelled variants agree with the human gold on only ~79% of train_human: off since review 2
+    bootstrap.run([py, "-m", "sagate.train.variants", "--pool", "train_only", "--out", f"{sft}/train_only_variants.jsonl"])
+    train_cases.append(f"{sft}/train_only_variants.jsonl")
 nl = os.path.join(root, "annotations", "train_nl.jsonl")
 if os.path.exists(nl):
     train_cases.append(nl)

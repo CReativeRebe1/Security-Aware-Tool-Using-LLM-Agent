@@ -18,6 +18,8 @@ Every evaluation and training run, oldest first. **Final** marks the runs the re
 | `2026-11-12_e2e_smoke/` | 2026-11-12 | NB05 smoke: 2 AgentDojo scenarios per GPU per model | b5_v3, b5_v3_combo | 11eadd8 | – |
 | **`2026-11-12_replay_review_fixes/`** | 2026-11-12 | **Final** CPU replay of the selection run through the review fixes (`.base` = before, `.new` = after) | b5_v3, b5_v3_combo | review fixes | + amount relabel |
 | **`2026-11-12_e2e_agentdojo_b5v3/`** | 2026-11-12 | **Final** live AgentDojo: 142 test scenarios, noisy user (gate before the review fixes) | b5_v3_combo, b5_v3 | 11eadd8 | – |
+| `2026-11-12_replay_review2_gate_fixes/` | 2026-11-12 | CPU replay: review-2 gate fixes (approval ≠ user confirmation, untraced target, amount parser) | b5_v3, b5_v3_combo | aad241f | + amount relabel |
+| `2026-11-12_replay_step2_policy_labels/` | 2026-11-12 | CPU replay: handbook clauses BANK-2.8/2.9, WS-2.10/2.11, intent verbs, combos/dev relabels, strict unneeded-ask metric | b5_v3, b5_v3_combo | step 2 | + review-2 relabels |
 
 Each folder: `<pool>/<condition>[_noisy].jsonl` predictions, `.report.json` metrics, `.decision_log.jsonl` (facts,
 rule steps and model answer per round), `.manifest.json`. AgentDojo folders hold `traces.jsonl` per condition.
