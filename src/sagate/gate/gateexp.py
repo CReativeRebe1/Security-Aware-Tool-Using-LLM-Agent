@@ -29,8 +29,8 @@ from .guards import _approved, _confirmed, _payee_limit, _transfer_rules, apply_
 from .schema import GateInput, GateOutput
 
 PRE = ("declined", "credential_flow", "untrusted_provenance", "authority")
-POST = ("guards", "no_reescalate", "no_reask", "unknown_args", "intent_confirm", "new_payee_confirm",
-        "amount_confirm", "unlabelled_external", "route_authority")
+POST = ("guards", "no_reescalate", "no_reask", "unknown_args", "untraced_target", "intent_confirm",
+        "new_payee_confirm", "amount_confirm", "unlabelled_external", "route_authority")
 HIGH_RISK = {"disclose", "delete", "transfer", "account_change"}
 _PAYMENTS = ("send_money", "schedule_transaction")
 
@@ -74,16 +74,22 @@ def risk(gi: GateInput) -> str:
 
 
 def data_source(gi: GateInput) -> str:
-    """user | third_party | untrusted: where the authority-bearing arguments came from (C8 'is the data genuine')."""
+    """user | third_party | untrusted | unknown: where the authority-bearing arguments came from (C8 'is the data
+    genuine'). unknown: the recipient, or the target of a delete, could not be traced to the prompt or any output."""
     if gi.provenance is None:
         return "unknown"
-    content = set(spec(gi.proposed_call["function"]).content_args)
-    trust = [r.get("trust") for r in gi.provenance if r.get("kind") == "arg" and r.get("arg") not in content]
+    sp = spec(gi.proposed_call["function"])
+    content = set(sp.content_args)
+    args = [r for r in gi.provenance if r.get("kind") == "arg" and r.get("arg") not in content]
+    trust = [r.get("trust") for r in args]
     call = next((r for r in gi.provenance if r.get("kind") == "call"), {})
     if call.get("trust") == "untrusted" or "untrusted" in trust:
         return "untrusted"
     if "third_party" in trust:
         return "third_party"
+    targets = {*sp.destination_args, *([sp.resource_arg] if sp.resource_arg and sp.action == "delete" else [])}
+    if any(r.get("arg") in targets and r.get("trust") == "unknown" for r in args):
+        return "unknown"
     return "user"
 
 
@@ -501,7 +507,6 @@ def _ask(out: GateOutput, missing: str, reason: str) -> GateOutput:
 
 def post_rule(name: str, gi: GateInput, facts: dict, out: GateOutput, space: Sequence[str]) -> GateOutput:
     auth = gi.authority or {}
-    settled = _confirmed(gi) or _approved(gi)
     if name == "guards":
         return apply_guards(gi, out, space)
     approver_said_yes = any(h.get("kind") == "ESCALATE" and h.get("approved") for h in gi.resolution_history)
@@ -510,25 +515,33 @@ def post_rule(name: str, gi: GateInput, facts: dict, out: GateOutput, space: Seq
         return dataclasses.replace(out, decision="ALLOW", missing_evidence="none", guard="post:no_reescalate")
     if name == "no_reask" and out.decision == "ASK_USER" and _confirmed(gi) and auth.get("user_may_authorize", True):
         return dataclasses.replace(out, decision="ALLOW", missing_evidence="none", guard="post:no_reask")
-    if out.decision != "ALLOW" or settled:
-        if name == "route_authority" and out.decision == "ASK_USER" and auth.get("user_may_authorize") is False \
-                and not _approved(gi):
-            role = auth.get("required_role") if auth.get("required_role") not in (None, "none", "current_user") \
-                else "manager"
-            return dataclasses.replace(out, decision="ESCALATE", missing_evidence="approval",
-                                       required_authority=role, guard="post:route_authority")
+    if name == "route_authority" and out.decision == "ASK_USER" and auth.get("user_may_authorize") is False \
+            and not _approved(gi):
+        role = auth.get("required_role") if auth.get("required_role") not in (None, "none", "current_user") \
+            else "manager"
+        return dataclasses.replace(out, decision="ESCALATE", missing_evidence="approval",
+                                   required_authority=role, guard="post:route_authority")
+    if out.decision != "ALLOW":
         return out
-    if name == "intent_confirm" and facts["risk"] == "high" and facts["intent"] in ("not_asked", "delegated"):
+    # a user confirmation needs the user's own "yes" to this call (a yes to another payee / amount is dropped in
+    # augment); an approver's grant covers the approval, never the user's confirmation
+    if name == "untraced_target" and facts["data_source"] == "unknown" and facts["risk"] == "high" and \
+            not _confirmed(gi):
+        return _ask(out, "resource_target", "confirm:untraced_target")
+    if name == "intent_confirm" and facts["risk"] == "high" and facts["intent"] in ("not_asked", "delegated") and \
+            not _confirmed(gi):
         return _ask(out, "user_intent", f"confirm:intent_{facts['intent']}")
     if name == "new_payee_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
-            any(str(p).startswith("new_payee:") for p in auth.get("affected_party", [])):
+            any(str(p).startswith("new_payee:") for p in auth.get("affected_party", [])) and \
+            not _confirmed(gi):
         return _ask(out, "recipient_identity", "confirm:new_payee")
-    if name == "unknown_args" and facts.get("unknown_args"):
+    if name == "unknown_args" and facts.get("unknown_args") and not _confirmed(gi):
         return _ask(out, "resource_target", "confirm:unknown_args")
     if name == "amount_confirm" and spec(gi.proposed_call["function"]).action == "transfer" and \
-            not amount_from_user(gi):
+            not amount_from_user(gi) and not _confirmed(gi):
         return _ask(out, "user_intent", "confirm:amount_not_given")
-    if name == "unlabelled_external" and facts.get("label_source") == "default" and _external(gi):
+    if name == "unlabelled_external" and facts.get("label_source") == "default" and _external(gi) and \
+            not _confirmed(gi) and not _approved(gi):
         return _ask(out, "data_classification", "confirm:data_label")
     return out
 

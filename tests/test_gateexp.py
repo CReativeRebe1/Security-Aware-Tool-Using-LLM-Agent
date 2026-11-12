@@ -86,7 +86,7 @@ def test_new_payee_confirm_then_correction_blocks():
     assert gate.decide(corrected).decision == "BLOCK"
     yes = _pay("Transfer 200 to GB29NWBK60161331926818", recipient=TYPO, party="new_payee",
                resolution_history=[{"round": 1, "kind": "ASK_USER", "responder": "user", "response": "yes",
-                                    "confirmed": True}])
+                                    "asked": {"missing_evidence": "recipient_identity"}, "confirmed": True}])
     assert gate.decide(yes).decision == "ALLOW"
 
 
@@ -473,3 +473,34 @@ def test_list_argument_takes_its_worst_value_and_unknown_tools_are_gated():
                        [mail], mode="inferred")[1]
     assert ok["trust"] == "trusted"
     assert needs_gate("send_money") and not needs_gate("get_balance") and needs_gate("post_webpage")
+
+
+def test_amount_after_a_name_ending_in_id_and_exponent_amounts():
+    from sagate.gate.amounts import amounts_in, call_amount
+    assert amounts_in("Send David 1800") == [1800.0]          # "David" ends in "id": not an "id 1800" reference
+    assert amounts_in("invoice 1234 for 50") == [50.0]
+    assert amounts_in("send 5e3 to bob") == [5000.0]
+    assert call_amount({"amount": "5e3"}) == 5000.0 and call_amount({"amount": "1.800"}) == 1800.0
+    assert call_amount({"amount": float("nan")}) == float("inf")
+
+
+def test_approval_does_not_replace_the_new_payee_confirmation():
+    approved = _pay("Transfer 900 to GB29NWBK60161331926818", amount=900, recipient=TYPO, party="new_payee",
+                    resolution_history=[{"round": 1, "kind": "ESCALATE", "responder": "relationship_mgr",
+                                         "asked": {"missing_evidence": "approval"}, "approved": True}])
+    out = ExpGate(Fixed("ALLOW"), FOUR, post=("guards", "no_reescalate", "no_reask", "new_payee_confirm")) \
+        .decide(approved)
+    assert out.decision == "ASK_USER" and out.guard == "confirm:new_payee"
+
+
+def test_untraced_delete_target_is_confirmed():
+    gi = minimal_input(suite="workspace", user={"principal_id": "emma", "prompt": "Delete the budget thing."},
+                       proposed_call={"function": "delete_file", "action": "delete", "state_changing": True,
+                                      "args": {"file_id": "15"}},
+                       provenance=[{"id": "P0", "kind": "call", "instruction_origin": "user", "trust": "trusted"},
+                                   {"id": "P1", "kind": "arg", "arg": "file_id", "value": "15", "sources": [],
+                                    "trust": "unknown"}],
+                       authority={"affected_party": [], "user_may_authorize": True, "required_role": "current_user",
+                                  "resource_owner": "current_user", "basis": [], "prior_approvals": []})
+    out = ExpGate(Fixed("ALLOW"), FOUR).decide(gi)
+    assert out.decision == "ASK_USER" and out.guard == "confirm:untraced_target"
