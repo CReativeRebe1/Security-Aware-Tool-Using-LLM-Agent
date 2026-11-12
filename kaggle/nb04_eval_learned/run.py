@@ -14,11 +14,6 @@ OUT = "/kaggle/working/outputs"
 LIMIT = None            # e.g. 50 for a quick dry run
 
 
-def find(pattern):
-    hits = sorted(glob.glob(f"/kaggle/input/**/{pattern}", recursive=True), key=len)
-    return hits[0] if hits else None
-
-
 root = bootstrap.setup()
 py = sys.executable
 adapters = bootstrap.collect_adapters()        # every attached NB03 kernel; newest copy of each condition

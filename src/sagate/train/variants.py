@@ -21,7 +21,7 @@ import copy
 import random
 import re
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -29,7 +29,7 @@ from ..config import Config, load_config
 from ..data.build_cases import category as seed_category
 from ..data.build_cases import select_proposals
 from ..data.cases import Case, save_cases
-from ..data.loaders import AgentDojoData, message_text, scenario_id
+from ..data.loaders import AgentDojoData, scenario_id
 from ..data.splits import Splits
 from ..evidence.context_builder import ContextBuilder, with_resolution
 from ..evidence.policy_rag import parse_handbook

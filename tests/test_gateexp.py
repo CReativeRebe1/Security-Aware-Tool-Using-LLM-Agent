@@ -407,7 +407,7 @@ def test_split_in_words_to_an_approved_payee_escalates():
 
 
 def test_unreadable_amount_is_not_under_the_limit():
-    from sagate.gate.guards import over_cumulative, _amount
+    from sagate.gate.guards import _amount
     assert _amount({"args": {"amount": "a lot"}}) == float("inf")
     assert _amount({"args": {}}) == 0.0
 

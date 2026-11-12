@@ -14,7 +14,6 @@ from typing import Sequence
 import yaml
 
 from ..config import load_config
-from ..evidence.checks import numbers
 from ..evidence.provenance import flatten_values
 from ..evidence.tools_registry import spec
 from .amounts import amounts_in, call_amount

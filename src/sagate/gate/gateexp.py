@@ -22,8 +22,8 @@ from typing import Sequence
 import yaml
 
 from ..config import load_config
-from ..evidence.checks import _ACTION_WORDS, numbers
-from ..evidence.sensitivity import CLEARANCE, max_label, rank
+from ..evidence.checks import _ACTION_WORDS
+from ..evidence.sensitivity import max_label, rank
 from ..evidence.tools_registry import spec
 from .guards import _approved, _confirmed, _payee_limit, _transfer_rules, apply_guards, over_cumulative
 from .schema import GateInput, GateOutput

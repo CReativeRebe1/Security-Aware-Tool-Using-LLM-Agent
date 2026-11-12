@@ -47,8 +47,7 @@ train_cases.append(human)
 if GROUP in ("V2", "V3"):                  # rule-based copies of the human cases (sagate.train.augment)
     train_cases.append(os.path.join(root, "annotations", "train_augmented.jsonl"))
 print(f"group {GROUP}: {CONDITIONS}", flush=True)
-# one SFT build per condition: "_nt" without the clause coverage tags; train.extra_cases (e.g. the factor-combination
-# data) are added to that condition only
+# one SFT build per condition; train.extra_cases (e.g. the factor-combination data) are added to that condition only
 import yaml  # noqa: E402
 
 for c in CONDITIONS:
@@ -57,8 +56,8 @@ for c in CONDITIONS:
     missing_extra = [x for x in extra if not os.path.exists(x)]
     if missing_extra:
         sys.exit(f"{c}: extra cases not staged: {missing_extra}")
-    code = bootstrap.run(["env", f"SAGATE_RAG_TAGS={'0' if c.endswith('_nt') else '1'}", py, "-m",
-                          "sagate.train.build_sft", "--condition", c, "--cases", *train_cases, *extra, "--out", sft])
+    code = bootstrap.run([py, "-m", "sagate.train.build_sft", "--condition", c, "--cases", *train_cases, *extra,
+                          "--out", sft])
     if code:
         sys.exit(code)
 
