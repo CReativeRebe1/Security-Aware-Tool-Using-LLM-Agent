@@ -14,22 +14,27 @@ import bootstrap  # noqa: E402
 
 BUDGET_S = 2 * 3600
 LIMIT = None            # e.g. 20 for a quick dry run
-POOLS = ("custom",)   # set to ("attacks",) to rerun only the attack cases
-COND = "b5_v2_gateexp"              # b5_gateexp = run 1 adapter; b5_v2_gateexp / b5_v3_gateexp = retrained adapters
+POOLS = ("dev", "combos", "attacks", "custom")   # set to ("attacks",) to rerun only the attack cases
+COND = "b5_v3_gateexp"              # b5_gateexp = run 1 adapter; b5_v2_gateexp / b5_v3_gateexp = retrained adapters
 ADAPTER = {"b5_v2_gateexp": "b5_v2", "b5_v3_gateexp": "b5_v3", "b5_v3_nt_gateexp": "b5_v3_nt",
            "b5_v3_combo_gateexp": "b5_v3_combo"}.get(COND, "b5_qlora_4way")
 CUSTOM = "user_cases_2026-11-12.jsonl"   # POOLS = ("custom",) runs annotations/extra/<CUSTOM> only
 TAGS_AB = False                     # retrieval A/B: gpu0 without the clause coverage tags, gpu1 with them (clean only)
+COMPARE = ("b5_v3_gateexp", "b5_v3_combo_gateexp")   # model selection: one condition per GPU over POOLS, clean (no test)
+ADAPTERS = {"b5_v2_gateexp": "b5_v2", "b5_v3_gateexp": "b5_v3", "b5_v3_nt_gateexp": "b5_v3_nt",
+            "b5_v3_combo_gateexp": "b5_v3_combo"}
 OUT = "/kaggle/working/outputs/gateexp"
 t_end = int(time.time()) + BUDGET_S
 
 root = bootstrap.setup()
 py = sys.executable
 adapters = bootstrap.collect_adapters()
-if not adapters or not os.path.exists(f"{adapters}/{ADAPTER}"):
-    sys.exit(f"adapter not attached (no {ADAPTER} under /kaggle/input)")
+for _a in ([ADAPTERS.get(c, "b5_qlora_4way") for c in COMPARE] if COMPARE else [ADAPTER]):
+    if not adapters or not os.path.exists(f"{adapters}/{_a}"):
+        sys.exit(f"adapter not attached (no {_a} under /kaggle/input)")
 cases = {"test": os.path.join(root, "annotations", "test_cases.jsonl"),
          "dev": os.path.join(root, "annotations", "dev_cases.jsonl"),
+         "combos": os.path.join(root, "annotations", "dev_combos.jsonl"),   # held-out factor combinations
          "attacks": os.path.join(root, "annotations", "attack_cases.jsonl"),
          "custom": os.path.join(root, "annotations", "extra", CUSTOM)}
 cases = {k: v for k, v in cases.items() if os.path.exists(v)}
@@ -37,20 +42,23 @@ print("case files:", {k: os.path.basename(v) for k, v in cases.items()}, flush=T
 limit = f" --limit {LIMIT}" if LIMIT else ""
 
 
-def job(pool, responses="clean", tags=None):
+def job(pool, responses="clean", tags=None, cond=None):
+    cond = cond or COND
     if pool not in cases or pool not in POOLS:
         return None
-    env, out = ("SAGATE_RAG_TAGS=0 " if "_nt" in COND else ""), f"{OUT}/{pool}"
+    env, out = ("SAGATE_RAG_TAGS=0 " if "_nt" in cond else ""), f"{OUT}/{pool}"
     if tags is not None:
         env, out = f"SAGATE_RAG_TAGS={int(tags)} ", f"{OUT}/{'tags' if tags else 'notags'}/{pool}"
-    cmd = (f"{env}{py} -m sagate.eval.run_gate --condition {COND} --cases {cases[pool]} "
-           f"--pool {'test' if pool in ('attacks', 'custom') else pool} --responses {responses} --adapter-dir {adapters} "
+    cmd = (f"{env}{py} -m sagate.eval.run_gate --condition {cond} --cases {cases[pool]} "
+           f"--pool {'test' if pool in ('attacks', 'custom', 'test') else 'dev'} --responses {responses} --adapter-dir {adapters} "
            f"--out {out}{limit}")
     # skip when the budget is spent; a job that already started is allowed to finish
     return f'if [ "$(date +%s)" -lt {t_end} ]; then {cmd}; else echo "budget spent: skip {pool} {responses}"; fi'
 
 
-if POOLS == ("custom",):
+if COMPARE:
+    gpu0, gpu1 = ([j for j in (job(p, cond=c) for p in POOLS) if j] for c in COMPARE)
+elif POOLS == ("custom",):
     gpu0, gpu1 = [job("custom")], [job("custom", "noisy")]
 elif TAGS_AB:
     gpu0 = [j for j in (job("dev", tags=False), job("attacks", tags=False), job("test", tags=False)) if j]
@@ -65,7 +73,8 @@ codes = bootstrap.run_on_gpus([["bash", "-c", " ; ".join(gpu0)], ["bash", "-c", 
 
 for pool, path in cases.items():
     for base in ((f"{OUT}/notags/{pool}", f"{OUT}/tags/{pool}") if TAGS_AB else (f"{OUT}/{pool}",)):
-        for pred in sorted(glob.glob(f"{base}/{COND}*.jsonl")):
+        for pred in sorted(p for c in (COMPARE or (COND,)) for p in glob.glob(f"{base}/{c}*.jsonl")
+                           if not p.endswith((".decision_log.jsonl",))):
             name = os.path.basename(pred)[:-6]
             bootstrap.run([py, "-m", "sagate.eval.gateexp_report", "report", "--pred", pred, "--cases", path,
                            "--json", f"{base}/{name}.report.json"])

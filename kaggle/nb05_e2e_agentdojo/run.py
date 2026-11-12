@@ -10,8 +10,9 @@ import sys
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
 import bootstrap  # noqa: E402
 
-CONDITIONS = ["b5_qlora_4way"]
-EXTRA = ["b5_counterfactual"]   # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
+# final gate (selection run 2026-11-12): combo retrain first, then b5_v3; both inside the GateExp layers
+CONDITIONS = ["b5_v3_combo_gateexp", "b5_v3_gateexp"]
+EXTRA = []   # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
 NUM_SHARDS = 2
 LIMIT = None
 OUT = "/kaggle/working/outputs"

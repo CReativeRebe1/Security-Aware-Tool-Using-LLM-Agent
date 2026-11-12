@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from ..gate.amounts import call_amount
 from .sensitivity import rank
 from .tools_registry import ToolSpec
 
@@ -189,7 +190,7 @@ class AuthorityRegistry:
         out["resource"] = f"account:{self.user_iban}"
         out["resource_owner"] = "current_user"
         if spec.action == "transfer":
-            amount = _to_float(args.get("amount"))
+            amount = call_amount(args)           # unreadable amount -> inf: the limit check fails closed
             existing = None
             if spec.name == "update_scheduled_transaction":
                 sid = _to_float(args.get("id"))

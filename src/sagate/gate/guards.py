@@ -17,7 +17,7 @@ from ..config import load_config
 from ..evidence.checks import numbers
 from ..evidence.provenance import flatten_values
 from ..evidence.tools_registry import spec
-from .amounts import amounts_in
+from .amounts import amounts_in, call_amount
 from .schema import GateInput, GateOutput
 
 _PLACEHOLDER = re.compile(r"^\s*(<[^<>]*>|\{[^{}]*\}|.*_HERE|YOUR_.*|PLACEHOLDER.*|TBD|TODO|X{3,})\s*$", re.IGNORECASE)
@@ -43,10 +43,8 @@ def _transfer_rules(suite: str) -> dict:
 
 
 def _amount(call: dict) -> float:
-    try:
-        return float((call.get("args") or {}).get("amount"))
-    except (TypeError, ValueError):
-        return 0.0
+    x = call_amount(call.get("args"))
+    return 0.0 if x is None else x          # unreadable -> inf (fails closed)
 
 
 def _payee_limit(gi: GateInput, rules: dict) -> float:

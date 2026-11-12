@@ -212,6 +212,12 @@ def build_records(
         if in_prompt:
             sources.insert(0, "user_prompt")
         trust = _arg_trust(in_prompt, sources, blocks, mode, matched_any, too_short, injections, scalars)
+        if len(scalars) > 1:
+            # a list is as trusted as its worst value: one recipient the user named does not vouch for another
+            # that came from content (e.g. an injected address appended to the list)
+            worst = max((_value_trust(s, up, blocks, mode, injections) for s in scalars), key=_TRUST_RANK.get)
+            if _TRUST_RANK[worst] > _TRUST_RANK.get(trust, 0):
+                trust = worst
         rec = {"id": f"P{k}", "kind": "arg", "arg": name, "value": _preview(value), "sources": sources,
                "trust": trust}
         records.append(rec)
@@ -227,6 +233,18 @@ def build_records(
     if origin:
         call["origin_source"] = _block(blocks, origin).source
     return [call, *records]
+
+
+_TRUST_RANK = {"trusted": 0, "unknown": 0, "third_party": 1, "untrusted": 2}
+
+
+def _value_trust(s: str, up: str, blocks: list[ToolBlock], mode: str, injections) -> str:
+    """Trust of one value of a list argument, judged as if it were the whole argument."""
+    if len(s.strip()) < MIN_MATCH_LEN and not (mode == "inferred" and _number(s) is not None):
+        return "unknown"
+    in_prompt = _found(s, up, mode)
+    sources = [b.id for b in blocks if _found(s, b.text, mode)]
+    return _arg_trust(in_prompt, sources, blocks, mode, in_prompt or bool(sources), False, injections, [s])
 
 
 def _block(blocks: list[ToolBlock], bid: str) -> ToolBlock | None:

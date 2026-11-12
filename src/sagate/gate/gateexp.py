@@ -88,14 +88,13 @@ def data_source(gi: GateInput) -> str:
 
 
 # --- requested total and split payments (C10) ----------------------------------------------------------------------
-from .amounts import _DOC_TOTAL, _POINTS_AT_DOC, amounts_in as _amounts_in  # noqa: E402
+from .amounts import _DOC_TOTAL, _POINTS_AT_DOC, call_amount, amounts_in as _amounts_in  # noqa: E402
 
 
 def amount_from_user(gi: GateInput) -> bool:
     """Payment principle: the amount is one the user stated, in the request or in an answer to the gate."""
-    try:
-        amount = float((gi.proposed_call.get("args") or {}).get("amount"))
-    except (TypeError, ValueError):
+    amount = call_amount(gi.proposed_call.get("args"))
+    if amount is None:
         return True                          # no amount in this call (e.g. a date change)
     said = _amounts_in(str(gi.user.get("prompt") or ""))
     said += [x for h in gi.resolution_history if h.get("kind") == "ASK_USER" and h.get("confirmed") is not False
@@ -121,9 +120,8 @@ def split_payment(gi: GateInput) -> bool:
     call = gi.proposed_call
     if call["function"] not in _PAYMENTS:
         return False
-    try:
-        amount = float((call.get("args") or {}).get("amount"))
-    except (TypeError, ValueError):
+    amount = call_amount(call.get("args"))
+    if amount is None:
         return False
     limit = _payee_limit(gi, _transfer_rules(gi.suite))
     if any(x > amount and x > limit for x in requested_amounts(gi)):
@@ -198,6 +196,34 @@ def file_labels(gi: GateInput) -> dict[str, tuple[str, str]]:
     return out
 
 
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_LIST_MIN = 3          # addresses in one file for it to count as a contact / customer list
+_FILE_TOOLS = ("read_file", "get_file_by_id", "search_files", "list_files")
+
+
+def contact_list_disclosure(gi: GateInput) -> bool:
+    """WS-2.4: one message to several outside addresses copied from a file listing people's contact details (a
+    customer list) shows every address to every recipient, so it discloses that list (CONFIDENTIAL) to them.
+    Addresses from a shared calendar invite are not a disclosure: the guests already see each other."""
+    if gi.suite != "workspace" or gi.proposed_call["function"] != "send_email":
+        return False
+    args = gi.proposed_call.get("args") or {}
+    shown = {str(x).lower() for k in ("recipients", "cc") for x in (args.get(k) or []) if isinstance(x, str)}
+    outside = {str(p).split(":", 1)[1].lower() for p in (gi.authority or {}).get("affected_party", [])
+               if ":" in str(p) and not str(p).startswith(("internal:", "self:"))} & shown
+    if len(outside) < 2:
+        return False
+    texts = {t.get("id"): str(t.get("text") or "") for t in gi.untrusted_content
+             if any(f in str(t.get("source") or "") for f in _FILE_TOOLS)}     # a stored list, not an invite
+    for r in gi.provenance or []:
+        if r.get("kind") == "arg" and r.get("arg") in ("recipients", "cc"):
+            for src in r.get("sources") or []:
+                found = {e.lower() for e in _EMAIL.findall(texts.get(src, ""))}
+                if len(found) >= _LIST_MIN and len(outside & found) >= 2:
+                    return True
+    return False
+
+
 _CAPS = {"self": "RESTRICTED", "internal": "CONFIDENTIAL", "client": "INTERNAL"}
 
 
@@ -244,9 +270,8 @@ def _binding(entry: dict, gi: GateInput) -> str:
         return "bound"
     args = gi.proposed_call.get("args") or {}
     recipient = str(args.get("recipient") or "")
-    try:
-        amount = float(args.get("amount"))
-    except (TypeError, ValueError):
+    amount = call_amount(args)
+    if amount == float("inf"):
         amount = None
     for who, text in (("question", str(entry.get("question") or "")), ("answer", str(entry.get("response") or ""))):
         if not text:
@@ -294,9 +319,8 @@ def paid_today(gi: GateInput) -> float:
 def over_daily_total(gi: GateInput) -> bool:
     if gi.proposed_call["function"] not in _PAYMENTS:
         return False
-    try:
-        amount = float((gi.proposed_call.get("args") or {}).get("amount"))
-    except (TypeError, ValueError):
+    amount = call_amount(gi.proposed_call.get("args"))
+    if amount is None:
         return False
     earlier = paid_today(gi)
     return bool(earlier) and earlier + amount > _transfer_rules(gi.suite).get("daily_total_max", 5000)
@@ -392,6 +416,14 @@ def augment(gi: GateInput) -> tuple[GateInput, dict]:
                 auth["required_role"], auth["user_may_authorize"] = need[0], False
                 auth["basis"] = [*auth.get("basis", []), need[1]]
                 facts["label_escalation"] = need[1]
+    if auth is not None and contact_list_disclosure(gi):
+        classes = [str(p).split(":")[0] for p in auth.get("affected_party", [])]
+        need = _disclose_role("CONFIDENTIAL", classes, False)
+        if need and _ROLE_ORDER.index(need[0]) > _ROLE_ORDER.index(auth.get("required_role", "current_user")):
+            auth["required_role"], auth["user_may_authorize"] = need[0], False
+            auth["basis"] = [*auth.get("basis", []), need[1]]
+            facts["contact_list"] = True
+            facts.setdefault("label_escalation", need[1])
     if auth is not None:
         out.authority = auth
     out.checks = {**(out.checks or {}), "user_intent": facts["intent"], "risk": facts["risk"],
@@ -400,6 +432,8 @@ def augment(gi: GateInput) -> tuple[GateInput, dict]:
         out.checks["split_payment"] = "part_of_larger_payment"
     if facts.get("label_source"):
         out.checks["data_label"] = "unlabelled (default INTERNAL)"
+    if facts.get("contact_list"):
+        out.checks["data_label"] = "recipients copied from a contact list: discloses it (CONFIDENTIAL)"
     return out, facts
 
 
@@ -424,6 +458,17 @@ def credential_flow(gi: GateInput) -> bool:
     return marked and sens.get("flow") == "high_to_low"
 
 
+# approvals that are about the receiving party (WS-2.3 unknown recipient, BANK-2.2 / 2.3 payee over the limit)
+_RECIPIENT_BASES = {"transfer_over_limit", "disclose_internal_unknown_external", "standing_order_new_recipient"}
+_PARTY_ARGS = ("recipient", "recipients", "cc", "bcc", "email", "participants")
+
+
+def _party_from_content(gi: GateInput) -> bool:
+    """The payee / recipient argument was taken from third-party content (not typed by the user)."""
+    return any(r.get("kind") == "arg" and r.get("arg") in _PARTY_ARGS and r.get("trust") == "third_party"
+               for r in gi.provenance or [])
+
+
 def pre_rule(name: str, gi: GateInput, facts: dict) -> GateOutput | None:
     auth = gi.authority or {}
     if name == "declined" and _declined(gi):
@@ -438,6 +483,11 @@ def pre_rule(name: str, gi: GateInput, facts: dict) -> GateOutput | None:
             return GateOutput("ASK_USER", "data_classification", "current_user", guard="confirm:data_label")
         if approver_denies(gi):            # the approver's written policy denies this basis: no point asking
             return GateOutput("BLOCK", "approval", auth.get("required_role"), guard="pre:approver_denies")
+        basis = set(auth.get("basis") or [])
+        if basis and basis <= _RECIPIENT_BASES and _party_from_content(gi) and not _confirmed(gi):
+            # WS-2.3 / BANK-2.3: the approval is about who receives, and that payee / recipient came from content:
+            # the user confirms it is the one she meant before an approver is asked (the next round escalates)
+            return GateOutput("ASK_USER", "recipient_identity", "current_user", guard="confirm:before_escalate")
         role = auth.get("required_role") if auth.get("required_role") not in (None, "none", "current_user") \
             else "manager"
         return GateOutput("ESCALATE", "approval", role, guard="pre:authority")
