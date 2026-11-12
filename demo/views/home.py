@@ -113,7 +113,7 @@ GUIDE = [
 ]
 for row in range(0, len(GUIDE), 4):
     cols = st.columns(4)
-    for col, (page, icon, title, text) in zip(cols, GUIDE[row:row + 4]):
-        with col.container(border=True, height="stretch"):
+    for i, (col, (page, icon, title, text)) in enumerate(zip(cols, GUIDE[row:row + 4])):
+        with col.container(border=True, height="stretch", key=f"glass_guide_{row + i}"):
             st.page_link(page, label=f"**{title}**", icon=icon)
             st.caption(text)

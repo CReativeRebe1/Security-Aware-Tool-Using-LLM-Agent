@@ -33,7 +33,7 @@ for col, name in zip(cols, PRESETS):
     col.button(name, on_click=apply, args=(name,), width="stretch")
 
 left, right = st.columns([1, 1.55], gap="large")
-with left, st.container(border=True):
+with left, st.container(border=True, key="glass_lab_form"):
     st.markdown("#### Your payment")
     st.radio("Who gets the money?", list(L.PAYEES), key="lab_payee", index=0,
              format_func=lambda k: L.PAYEES[k][1], captions=[f"IBAN {L.PAYEES[k][0]}" for k in L.PAYEES])

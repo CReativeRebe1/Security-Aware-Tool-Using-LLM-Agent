@@ -75,16 +75,21 @@ TEMPLATE = r"""<!doctype html><html><head><meta charset="utf-8">
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, sans-serif; color: var(--ink); background: transparent; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-button { font: 600 14px Inter, sans-serif; border-radius: 10px; border: 1px solid var(--line); background: #fff;
-  padding: 8px 16px; cursor: pointer; color: var(--ink); }
-button.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+button { font: 600 14px Inter, sans-serif; border-radius: 12px; border: 1px solid rgba(255,255,255,.85);
+  background: rgba(255,255,255,.66); padding: 8px 16px; cursor: pointer; color: var(--ink);
+  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 6px 16px -10px rgba(30,58,110,.35); transition: transform .15s ease; }
+button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(255,255,255,.9); }
+button.primary { background: linear-gradient(120deg, #2a78d6, #5160dc); color: #fff; border-color: rgba(255,255,255,.25);
+  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 10px 22px -10px rgba(42,120,214,.8); }
+button.primary:hover:not(:disabled) { background: linear-gradient(120deg, #2a78d6, #5160dc); }
 button:disabled { opacity: .5; cursor: default; }
 .speed { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
-.progress { flex: 1; min-width: 160px; height: 8px; background: var(--soft); border-radius: 6px; overflow: hidden; }
-.progress > div { height: 100%; width: 0; background: linear-gradient(90deg, #2a78d6, #6aa8ee); transition: width .1s linear; }
+.progress { flex: 1; min-width: 160px; height: 8px; background: rgba(148,163,184,.2); border-radius: 999px; overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: linear-gradient(90deg, #2a78d6, #6a5ae0); transition: width .1s linear;
+  border-radius: 999px; }
 .count { font: 700 13px Inter; color: var(--ink2); min-width: 86px; text-align: right; }
-.lane { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+.lane { background: rgba(255,255,255,.62); border: 1px solid rgba(255,255,255,.85); border-radius: 18px;
+  padding: 13px 16px; margin-bottom: 10px; box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 12px 28px -16px rgba(30,58,110,.3); }
 .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .lane-name { font: 800 15px "Plus Jakarta Sans", Inter; }
 .lane-name small { font: 500 12px Inter; color: var(--ink3); margin-left: 6px; }
@@ -96,18 +101,21 @@ button:disabled { opacity: .5; cursor: default; }
 .t.on { animation: pop .25s ease; }
 @keyframes pop { 0% { transform: scale(.3); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
 .t:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
-.now { background: #0f1b33; color: #e7eefb; border-radius: 14px; padding: 12px 16px; margin: 6px 0 12px; font-size: 14px;
-  min-height: 74px; }
+.now { background: radial-gradient(420px 160px at 100% 0%, rgba(130,115,255,.45), transparent 65%),
+  linear-gradient(135deg, #0a1730, #143a72 70%, #22509a); color: #e7eefb; border-radius: 18px; padding: 13px 18px;
+  margin: 6px 0 12px; font-size: 14px; min-height: 74px; border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 18px 36px -22px rgba(19,54,107,.7), inset 0 1px 0 rgba(255,255,255,.14); }
 .now .k { font: 700 11px Inter; text-transform: uppercase; letter-spacing: .1em; color: #9cc4f5; }
 .now .req { font-size: 15px; margin: 4px 0 8px; color: #fff; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { font: 700 11.5px Inter; padding: 2px 8px; border-radius: 999px; background: #1f3358; color: #dbe8fb; }
+.chip { font: 700 11.5px Inter; padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.14); color: #dbe8fb; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); margin: 4px 0 10px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; font: 700 10px/14px Inter;
   color: #fff; text-align: center; font-style: normal; }
-.tip { position: fixed; pointer-events: none; background: #0f1b33; color: #e7eefb; font-size: 12.5px; padding: 8px 10px;
-  border-radius: 8px; max-width: 320px; display: none; z-index: 9; line-height: 1.4; }
+.tip { position: fixed; pointer-events: none; background: rgba(13,26,52,.94); color: #e7eefb; font-size: 12.5px;
+  padding: 8px 11px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); max-width: 320px; display: none; z-index: 9; line-height: 1.4; }
 .done { font: 600 13px Inter; color: #157347; display: none; }
 </style></head><body>
 <div class="bar">

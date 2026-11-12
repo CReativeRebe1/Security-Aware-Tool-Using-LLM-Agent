@@ -119,13 +119,13 @@ with tabs[1]:
                              text=[f"{d} {v:.0f}%" for v in vals], textposition="inside", insidetextanchor="middle",
                              textfont=dict(color="#ffffff", size=12), customdata=counts,
                              hovertemplate=f"<b>{d}</b> · %{{y}}<br>%{{customdata}} cases (%{{x:.1f}}%)<extra></extra>"))
-    fig.update_layout(barmode="stack", height=250, margin=dict(l=60, r=10, t=10, b=40), plot_bgcolor="#ffffff",
-                      paper_bgcolor="#ffffff", showlegend=True,
+    fig.update_layout(barmode="stack", height=250, margin=dict(l=60, r=10, t=10, b=40), plot_bgcolor="rgba(0,0,0,0)",
+                      paper_bgcolor="rgba(0,0,0,0)", showlegend=True,
                       legend=dict(orientation="h", y=-0.22, x=0, traceorder="normal"),
                       font=dict(color="#52514e"), hoverlabel=dict(bgcolor="white"))
     fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
     fig.update_yaxes(autorange="reversed", tickfont=dict(color="#0b0b0b", size=13), automargin=True)
-    with st.container(border=True):
+    with st.container(border=True, key="glass_research_mix"):
         st.plotly_chart(fig, width="stretch", theme=None)
     with st.expander("Show as a table", icon=":material/table:"):
         st.dataframe(pd.DataFrame({n: {d: mix[n][d] for d in X.DECISIONS} for n in names}), width="stretch")

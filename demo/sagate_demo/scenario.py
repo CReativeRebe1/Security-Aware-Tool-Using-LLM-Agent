@@ -72,7 +72,7 @@ def step_decisions(split, case_id, meta):
     C.comparison(runs, c)
     gx = next((r for r in runs if r.gate.key == NEWEST and r.trace is not None), None)
     if gx is not None:
-        with st.container(border=True):
+        with st.container(border=True, key=f"glass_path{k}"):
             st.markdown("**How the newest gate decided, layer by layer**")
             st.caption("GateExp computes facts, applies hard rules, asks the trained model only if no rule "
                        "decided, then runs checks that can only make the answer stricter. The highlighted layer "
@@ -252,7 +252,7 @@ def guided(split, case_id, meta=None):
     if i is None:          # clicking the selected step again deselects it; stay on step 1
         i = 0
     st.progress((i + 1) / len(STEPS))
-    with st.container(border=True):
+    with st.container(border=True, key=f"glass_step{k}"):
         st.markdown(f"### {i + 1} · {STEPS[i]}")
         RENDER[i](split, case_id, meta)
     b, _, n = st.columns([1, 3, 1])

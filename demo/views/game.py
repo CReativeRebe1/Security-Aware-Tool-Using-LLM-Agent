@@ -69,7 +69,7 @@ with left:
 
 with right:
     chosen = st.session_state.game_answer
-    with st.container(border=True):
+    with st.container(border=True, key="glass_game_choice"):
         st.markdown("#### What should the gate do?")
         for d in X.DECISIONS:
             st.button(f"{X.DECISION_ICON[d]}  {d}", key=f"g_{d}", on_click=answer, args=(d,), width="stretch",

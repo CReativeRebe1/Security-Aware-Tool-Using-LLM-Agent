@@ -39,16 +39,18 @@ def table(split: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-f0, f1, f2, f3 = st.columns([1.3, 1.4, 1.2, 1.3], vertical_alignment="bottom")
+# row 1: which dataset (needs the full width so all three options show) and the "disagree" switch
+t0, t1 = st.columns([2, 1], vertical_alignment="bottom")
 st.session_state.setdefault("ex_split", "test")
-split = f0.segmented_control("Dataset", list(D.SPLITS), format_func=lambda s: D.SPLITS[s],
+split = t0.segmented_control("Dataset", list(D.SPLITS), format_func=lambda s: D.SPLITS[s],
                              key="ex_split", help=D.SPLIT_HELP) or "test"
+only = t1.toggle("Only cases where the gates disagree", key="ex_dis")
 df = table(split)
+# row 2: the filters
+f1, f2, f3, t2 = st.columns(4, vertical_alignment="bottom")
 kinds = f1.multiselect("Kind of case", sorted(df["Kind"].unique()), key="ex_kind", placeholder="All kinds")
 gold = f2.multiselect("Right first decision", X.DECISIONS, key="ex_gold", placeholder="Any")
 q = f3.text_input("Search the request", key="ex_q", placeholder="e.g. invoice, password")
-t1, t2 = st.columns([1, 1.3], vertical_alignment="center")
-only = t1.toggle("Only cases where the gates disagree", key="ex_dis")
 codes_all = [GATES[k].code for k in recorded.available(split)]
 if st.session_state.get("ex_wrong") not in [None] + codes_all:
     st.session_state["ex_wrong"] = None

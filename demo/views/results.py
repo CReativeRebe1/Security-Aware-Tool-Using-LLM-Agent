@@ -7,8 +7,8 @@ from sagate_demo import data as D
 from sagate_demo import explain as X
 from sagate_demo.gates import FAMILY_COLOR, GATE_COLOR, GATES, NEWEST, OURS, recorded, reports
 
-SURFACE = "#ffffff"
-INK, INK2, GRID = "#0f172a", "#475569", "#eef1f6"
+SURFACE = "rgba(0,0,0,0)"   # transparent: the chart sits on a glass panel
+INK, INK2, GRID = "#0f172a", "#475569", "rgba(100,116,139,0.16)"
 
 C.page_hero("Results", "How well does each gate do?",
             "Every number comes straight from the team's result files and is scored the same way for every gate, "
@@ -77,7 +77,7 @@ if val(before, "Unsafe let through") and val(NEWEST, "Unsafe let through"):
 # ------------------------------------------------------------ two ways to count GateExp's questions
 gxr = D.gateexp_report(split)
 if gxr and val(NEWEST, "Questions not needed"):
-    with st.container(border=True):
+    with st.container(border=True, key="glass_results_counts"):
         st.markdown("#### Two ways to count GateExp's questions")
         q = val(NEWEST, "Questions not needed")
         C.show('<div class="sg-grid">'
@@ -118,7 +118,7 @@ for fam, name in [("rules", "Rules"), ("prompted", "Prompted AI"), ("trained", "
         x=[x for _, x, _ in sel], y=[y for _, _, y in sel], mode="markers+text", name=name,
         text=[GATES[r["_key"]].code for r, _, _ in sel], textposition="top center",
         textfont=dict(color=INK, size=12),
-        marker=dict(size=14, color=FAMILY_COLOR[fam], line=dict(width=2, color=SURFACE)),
+        marker=dict(size=14, color=FAMILY_COLOR[fam], line=dict(width=2, color="#ffffff")),
         customdata=[[r["Gate"], r["Unsafe let through"], r["Questions not needed"], r["Good actions blocked"]]
                     for r, _, _ in sel],
         hovertemplate="<b>%{customdata[0]}</b><br>Unsafe: %{customdata[1]}<br>Needless questions: "
@@ -129,7 +129,7 @@ if alt and gx_u and not noisy:
     fig.add_trace(go.Scatter(
         x=[alt[2]], y=[gx_u[2]], mode="markers+text", name="GX, GateExp's own count", text=["GX*"],
         textposition="middle right", textfont=dict(color=INK, size=12),
-        marker=dict(size=14, color=SURFACE, line=dict(width=2.5, color=FAMILY_COLOR["trained"])),
+        marker=dict(size=14, color="#ffffff", line=dict(width=2.5, color=FAMILY_COLOR["trained"])),
         hovertemplate="<b>GX counted GateExp's way</b><br>needless questions excluding confirmations: "
                       f"{gxr.get('unnecessary_deferral_excl_confirm')}<extra></extra>"))
 xmax = max([x for _, x, _ in pts] + [15]) * 1.12
@@ -142,7 +142,7 @@ fig.update_xaxes(title="Questions nobody needed (%)", range=[-2, xmax], gridcolo
                  automargin=True, ticksuffix="%")
 fig.update_yaxes(title="Unsafe actions let through (%)", range=[-1, ymax], gridcolor=GRID, zeroline=False,
                  automargin=True, ticksuffix="%")
-with st.container(border=True):
+with st.container(border=True, key="glass_results_pareto"):
     st.plotly_chart(fig, width="stretch", theme=None)
 b2 = table[table["_key"] == "b2_prompt_binary"]
 if not b2.empty and D.rate(b2.iloc[0]["Good actions blocked"]):
@@ -206,7 +206,7 @@ if not bd.empty:
                        hoverlabel=dict(bgcolor="white", font_color=INK))
     fig2.update_xaxes(title="Handled correctly (%)", range=[0, 100], gridcolor=GRID, ticksuffix="%")
     fig2.update_yaxes(autorange="reversed", tickfont=dict(color=INK), automargin=True)
-    with st.container(border=True):
+    with st.container(border=True, key="glass_results_kinds"):
         st.plotly_chart(fig2, width="stretch", theme=None)
     with st.expander("Show as a table", icon=":material/table:"):
         t = agg.assign(gate=agg["gate"].map(lambda k: GATES[k].code),
