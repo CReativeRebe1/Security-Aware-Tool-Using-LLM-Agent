@@ -77,58 +77,82 @@ def _img(name: str) -> str:
     return "data:image/svg+xml;base64," + base64.b64encode(D.asset(name).encode()).decode()
 
 
-def decision_mock() -> str:
-    """A product-style preview card for the home banner: one example decision, end to end (illustration)."""
-    ev = [("ok", "person", "Provenance", "payee and amount typed by the user"),
-          ("bad", "badge", "Authority", "1,850 is above the user's 1,500 limit"),
-          ("ok", "lock", "Sensitivity", "no secret data leaves"),
-          ("info", "menu_book", "Handbook", "BANK-2.1 · BANK-2.4")]
-    rows = "".join(f'<div class="sg-mock-ev {t}">{icon(i)}<span><b>{esc(k)}</b>{esc(v)}</span></div>'
-                   for t, i, k, v in ev)
-    opts = "".join(f'<span class="sg-mock-opt{" on" if d == "ESCALATE" else ""}">{esc(d)}</span>' for d in X.DECISIONS)
-    return (f'<div class="sg-mock"><div class="sg-mock-bar"><i></i><i></i><i></i><span>SA-Gate · one decision</span>'
-            f'<em>Example</em></div><div class="sg-mock-body">'
-            f'<div class="sg-mock-req"><span>User</span>“Pay the kitchen fitter 1,850.”</div>'
-            f'<div class="sg-mock-call">{icon("bolt")}<code>send_money(recipient=…, amount=1850)</code></div>'
-            f'<div class="sg-mock-evs">{rows}</div><div class="sg-mock-opts">{opts}</div>'
-            f'<div class="sg-mock-out">{icon("supervisor_account")}The relationship manager must approve first.</div>'
-            f'</div></div>')
+TEAM = ["Prabhash Padhan", "Rinkesh Verma", "Shubham Kumar Sunny", "Yogendra Patel"]
+COURSE = "CL3410 · Language Models and Agents · IIIT Hyderabad"
+
+
+def initials(name: str) -> str:
+    parts = name.split()
+    return (parts[0][0] + parts[-1][0]).upper()
+
+
+def avatar(name: str, i: int) -> str:
+    return f'<span class="sg-av c{i % 4 + 1}" title="{esc(name)}">{esc(initials(name))}</span>'
+
+
+def splash() -> None:
+    """Opening intro, shown once per visit: logo, project name, course and the team, then it fades into the site."""
+    team = "".join(f"<span><b>{esc(initials(n))}</b>{esc(n)}</span>" for n in TEAM)
+    show(f'<div class="sg-splash" aria-hidden="true"><div class="sg-splash-inner">'
+         f'<img class="sg-splash-logo" alt="" src="{_img("shield.svg")}">'
+         f'<div class="sg-splash-title">SA-Gate</div>'
+         f'<div class="sg-splash-sub">A security gate for tool-using AI agents</div>'
+         f'<div class="sg-splash-course">{esc(COURSE)}</div>'
+         f'<div class="sg-splash-by">Made by</div><div class="sg-splash-team">{team}</div>'
+         f'<div class="sg-splash-bar"><i></i></div></div></div>')
+
+
+def emblem() -> str:
+    """The home banner's art: a glowing shield in rotating rings, the four decisions floating around it."""
+    decs = [("d1", "ALLOW", "check"), ("d2", "BLOCK", "block"), ("d3", "ASK_USER", "help"), ("d4", "ESCALATE", "arrow_upward")]
+    chips = "".join(f'<span class="dec {c}">{icon(i)}{esc(d)}</span>' for c, d, i in decs)
+    return (f'<div class="sg-emblem"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>'
+            f'<div class="core"><img alt="" src="{_img("shield.svg")}"></div>{chips}</div>')
 
 
 def hero(eyebrow: str, title: str, text: str, art: str | None = None, highlight: str | None = None) -> None:
+    """Home banner. A title like 'SA-Gate: a security gate for AI assistants' becomes a big wordmark plus a line."""
     pic = ""
-    if art == "mock":
-        pic = f'<div class="sg-hero-art mock">{decision_mock()}</div>'
+    if art == "emblem":
+        pic = f'<div class="sg-hero-art">{emblem()}</div>'
     elif art:
         pic = f'<div class="sg-hero-art"><img alt="" src="{_img(art)}"></div>'
-    h = esc(title)
-    if highlight and esc(highlight) in h:
-        h = h.replace(esc(highlight), f'<span class="sg-grad">{esc(highlight)}</span>', 1)
+    name, _, line = title.partition(": ")
+    line = esc(line[:1].upper() + line[1:]) if line else ""
+    if highlight and line and esc(highlight) in line:
+        line = line.replace(esc(highlight), f'<span class="sg-grad">{esc(highlight)}</span>', 1)
+    head = f'<div class="sg-wordmark">{esc(name)}</div><h1>{line}</h1>' if line else f'<h1>{esc(title)}</h1>'
+    made = (f'<div class="sg-made"><div class="sg-avs">{"".join(avatar(n, i) for i, n in enumerate(TEAM))}</div>'
+            f'<div class="sg-made-txt">Made by<b>{" · ".join(esc(n) for n in TEAM)}</b></div></div>')
     show(f'<div class="sg-hero{" with-art" if art else ""}"><div class="sg-hero-copy"><div class="sg-eyebrow">'
-         f'{esc(eyebrow)}</div><h1>{h}</h1><p>{esc(text)}</p></div>{pic}</div>')
+         f'{esc(eyebrow)}</div>{head}<p>{esc(text)}</p>{made}</div>{pic}</div>')
+
+
+def heading(kicker: str, title: str, sub: str = "") -> str:
+    """A section heading as HTML: small coloured kicker, big title, optional grey line."""
+    s = f'<p class="sg-sub">{md(sub)}</p>' if sub else ""
+    return f'<div class="sg-kicker-lg">{esc(kicker)}</div><div class="sg-h2">{esc(title)}</div>{s}'
+
+
+def team_section() -> None:
+    cards = "".join(f'<div class="sg-member">{avatar(n, i)}<b>{esc(n)}</b><span>CL3410 · IIIT Hyderabad</span></div>'
+                    for i, n in enumerate(TEAM))
+    show(f'<div class="sg-team">{cards}</div>')
 
 
 def footer() -> None:
-    """Site footer: what the site shows, where the numbers come from, the team and the project links."""
-    src, fin = D.gateexp_source(), D.final_source()
+    """Site footer: what the project is, the team and the project links."""
     show(f'<footer class="sg-footer"><div class="sg-footer-grid">'
          f'<div><img class="sg-footer-logo" alt="SA-Gate" src="{_img("logo.svg")}">'
          f'<p>A security gate for tool-using AI agents: it allows, blocks, asks the user or asks a manager before '
-         f'any risky action runs. CL3410 course project, IIIT Hyderabad.</p></div>'
-         f'<div><h5>Results shown</h5><ul>'
-         f'<li>Run 1 · code <code>{esc(D.CODE_HASH)}</code> · 10–11 Nov</li>'
-         f'<li>GateExp · commit <code>{esc(src.get("commit", "?"))}</code> · 12 Nov</li>'
-         f'<li>Final design · commit <code>{esc(fin.get("run_commit", "?"))}</code> · 12 Nov</li></ul>'
-         f'<p>All scored against the same labels. Next: B4 and the ablations, trained 13 Nov, get scored; the final '
-         f'design takes the test set once.</p></div>'
-         f'<div><h5>Team</h5><ul><li>Prabhash Padhan</li><li>Rinkesh Verma</li><li>Shubham Kumar Sunny</li>'
-         f'<li>Yogendra Patel</li></ul></div>'
+         f'any risky action runs.</p><p>{esc(COURSE)}</p></div>'
+         f'<div><h5>Team</h5><ul>{"".join(f"<li>{esc(n)}</li>" for n in TEAM)}</ul></div>'
          f'<div><h5>Project</h5><ul>'
          f'<li><a href="{REPO_URL}" target="_blank" rel="noopener">{icon("code")}GitHub repository</a></li>'
          f'<li><a href="{REPORT_URL}" target="_blank" rel="noopener">{icon("description")}Project report (PDF)</a></li>'
          f'</ul></div></div>'
-         f'<div class="sg-footer-base">Recorded results from the team\'s runs · only the rules gate runs live on '
-         f'this server</div></footer>')
+         f'<div class="sg-footer-base"><span>Recorded results from the team\'s runs · only the rules gate runs live '
+         f'on this server</span><span>SA-Gate</span></div></footer>')
 
 
 def page_hero(eyebrow: str, title: str, text: str) -> None:

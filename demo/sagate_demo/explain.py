@@ -268,9 +268,9 @@ GLOSSARY = {
                     "GateExp counts these separately from needless questions.",
     "ablation": "Retrain the model with one part removed, to measure what that part is worth.",
     "qlora": "A cheap way to fine-tune a big model: keep it frozen in 4-bit form and train a small add-on.",
-    "gateexp": "The gate design from branch GateExp (11–12 Nov, now on main): fixed facts and hard rules around "
+    "gateexp": "The gate design from branch GateExp (now on main): fixed facts and hard rules around "
                "the trained model, plus checks after it that can only make its answer stricter.",
-    "final design": "What the team reports as its final gate (12 Nov): B5 retrained with factor-combination data, "
+    "final design": "What the team reports as its final gate: B5 retrained with factor-combination data, "
                     "inside the GateExp layers.",
     "combination cases": "216 generated cases that mix risk factors in pairs the training data never had. Labelled "
                          "by the team's rule program, not by hand.",
@@ -290,7 +290,7 @@ GLOSSARY = {
     "red team": "Cases written on purpose to try to break the gate.",
     "combinations": "216 generated cases that mix risk factors in pairs the training data never had. Labelled by the "
                     "team's rule program, not by hand.",
-    "frozen labels": "The team's official labels for train, dev and test, fixed on 9 Nov.",
+    "frozen labels": "The team's official labels for train, dev and test, fixed before Run 1.",
 }
 
 

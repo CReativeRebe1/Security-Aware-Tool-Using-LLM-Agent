@@ -5,9 +5,9 @@ from sagate_demo import explain as X
 from sagate_demo import flow as F
 
 G = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
-     'color="#d6dbe4" fillcolor="#ffffff" fontcolor="#0f172a" margin="0.18,0.08"]; edge [color="#94a3b8" '
-     'fontname="Helvetica" fontsize=10 fontcolor="#475569"];')
-BLUE = 'fillcolor="#4f46e5" fontcolor="white" color="#4f46e5"'
+     'color="#334155" fillcolor="#111a2e" fontcolor="#e2e8f0" margin="0.18,0.08"]; edge [color="#64748b" '
+     'fontname="Helvetica" fontsize=10 fontcolor="#94a3b8"];')
+BLUE = 'fillcolor="#6366f1" fontcolor="white" color="#818cf8"'
 
 C.page_hero("How it works", "From a request to a decision, in plain words",
             "Each tab explains one part. Words with a dotted underline, like [[provenance]], show a short "
@@ -114,7 +114,7 @@ with tabs[4]:
         {"Gate": "B2", "What it is": "Qwen3-8B with instructions", "Decisions": "2 (yes/no)", "Trained?": "No"},
         {"Gate": "B3", "What it is": "Qwen3-8B with instructions", "Decisions": "4", "Trained?": "No"},
         {"Gate": "B4", "What it is": "Qwen3-8B fine-tuned", "Decisions": "2 (yes/no)",
-         "Trained?": "Yes (13 Nov, scoring next)"},
+         "Trained?": "Yes (scoring next)"},
         {"Gate": "B5", "What it is": "Qwen3-8B fine-tuned, all evidence (ours)", "Decisions": "4", "Trained?": "Yes"},
         {"Gate": "GX / GX3", "What it is": "B5 retrained (v2, then v3 combo) inside the GateExp layers",
          "Decisions": "4", "Trained?": "Yes"},
@@ -122,7 +122,7 @@ with tabs[4]:
 
 with tabs[5]:
     st.markdown("#### The newest design: three layers around one trained model")
-    C.lead("Branch [[GateExp]] (Rinkesh, 11–12 Nov, now merged into main). The idea: **the model judges intent and "
+    C.lead("Branch [[GateExp]] (now merged into main). The idea: **the model judges intent and "
            "risk; code keeps "
            "exact state.** An AI is good at reading a request and the text around it, and bad at exact bookkeeping, "
            "like comparing two IBANs digit by digit or adding up today's payments. So exact checks moved into code.")
@@ -165,6 +165,6 @@ with tabs[6]:
     ])
     st.markdown("#### What's next")
     st.markdown("B4 and the ablations (B5 without provenance, without authority, without RAG… to measure what each "
-                "part is worth) were trained on 13 Nov; one scoring run on dev, red-team and test comes next, then "
+                "part is worth) are trained; one scoring run on dev, red-team and test comes next, then "
                 "the blind test set and the statistics. For this website: a live connection to the trained model on "
                 "a GPU. Today the AI results are the real recorded ones, and only the rules gate runs live.")

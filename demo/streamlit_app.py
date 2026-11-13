@@ -41,6 +41,9 @@ elif _deployed()["fingerprint"] != _fp:
     _deployed()["fingerprint"] = _fp
 
 C.load_css()
+if not st.session_state.get("_intro_shown"):      # the opening intro plays once per visit, not on every click
+    st.session_state["_intro_shown"] = True
+    C.splash()
 st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")
 
 pages = {

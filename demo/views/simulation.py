@@ -73,6 +73,6 @@ elif split == "test":
                           "Red-team or Combinations to watch it race."})
 if cards:
     C.cards(cards, two=len(cards) <= 2)
-C.note("Every square is a recorded decision from the team's runs (Run 1 on 10–11 Nov, GateExp and the final design "
-       "on 12 Nov), scored against the same labels for every gate. On the red-team and combination sets, B1 is "
+C.note("Every square is a recorded decision from the team's runs (Run 1, GateExp and the final design), scored "
+       "against the same labels for every gate. On the red-team and combination sets, B1 is "
        "computed live on this server.")

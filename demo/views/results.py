@@ -8,7 +8,7 @@ from sagate_demo import explain as X
 from sagate_demo.gates import FAMILY_COLOR, GATE_COLOR, GATES, NEWEST, OURS, PREV_GX, newest, recorded, reports
 
 SURFACE = "rgba(0,0,0,0)"   # transparent: the chart sits on a glass panel
-INK, INK2, GRID = "#0f172a", "#475569", "rgba(100,116,139,0.16)"
+INK, INK2, GRID, RING = "#e2e8f0", "#94a3b8", "rgba(148,163,184,0.14)", "#0b1120"   # dark theme
 
 C.page_hero("Results", "How well does each gate do?",
             "Every number comes straight from the team's result files and is scored the same way for every gate, "
@@ -131,7 +131,7 @@ for fam, name in [("rules", "Rules"), ("prompted", "Prompted AI"), ("trained", "
         x=[x for _, x, _ in sel], y=[y for _, _, y in sel], mode="markers+text", name=name,
         text=[GATES[r["_key"]].code for r, _, _ in sel], textposition="top center",
         textfont=dict(color=INK, size=12),
-        marker=dict(size=14, color=FAMILY_COLOR[fam], line=dict(width=2, color="#ffffff")),
+        marker=dict(size=14, color=FAMILY_COLOR[fam], line=dict(width=2, color=RING)),
         customdata=[[r["Gate"], r["Unsafe let through"], r["Questions not needed"], r["Good actions blocked"]]
                     for r, _, _ in sel],
         hovertemplate="<b>%{customdata[0]}</b><br>Unsafe: %{customdata[1]}<br>Needless questions: "
@@ -143,7 +143,7 @@ if alt and gx_u and not noisy:
         x=[alt[2]], y=[gx_u[2]], mode="markers+text", name=f"{GATES[nk].code}, the team's own count",
         text=[f"{GATES[nk].code}*"],
         textposition="middle right", textfont=dict(color=INK, size=12),
-        marker=dict(size=14, color="#ffffff", line=dict(width=2.5, color=FAMILY_COLOR["trained"])),
+        marker=dict(size=14, color=RING, line=dict(width=2.5, color=FAMILY_COLOR["trained"])),
         hovertemplate=f"<b>{GATES[nk].code} counted the team's way</b><br>needless questions excluding confirmations: "
                       f"{gxr.get('unnecessary_deferral_excl_confirm')}<extra></extra>"))
 xmax = max([x for _, x, _ in pts] + [15]) * 1.12
@@ -151,7 +151,7 @@ ymax = max([y for _, _, y in pts] + [10]) * 1.18
 fig.update_layout(height=440, margin=dict(l=70, r=20, t=30, b=60), plot_bgcolor=SURFACE, paper_bgcolor=SURFACE,
                   font=dict(color=INK2, family="Inter, sans-serif"),
                   legend=dict(orientation="h", y=1.08, x=0, font=dict(color=INK)),
-                  hoverlabel=dict(bgcolor="white", font_color=INK))
+                  hoverlabel=dict(bgcolor="#111a2e", font_color=INK, bordercolor="#334155"))
 fig.update_xaxes(title="Questions nobody needed (%)", range=[-2, xmax], gridcolor=GRID, zeroline=False,
                  automargin=True, ticksuffix="%")
 fig.update_yaxes(title="Unsafe actions let through (%)", range=[-1, ymax], gridcolor=GRID, zeroline=False,
@@ -217,7 +217,7 @@ if not bd.empty:
                        margin=dict(l=190, r=20, t=40, b=60), plot_bgcolor=SURFACE, paper_bgcolor=SURFACE,
                        font=dict(color=INK2, family="Inter, sans-serif"),
                        legend=dict(orientation="h", y=1.04, x=0, font=dict(color=INK), traceorder="normal"),
-                       hoverlabel=dict(bgcolor="white", font_color=INK))
+                       hoverlabel=dict(bgcolor="#111a2e", font_color=INK, bordercolor="#334155"))
     fig2.update_xaxes(title="Handled correctly (%)", range=[0, 100], gridcolor=GRID, ticksuffix="%")
     fig2.update_yaxes(autorange="reversed", tickfont=dict(color=INK), automargin=True)
     with st.container(border=True, key="glass_results_kinds"):
@@ -297,7 +297,7 @@ C.cards([
              "B5 rose to 20% unsafe. The live AgentDojo run above guesses provenance, and the final design let "
              "0 of 120 attacks through there."},
     {"kicker": C.icon("hourglass_top") + "Still open", "title": "B4 and the ablations: trained, scoring next", "status": "info",
-     "body": "B4 (yes/no) and the six [[ablation|ablations]] were trained on 13 Nov in four parallel runs (A–D) on "
+     "body": "B4 (yes/no) and the six [[ablation|ablations]] were trained in four parallel runs (A–D) on "
              "the final recipe, plus a second seed of B5. Their scores, which settle hypotheses H1–H3, come with "
              "the final scoring run."},
 ], two=True)

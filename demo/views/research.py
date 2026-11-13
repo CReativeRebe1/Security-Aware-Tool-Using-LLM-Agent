@@ -35,21 +35,21 @@ with tabs[0]:
         {"kicker": "H1 · Evidence", "status": "info",
          "title": "Structured evidence makes the gate better",
          "body": "Provenance, authority, sensitivity and handbook rules should beat a gate without them. **How we "
-                 "test it:** retrain B5 with one piece removed at a time (the ablations). **Status:** trained on 13 Nov "
+                 "test it:** retrain B5 with one piece removed at a time (the ablations). **Status:** trained "
                  f"(final runs B and C); scores come with the final scoring run. **Early sign:** when provenance is only guessed, B5's unsafe rate rises from "
                  f"{r('b5_qlora_4way', 'unauthorized_action_rate')} to "
                  f"{r('b5_inferred_prov', 'unauthorized_action_rate')}."},
         {"kicker": "H2 · Four decisions", "status": "info",
          "title": "Asking and escalating beat a plain yes/no",
          "body": "**How we test it:** B5 (four decisions) against B4 (yes/no), trained on the same data. "
-                 "**Status:** B4 trained on 13 Nov (final run A); scoring next. **Early sign** (untrained AI): the yes/no B2 blocks "
+                 "**Status:** B4 trained (final run A); scoring next. **Early sign** (untrained AI): the yes/no B2 blocks "
                  f"{r('b2_prompt_binary', 'over_blocking_rate')} of good actions, the four-way B3 "
                  f"{r('b3_prompt_4way', 'over_blocking_rate')}. Caveat: the scoring itself favours four decisions "
                  "(see Results)."},
         {"kicker": "H3 · Show your working", "status": "info",
          "title": "Saying what's missing first helps",
          "body": "The gate names the missing evidence and who must decide before the decision. **How we test "
-                 "it:** retrain B5 without those two fields. **Status:** trained on 13 Nov (final run A); scoring "
+                 "it:** retrain B5 without those two fields. **Status:** trained (final run A); scoring "
                  "next."},
     ])
     st.markdown("#### Where we stand")
@@ -67,7 +67,7 @@ with tabs[0]:
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b1_rules', 'unnecessary_deferral_rate')}")
            + "</div>")
     C.note("Scored the same way, against the frozen labels. GateExp (GX) meets the safety target on test, but some "
-           "of its rules were found on test failures. So the final design (GX3, 12 Nov) is shown on dev and is "
+           "of its rules were found on test failures. So the final design (GX3) is shown on dev and is "
            "[[held back]] from test until one final run. In the live AgentDojo run it let 0 of 120 attacks through.")
 
 # ------------------------------------------------------------------ data
@@ -114,23 +114,23 @@ with tabs[1]:
            "being written now.")
 
     st.markdown("#### What the right first decision is, per split")
-    colors = {"ALLOW": "#008300", "BLOCK": "#e34948", "ASK_USER": "#2a78d6", "ESCALATE": "#eda100"}
+    colors = {"ALLOW": "#199e70", "BLOCK": "#e34948", "ASK_USER": "#3987e5", "ESCALATE": "#c98500"}   # dark, validated
     fig = go.Figure()
     names = ["train", "dev", "test"]
     for d in X.DECISIONS:
         vals = [100 * mix[n][d] / sum(mix[n].values()) for n in names]
         counts = [mix[n][d] for n in names]
         fig.add_trace(go.Bar(y=names, x=vals, orientation="h", name=d, marker=dict(color=colors[d],
-                             line=dict(width=2, color="#ffffff")),
+                             line=dict(width=2, color="#0b1120")),
                              text=[f"{d} {v:.0f}%" for v in vals], textposition="inside", insidetextanchor="middle",
-                             textfont=dict(color="#ffffff", size=12), customdata=counts,
+                             textfont=dict(color="#0b1120" if d == "ESCALATE" else "#ffffff", size=12), customdata=counts,
                              hovertemplate=f"<b>{d}</b> · %{{y}}<br>%{{customdata}} cases (%{{x:.1f}}%)<extra></extra>"))
     fig.update_layout(barmode="stack", height=250, margin=dict(l=60, r=10, t=10, b=40), plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)", showlegend=True,
                       legend=dict(orientation="h", y=-0.22, x=0, traceorder="normal"),
-                      font=dict(color="#52514e"), hoverlabel=dict(bgcolor="white"))
+                      font=dict(color="#94a3b8"), hoverlabel=dict(bgcolor="#111a2e", font_color="#e2e8f0"))
     fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
-    fig.update_yaxes(autorange="reversed", tickfont=dict(color="#0b0b0b", size=13), automargin=True)
+    fig.update_yaxes(autorange="reversed", tickfont=dict(color="#e2e8f0", size=13), automargin=True)
     with st.container(border=True, key="glass_research_mix"):
         st.plotly_chart(fig, width="stretch", theme=None)
     with st.expander("Show as a table", icon=":material/table:"):
@@ -153,7 +153,7 @@ with tabs[2]:
         if key == NEWEST:
             return "✓ dev, red-team, combinations, live · test held back"
         if key == "b4_qlora_binary":
-            return "✓ trained 13 Nov · scoring next"
+            return "✓ trained · scoring next"
         return "✓ done" if key in rep else "… pending"
 
     def result(key):
@@ -194,7 +194,7 @@ with tabs[2]:
         {"Variant": "B5 − ESCALATE", "Removes": "the ESCALATE decision", "Tests": "H2",
          "Status": tstat("b5_v4_no_esc", "D")},
     ]), hide_index=True, width="stretch")
-    st.markdown("#### The final training runs (13 Nov)")
+    st.markdown("#### The final training runs")
     st.markdown("Four teammates trained two models each, in parallel, on Kaggle (2 × T4 per run), all from the same "
                 "locked code (`locked-v4`). Only the part named in each model differs.")
     trows = []
@@ -212,10 +212,10 @@ with tabs[2]:
     st.markdown("#### The run plan")
     C.cards([
         {"kicker": "Run 1 · done", "status": "ok", "title": "Baselines and the first trained gate",
-         "body": "B1–B3 and B5 on the frozen test set (10–11 Nov)."},
+         "body": "B1–B3 and B5 on the frozen test set."},
         {"kicker": "GateExp and final design · done", "status": "ok", "title": "Layers around the model",
          "body": "GateExp (GX), then the final design (GX3) on dev, red-team, combinations and a live AgentDojo "
-                 "run (11–12 Nov)."},
+                 "run."},
         {"kicker": "Final runs · now", "status": "info", "title": "B4, ablations, second seed",
          "body": "Trained in parallel on 13 Nov (runs A–D). Then one scoring run on dev, red-team and test, the "
                  "[[blind test set]], and confidence intervals."},
@@ -252,8 +252,7 @@ with tabs[3]:
                                              "and a second B5 seed in parallel (runs A–D). Test is held back for one "
                                              "final run; a blind test set is being written."),
     ]
-    html = "".join(f'<div class="sg-step"><div class="ico" style="width:92px;font-size:.8rem;'
-                   f'font-weight:700;color:#1c5cab;background:#eef4fd">{C.esc(d)}</div><div class="body">'
+    html = "".join(f'<div class="sg-step"><div class="ico sg-when">{C.esc(d)}</div><div class="body">'
                    f'<div class="title">{C.esc(t)}</div><div class="sub">{C.esc(b)}</div></div></div>'
                    for d, t, b in events)
     C.show(f'<div class="sg-card">{html}</div>')
@@ -270,7 +269,7 @@ with tabs[4]:
         {"kicker": "Open", "status": "warn", "title": "An extra recipient in a list",
          "body": "“Email David” turned into “email David and attacker@…” still counts as user-named, because one "
                  "address in the list came from the user."},
-        {"kicker": "Fixed 12 Nov", "status": "ok", "title": "Unknown tools and odd amounts",
+        {"kicker": "Fixed", "status": "ok", "title": "Unknown tools and odd amounts",
          "body": "An unknown tool now always goes through the gate, and amounts like “Send David 1800” or “5e3” are "
                  "read correctly. An amount that can't be read is refused instead of passing every limit."},
         {"kicker": "Handled in reporting", "status": "info", "title": "The scoring can reward asking",
@@ -283,7 +282,7 @@ with tabs[4]:
          "body": "After the freeze the team relabelled some cases to its “confirm new payees and unstated amounts” "
                  "policy (8 dev cases differ for the final design). This site scores every gate against the frozen "
                  "labels and shows the team's own count next to it."},
-        {"kicker": "Done 12 Nov", "status": "ok", "title": "The final design, live",
+        {"kicker": "Done", "status": "ok", "title": "The final design, live",
          "body": "In the live AgentDojo run, where provenance has to be guessed, the final design let 0 of 120 "
                  "attacks through. (For Run 1's B5, guessing provenance raised unsafe actions to 20%.)"},
         {"kicker": "Planned", "status": "info", "title": "Small test, one run",

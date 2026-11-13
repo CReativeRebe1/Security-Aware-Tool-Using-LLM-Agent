@@ -15,13 +15,13 @@ from .gates import GATES, recorded
 
 # tone -> (colour, symbol, label). Checked for colour-blind safety; symbols carry the meaning too.
 TONES = {
-    "ok": ("#2a78d6", "", "Correct"),
-    "extra": ("#eda100", "?", "Right outcome, but asked a question nobody needed"),
-    "skip": ("#eda100", "!", "Ran it without the user's confirmation"),
+    "ok": ("#3987e5", "", "Correct"),                                 # dark-mode steps, checked on the dark
+    "extra": ("#c98500", "?", "Right outcome, but asked a question nobody needed"),   # surface
+    "skip": ("#c98500", "!", "Ran it without the user's confirmation"),
     "unsafe": ("#e34948", "✕", "Unsafe: an action ran that should not have"),
-    "over": ("#52514e", "–", "Over-blocked: a good action was refused"),
+    "over": ("#64748b", "–", "Over-blocked: a good action was refused"),
     "wrong": ("#e34948", "✕", "Wrong outcome"),
-    "none": ("#e2e6ee", "", "Not scored for this gate"),
+    "none": ("#1e293b", "", "Not scored for this gate"),
 }
 
 
@@ -71,27 +71,27 @@ def html_page(data: dict, seconds: float = 14.0) -> str:
 TEMPLATE = r"""<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
 <style>
-:root { --ink:#0f172a; --ink2:#475569; --ink3:#64748b; --line:#e2e8f0; --soft:#f1f5f9; --blue:#4f46e5; }
+:root { --ink:#e2e8f0; --ink2:#94a3b8; --ink3:#64748b; --line:rgba(148,163,184,.16); --soft:#1e293b; --blue:#818cf8; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, sans-serif; color: var(--ink); background: transparent; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-button { font: 600 14px Inter, sans-serif; border-radius: 10px; border: 1px solid var(--line); background: #fff;
-  padding: 8px 16px; cursor: pointer; color: var(--ink); box-shadow: 0 1px 2px rgba(15,23,42,.05);
+button { font: 600 14px Inter, sans-serif; border-radius: 10px; border: 1px solid rgba(148,163,184,.28);
+  background: rgba(255,255,255,.04); padding: 8px 16px; cursor: pointer; color: var(--ink);
   transition: border-color .15s ease, color .15s ease; }
-button:hover:not(:disabled) { border-color: #a5b4fc; color: #4338ca; }
-button.primary { background: linear-gradient(180deg, #5b53ef, #4f46e5); color: #fff; border-color: #4338ca;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px -10px rgba(79,70,229,.9); }
-button.primary:hover:not(:disabled) { color: #fff; border-color: #4338ca; }
+button:hover:not(:disabled) { border-color: #818cf8; color: #fff; background: rgba(99,102,241,.14); }
+button.primary { background: linear-gradient(180deg, #6d68f2, #4f46e5); color: #fff; border-color: #6366f1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 10px 24px -10px rgba(99,102,241,.9); }
+button.primary:hover:not(:disabled) { color: #fff; border-color: #818cf8; background: linear-gradient(180deg, #6d68f2, #4f46e5); }
 button:disabled { opacity: .5; cursor: default; }
 .speed { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
-.progress { flex: 1; min-width: 160px; height: 8px; background: rgba(148,163,184,.2); border-radius: 999px; overflow: hidden; }
-.progress > div { height: 100%; width: 0; background: #4f46e5; transition: width .1s linear;
+.progress { flex: 1; min-width: 160px; height: 8px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: linear-gradient(90deg, #6366f1, #7dd3fc); transition: width .1s linear;
   border-radius: 999px; }
 .count { font: 700 13px Inter; color: var(--ink2); min-width: 86px; text-align: right; }
-.lane { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 13px 16px; margin-bottom: 10px;
-  box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+.lane { background: rgba(255,255,255,.035); border: 1px solid var(--line); border-radius: 14px; padding: 13px 16px;
+  margin-bottom: 10px; }
 .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.lane-name { font: 800 15px "Plus Jakarta Sans", Inter; }
+.lane-name { font: 800 15px Inter; color: #f8fafc; }
 .lane-name small { font: 500 12px Inter; color: var(--ink3); margin-left: 6px; }
 .stats { display: flex; gap: 12px; font-size: 12.5px; color: var(--ink2); flex-wrap: wrap; }
 .stats b { font: 800 14px Inter; color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -100,7 +100,7 @@ button:disabled { opacity: .5; cursor: default; }
   text-align: center; transition: transform .15s ease; }
 .t.on { animation: pop .25s ease; }
 @keyframes pop { 0% { transform: scale(.3); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
-.t:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+.t:hover { outline: 2px solid #fff; outline-offset: 1px; }
 .now { background: radial-gradient(420px 160px at 100% 0%, rgba(99,102,241,.45), transparent 65%),
   linear-gradient(160deg, #0b1220, #111a2e 60%, #1e1b4b); color: #e2e8f0; border-radius: 14px; padding: 13px 18px;
   margin: 6px 0 12px; font-size: 14px; min-height: 74px; border: 1px solid rgba(255,255,255,.14);
@@ -116,7 +116,7 @@ button:disabled { opacity: .5; cursor: default; }
   color: #fff; text-align: center; font-style: normal; }
 .tip { position: fixed; pointer-events: none; background: rgba(13,26,52,.94); color: #e7eefb; font-size: 12.5px;
   padding: 8px 11px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); max-width: 320px; display: none; z-index: 9; line-height: 1.4; }
-.done { font: 600 13px Inter; color: #157347; display: none; }
+.done { font: 600 13px Inter; color: #34d399; display: none; }
 </style></head><body>
 <div class="bar">
   <button class="primary" id="play">▶ Play</button>

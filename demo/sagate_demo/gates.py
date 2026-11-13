@@ -39,7 +39,7 @@ GATES: dict[str, GateInfo] = {g.key: g for g in [
     GateInfo("b3_prompt_4way", "B3", "Prompted AI · 4 choices", "prompted",
              "Qwen3-8B with instructions only, no training. All four decisions."),
     GateInfo("b4_qlora_binary", "B4", "Trained AI · yes/no", "trained",
-             "Qwen3-8B trained on our labels, but only ALLOW or BLOCK. Trained on 13 Nov (final run A); its scores "
+             "Qwen3-8B trained on our labels, but only ALLOW or BLOCK. Trained in final run A; its scores "
              "come with the final scoring run."),
     GateInfo("b5_qlora_4way", "B5", "Trained AI · 4 choices", "trained",
              "Our gate: Qwen3-8B fine-tuned (QLoRA) on our labels, all evidence, all four decisions."),
@@ -48,19 +48,19 @@ GATES: dict[str, GateInfo] = {g.key: g for g in [
     GateInfo("b5_inferred_prov", "B5-R", "B5 · realistic provenance", "trained",
              "B5 when 'where did this come from' is guessed by string matching, as a real system must."),
     GateInfo("b5_v2_gateexp", "GX", "B5 v2 + GateExp", "trained",
-             "GateExp design (11–12 Nov): a retrained B5 v2 inside layers of facts, hard rules and after-checks. "
+             "GateExp design: a retrained B5 v2 inside layers of facts, hard rules and after-checks. "
              "Scored on test, dev and the red-team set."),
     GateInfo("b5_v3_combo_gateexp", "GX3", "B5 v3 combo + GateExp (final design)", "trained",
-             "The design the team reports as final (12 Nov): B5 retrained with factor-combination data, inside the "
+             "The design the team reports as final: B5 retrained with factor-combination data, inside the "
              "GateExp layers with the review fixes. Test is held back for one final run."),
 ]}
 OURS = "b5_qlora_4way"
 NEWEST = "b5_v3_combo_gateexp"      # the final design (no test results yet: test is held back)
 PREV_GX = "b5_v2_gateexp"           # the GateExp version that was scored on test
-FAMILY_COLOR = {"trained": "#4f46e5", "prompted": "#eb6834", "rules": "#1baf7a"}   # validated palette (brand indigo)
+FAMILY_COLOR = {"trained": "#7b80f0", "prompted": "#d95926", "rules": "#199e70"}   # validated for the dark surface
 # Per-gate colours for grouped bars (order B1, B3, B5, GX, GX3 validated for adjacent pairs; GX3 also clear of B5).
-GATE_COLOR = {"b1_rules": "#1baf7a", "b3_prompt_4way": "#eb6834", "b5_qlora_4way": "#2a78d6",
-              "b5_v2_gateexp": "#e87ba4", "b5_v3_combo_gateexp": "#8a5a00"}
+GATE_COLOR = {"b1_rules": "#199e70", "b3_prompt_4way": "#d95926", "b5_qlora_4way": "#3987e5",
+              "b5_v2_gateexp": "#d55181", "b5_v3_combo_gateexp": "#c98500"}   # dark-mode steps, validated in order
 
 
 @dataclass
@@ -101,7 +101,7 @@ class RecordedSource:
                 note = "No confusing-reply run for this gate; showing the normal reply."
             preds = D.predictions(split, key)
         if preds is None:
-            return GateRun(g, None, "recorded", "Trained on 13 Nov; not scored yet." if key == "b4_qlora_binary"
+            return GateRun(g, None, "recorded", "Trained; not scored yet." if key == "b4_qlora_binary"
                            else "No recorded run on this set.")
         if case_id not in preds:
             return GateRun(g, None, "recorded", "Not scored here: the case starts after an answered question, and a "
