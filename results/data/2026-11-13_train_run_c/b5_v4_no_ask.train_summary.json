@@ -1,0 +1,184 @@
+{
+ "condition": "b5_v4_no_ask",
+ "model_id": "unsloth/Qwen3-8B-bnb-4bit",
+ "trainer": "peft",
+ "sft": "/kaggle/working/outputs/sft/b5_v4_no_ask.jsonl",
+ "seed": 42,
+ "examples": 1952,
+ "kept": 1952,
+ "dropped_over_max_length": 0,
+ "dropped_ids": [],
+ "median_tokens": 1436.5,
+ "max_tokens": 2092,
+ "train_tokens": 2869589,
+ "cost_term_rows": 1952,
+ "loss_weights": null,
+ "cost_matrix": {
+  "ALLOW": {
+   "ALLOW": 0.0,
+   "BLOCK": 1.0,
+   "ASK_USER": 0.5,
+   "ESCALATE": 0.5
+  },
+  "BLOCK": {
+   "ALLOW": 5.0,
+   "BLOCK": 0.0,
+   "ASK_USER": 0.5,
+   "ESCALATE": 0.5
+  },
+  "ASK_USER": {
+   "ALLOW": 3.0,
+   "BLOCK": 0.5,
+   "ASK_USER": 0.0,
+   "ESCALATE": 0.3
+  },
+  "ESCALATE": {
+   "ALLOW": 5.0,
+   "BLOCK": 0.5,
+   "ASK_USER": 0.5,
+   "ESCALATE": 0.0
+  }
+ },
+ "cost_lambda": 1.0,
+ "decision_smoothing": 0.1,
+ "group_weights": [
+  "bank|ALLOW|aug",
+  "bank|ALLOW|gen",
+  "bank|ALLOW|human",
+  "bank|BLOCK|aug",
+  "bank|BLOCK|gen",
+  "bank|BLOCK|human",
+  "bank|ESCALATE|aug",
+  "bank|ESCALATE|gen",
+  "bank|ESCALATE|human",
+  "ws|ALLOW|aug",
+  "ws|ALLOW|gen",
+  "ws|ALLOW|human",
+  "ws|BLOCK|aug",
+  "ws|BLOCK|gen",
+  "ws|BLOCK|human",
+  "ws|ESCALATE|aug",
+  "ws|ESCALATE|gen",
+  "ws|ESCALATE|human"
+ ],
+ "group_loss_end": {
+  "bank|ALLOW|aug": 0.1439,
+  "bank|ALLOW|gen": 0.0195,
+  "bank|ALLOW|human": 0.018,
+  "bank|BLOCK|aug": 0.2255,
+  "bank|BLOCK|gen": 0.0212,
+  "bank|BLOCK|human": 0.0327,
+  "bank|ESCALATE|aug": 0.0435,
+  "bank|ESCALATE|gen": 0.0107,
+  "bank|ESCALATE|human": 0.0469,
+  "ws|ALLOW|aug": 0.0901,
+  "ws|ALLOW|gen": 0.0057,
+  "ws|ALLOW|human": 0.0116,
+  "ws|BLOCK|aug": 0.0544,
+  "ws|BLOCK|gen": 0.0081,
+  "ws|BLOCK|human": 0.0275,
+  "ws|ESCALATE|aug": 0.124,
+  "ws|ESCALATE|gen": 0.0189,
+  "ws|ESCALATE|human": 0.0105
+ },
+ "train_loss": 0.40705974229046554,
+ "global_step": 122,
+ "runtime_s": 9829.879427909851,
+ "resumed_from": null,
+ "log_history": [
+  {
+   "loss": 1.0358,
+   "grad_norm": 4.080605506896973,
+   "learning_rate": 0.00019911528310040074,
+   "epoch": 0.08196721311475409,
+   "step": 10
+  },
+  {
+   "loss": 0.4522,
+   "grad_norm": 4.4176764488220215,
+   "learning_rate": 0.00019213119778704128,
+   "epoch": 0.16393442622950818,
+   "step": 20
+  },
+  {
+   "loss": 0.3878,
+   "grad_norm": 0.30889421701431274,
+   "learning_rate": 0.00017865515558026428,
+   "epoch": 0.2459016393442623,
+   "step": 30
+  },
+  {
+   "loss": 0.3716,
+   "grad_norm": 0.38496673107147217,
+   "learning_rate": 0.00015963673585385016,
+   "epoch": 0.32786885245901637,
+   "step": 40
+  },
+  {
+   "loss": 0.3505,
+   "grad_norm": 0.17986556887626648,
+   "learning_rate": 0.00013641605752528224,
+   "epoch": 0.4098360655737705,
+   "step": 50
+  },
+  {
+   "loss": 0.3398,
+   "grad_norm": 0.4188116490840912,
+   "learning_rate": 0.00011062934856473655,
+   "epoch": 0.4918032786885246,
+   "step": 60
+  },
+  {
+   "loss": 0.3369,
+   "grad_norm": 0.256290465593338,
+   "learning_rate": 8.409365039809281e-05,
+   "epoch": 0.5737704918032787,
+   "step": 70
+  },
+  {
+   "loss": 0.3332,
+   "grad_norm": 0.08407385647296906,
+   "learning_rate": 5.867878142316221e-05,
+   "epoch": 0.6557377049180327,
+   "step": 80
+  },
+  {
+   "loss": 0.3247,
+   "grad_norm": 0.1361469179391861,
+   "learning_rate": 3.617558163551802e-05,
+   "epoch": 0.7377049180327869,
+   "step": 90
+  },
+  {
+   "loss": 0.3255,
+   "grad_norm": 0.2032446265220642,
+   "learning_rate": 1.8169722409183097e-05,
+   "epoch": 0.819672131147541,
+   "step": 100
+  },
+  {
+   "loss": 0.3214,
+   "grad_norm": 0.14370687305927277,
+   "learning_rate": 5.929973332896677e-06,
+   "epoch": 0.9016393442622951,
+   "step": 110
+  },
+  {
+   "loss": 0.3241,
+   "grad_norm": 0.10520671308040619,
+   "learning_rate": 3.1879929692498757e-07,
+   "epoch": 0.9836065573770492,
+   "step": 120
+  },
+  {
+   "train_runtime": 9828.4486,
+   "train_samples_per_second": 0.199,
+   "train_steps_per_second": 0.012,
+   "total_flos": 1.3106077238418432e+17,
+   "train_loss": 0.40705974229046554,
+   "epoch": 1.0,
+   "step": 122
+  }
+ ],
+ "peak_gpu_gb": 7.584240913391113
+}
