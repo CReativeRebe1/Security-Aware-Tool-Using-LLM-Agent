@@ -1,0 +1,28 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_v4_no_inter] 25 cases (2.67s/case)
+[b5_v4_no_inter] 50 cases (2.64s/case)
+[b5_v4_no_inter] 75 cases (2.59s/case)
+[b5_v4_no_inter] 100 cases (2.52s/case)
+[b5_v4_no_inter] 125 cases (2.48s/case)
+[b5_v4_no_inter] 150 cases (2.42s/case)
+[b5_v4_no_inter] 175 cases (2.47s/case)
+[b5_v4_no_inter] 200 cases (2.41s/case)
+[b5_v4_no_inter] 225 cases (2.48s/case)
+warning: 1 gate prompts exceeded model.max_input_tokens
+b5_v4_no_inter: 236 predictions -> /kaggle/working/outputs/predictions/dev/b5_v4_no_inter.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_v4_no_inter] 25 cases (2.91s/case)
+[b5_v4_no_inter] 50 cases (2.63s/case)
+warning: 2 gate prompts exceeded model.max_input_tokens
+b5_v4_no_inter: 61 predictions -> /kaggle/working/outputs/predictions/attacks/b5_v4_no_inter.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b5_v4_no_inter] 25 cases (2.81s/case)
+[b5_v4_no_inter] 50 cases (2.86s/case)
+[b5_v4_no_inter] 75 cases (3.19s/case)
+[b5_v4_no_inter] 100 cases (3.15s/case)
+[b5_v4_no_inter] 125 cases (2.95s/case)
+[b5_v4_no_inter] 150 cases (2.86s/case)
+[b5_v4_no_inter] 175 cases (2.78s/case)
+[b5_v4_no_inter] 200 cases (2.75s/case)
+warning: 7 gate prompts exceeded model.max_input_tokens
+b5_v4_no_inter: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_v4_no_inter.jsonl

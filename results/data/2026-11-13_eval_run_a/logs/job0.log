@@ -1,0 +1,22 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b4_v4_binary_combo] 25 cases (3.56s/case)
+[b4_v4_binary_combo] 50 cases (3.55s/case)
+[b4_v4_binary_combo] 75 cases (3.54s/case)
+[b4_v4_binary_combo] 100 cases (3.53s/case)
+[b4_v4_binary_combo] 125 cases (3.56s/case)
+[b4_v4_binary_combo] 150 cases (3.56s/case)
+[b4_v4_binary_combo] 175 cases (3.59s/case)
+b4_v4_binary_combo: 187 predictions -> /kaggle/working/outputs/predictions/dev/b4_v4_binary_combo.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b4_v4_binary_combo] 25 cases (3.67s/case)
+[b4_v4_binary_combo] 50 cases (3.55s/case)
+warning: 3 gate prompts exceeded model.max_input_tokens
+b4_v4_binary_combo: 57 predictions -> /kaggle/working/outputs/predictions/attacks/b4_v4_binary_combo.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+[b4_v4_binary_combo] 25 cases (3.87s/case)
+[b4_v4_binary_combo] 50 cases (3.72s/case)
+[b4_v4_binary_combo] 75 cases (3.69s/case)
+[b4_v4_binary_combo] 100 cases (3.67s/case)
+[b4_v4_binary_combo] 125 cases (3.66s/case)
+[b4_v4_binary_combo] 150 cases (3.65s/case)
+b4_v4_binary_combo: 159 predictions -> /kaggle/working/outputs/predictions/test/b4_v4_binary_combo.jsonl
