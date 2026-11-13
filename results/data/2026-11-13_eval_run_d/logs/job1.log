@@ -1,0 +1,34 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794571394.194555      62 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_combo_seed2] 25 cases (5.99s/case)
+[b5_v4_combo_seed2] 50 cases (5.26s/case)
+[b5_v4_combo_seed2] 75 cases (5.03s/case)
+[b5_v4_combo_seed2] 100 cases (4.87s/case)
+[b5_v4_combo_seed2] 125 cases (4.94s/case)
+[b5_v4_combo_seed2] 150 cases (4.76s/case)
+[b5_v4_combo_seed2] 175 cases (4.79s/case)
+[b5_v4_combo_seed2] 200 cases (4.73s/case)
+[b5_v4_combo_seed2] 225 cases (4.87s/case)
+warning: 5 gate prompts exceeded model.max_input_tokens
+b5_v4_combo_seed2: 236 predictions -> /kaggle/working/outputs/predictions/dev/b5_v4_combo_seed2.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794572604.643978     185 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_combo_seed2] 25 cases (5.65s/case)
+[b5_v4_combo_seed2] 50 cases (5.00s/case)
+warning: 3 gate prompts exceeded model.max_input_tokens
+b5_v4_combo_seed2: 61 predictions -> /kaggle/working/outputs/predictions/attacks/b5_v4_combo_seed2.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794572917.858121      60 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_combo_seed2] 25 cases (5.85s/case)
+[b5_v4_combo_seed2] 50 cases (5.71s/case)
+[b5_v4_combo_seed2] 75 cases (6.06s/case)
+[b5_v4_combo_seed2] 100 cases (5.59s/case)
+[b5_v4_combo_seed2] 125 cases (5.31s/case)
+[b5_v4_combo_seed2] 150 cases (5.21s/case)
+[b5_v4_combo_seed2] 175 cases (5.06s/case)
+[b5_v4_combo_seed2] 200 cases (5.04s/case)
+warning: 30 gate prompts exceeded model.max_input_tokens
+b5_v4_combo_seed2: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_v4_combo_seed2.jsonl
