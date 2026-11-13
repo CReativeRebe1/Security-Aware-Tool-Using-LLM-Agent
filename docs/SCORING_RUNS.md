@@ -4,13 +4,13 @@ Each run scores **its own two trained models** on dev, attacks and test, on the 
 them** (NB04, model alone, no GateExp rules). The models come straight from your training kernel's output, so no
 adapter sharing is needed. The scores do not depend on who runs them: same locked code, same cases, greedy decoding.
 
-| Run | Models scored | Branch | Results folder |
-|---|---|---|---|
-| **A** | `b4_v4_binary_combo`, `b5_v4_no_inter` | `run-a` | `results/data/2026-11-13_eval_run_a/` |
-| **B** | `b5_v4_no_prov`, `b5_v4_no_auth` | `run-b` | `results/data/2026-11-13_eval_run_b/` |
-| **C** | `b5_v4_no_rag`, `b5_v4_no_ask` | `run-c` | `results/data/2026-11-13_eval_run_c/` |
-| **D** | `b5_v4_no_esc`, `b5_v4_combo_seed2` | `run-d` | `results/data/2026-11-13_eval_run_d/` |
-| V4 (Rinkesh) | `b5_v4_combo`, `b5_v4_inferred_prov` | `main` | `results/data/2026-11-13_eval_v4/` |
+| Run | Who | Models scored | Branch | Results folder |
+|---|---|---|---|---|
+| **A** | Prabhash | `b4_v4_binary_combo`, `b5_v4_no_inter` | `run-a` | `results/data/2026-11-13_eval_run_a/` |
+| **B** | Shubham | `b5_v4_no_prov`, `b5_v4_no_auth` | `run-b` | `results/data/2026-11-13_eval_run_b/` |
+| **C** | Yogendra | `b5_v4_no_rag`, `b5_v4_no_ask` | `run-c` | `results/data/2026-11-13_eval_run_c/` |
+| **D** | Yogendra | `b5_v4_no_esc`, `b5_v4_combo_seed2` | `run-d` | `results/data/2026-11-13_eval_run_d/` |
+| V4 | Rinkesh | `b5_v4_combo`, `b5_v4_inferred_prov` | `main` | `results/data/2026-11-13_eval_v4/` |
 
 Time: about 1 hour on 2 × T4 (one model per GPU). Run D: finish training first (`docs/TRAINING_RUNS.md`).
 
@@ -69,6 +69,22 @@ git add $D && git commit -m "Result: scoring run ${X^^} and nov13 <time>" && git
 
 Then open (or update) the pull request `run-x` → `main`. Commit only `results/data/2026-11-13_eval_run_x/`
 (predictions, reports, logs; a few MB). Never commit `gate_cache/`, adapters or checkpoints.
+
+## Two runs on one account (Yogendra: C and D)
+
+NB04 reads the models from the **latest** output of your training kernel `sagate-nb03-train-qlora`, and each new
+NB04 run replaces the previous NB04 output. So keep this order:
+
+1. **Score C first**, while your latest NB03 output still holds the C models: on `run-c`, `GROUP = "C"`, steps 1–4.
+   Download and commit the C results (step 4) **before** starting anything else.
+2. **Train D** (`docs/TRAINING_RUNS.md`, branch `run-d` from `locked-v4`, NB03 `GROUP = "D"`), and commit its training
+   results to `run-d` as usual.
+3. **Score D**: on `run-d`, `git merge origin/main`, NB04 `GROUP = "D"`, steps 2–4.
+
+If the D training already ran before C was scored, the C models are no longer in your latest NB03 output. Then attach
+the C models from your adapter dataset (training guide step 6): after staging, add `"<you>/sagate-adapters-run-c"` to
+`dataset_sources` in `build/kernels/nb04_eval_learned/kernel-metadata.json`, and push. If that dataset does not exist,
+post in the chat before doing anything.
 
 ## Rules
 
