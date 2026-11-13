@@ -87,7 +87,7 @@ through FastAPI and an ngrok tunnel.
 
 ```
 demo/
-  streamlit_app.py          entry point: page navigation, stylesheet, logo, sidebar
+  streamlit_app.py          entry point: top navigation bar, stylesheet, logo, footer
   views/                    the nine pages (home, playground, simulation, lab, game, explore, how_it_works, results,
                             research)
   sagate_demo/
@@ -100,7 +100,7 @@ demo/
     lab.py                  Gate Lab engine: made-up conversation -> the project's real ContextBuilder and gate
     simulation.py           the race: payload from recorded predictions + a self-contained HTML/JS page
   assets/style.css          the design: colours, cards, chips, tables (classes start with sg-)
-  assets/logo.svg, hero.svg  sidebar logo and the home-page illustration
+  assets/logo.svg, hero.svg  logo (top bar and footer); hero.svg is the earlier home illustration (unused)
   featured.yaml             the 7 Playground scenarios and their explanations
   data/gateexp/             GateExp predictions, reports, red-team cases, relabels, SOURCE.json (copied, not merged)
   tools/sync_gateexp.py     refreshes data/gateexp from the GateExp branch
@@ -108,7 +108,7 @@ demo/
                             dev label differences, training runs A–D status, SOURCE.json (copied from main)
   tools/sync_final.py       refreshes data/final from main
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
-  .streamlit/config.toml    theme: Inter / Plus Jakarta Sans / JetBrains Mono (Google Fonts), navy sidebar
+  .streamlit/config.toml    theme "Midnight Indigo": indigo brand on slate, Inter / JetBrains Mono (Google Fonts)
 ```
 
 Chart colors (green = rules, orange = prompted AI, blue = trained AI) were checked for colour-blind safety. Every

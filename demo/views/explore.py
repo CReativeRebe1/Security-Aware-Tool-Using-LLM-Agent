@@ -8,10 +8,12 @@ from sagate_demo import scenario as S
 from sagate_demo.gates import GATES, recorded
 
 C.page_hero("Explore", "Every case, every decision",
-            "All test, dev and red-team cases with what each gate decided. Filter the list, then **tick a row** to "
+            "All test, dev, red-team and combination cases with what each gate decided. Filter the list, then **tick a row** to "
             "open that case below, told step by step.")
 
-SYM = {"success": "✅", "warning": "🟡", "error": "❌"}
+SYM = {"success": "✓", "warning": "!", "error": "✕"}
+SYM_STYLE = {"✓": "color:#047857;font-weight:700", "!": "color:#b45309;font-weight:800",
+             "✕": "color:#b91c1c;font-weight:700", "–": "color:#94a3b8"}
 
 
 @st.cache_data(show_spinner="Loading cases…")
@@ -54,7 +56,7 @@ q = f3.text_input("Search the request", key="ex_q", placeholder="e.g. invoice, p
 codes_all = [GATES[k].code for k in recorded.available(split)]
 if st.session_state.get("ex_wrong") not in [None] + codes_all:
     st.session_state["ex_wrong"] = None
-wrong = t2.selectbox("Show only the mistakes (❌) of", [None] + codes_all, key="ex_wrong",
+wrong = t2.selectbox("Show only the mistakes (✕) of", [None] + codes_all, key="ex_wrong",
                      format_func=lambda c: "— any gate —" if c is None else
                      f"{c} · {next(g.name for g in GATES.values() if g.code == c)}")
 
@@ -71,10 +73,12 @@ if wrong:
     view = view[view["_wrong"].map(lambda w: wrong in w)]
 
 codes = [GATES[k].code for k in recorded.available(split)]
-st.caption(f"**{len(view)}** of {len(df)} cases · ✅ correct · 🟡 right outcome but with an unneeded question, or "
-           "ran without the user's confirmation · ❌ wrong · – not scored for that gate")
+st.caption(f"**{len(view)}** of {len(df)} cases · ✓ correct · ! right outcome but with an unneeded question, or "
+           "ran without the user's confirmation · ✕ wrong · – not scored for that gate")
+shown = view.drop(columns=["_disagree", "_gold_first", "_wrong"])
 sel = st.dataframe(
-    view.drop(columns=["_disagree", "_gold_first", "_wrong"]), hide_index=True, width="stretch", height=380,
+    shown.style.map(lambda v: SYM_STYLE.get(v, ""), subset=[c for c in codes if c in shown.columns]),
+    hide_index=True, width="stretch", height=380,
     on_select="rerun", selection_mode="single-row", key=f"ex_table_{split}",
     column_config={
         "case_id": None,

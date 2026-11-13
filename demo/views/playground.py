@@ -12,7 +12,7 @@ C.page_hero("Playground", "Seven real cases, told step by step",
 scen = D.featured()
 by_short = {s["short"]: s for s in scen}
 choice = st.pills("Choose a scenario", list(by_short), default=scen[0]["short"], key="pg_choice",
-                  format_func=lambda s: f"{by_short[s]['icon']} {s}")
+                  format_func=lambda s: f":material/{by_short[s]['icon']}: {s}")
 mode = st.segmented_control("View", ["Step by step", "All on one page"], default="Step by step", key="pg_mode",
                             label_visibility="collapsed")
 meta = by_short.get(choice or scen[0]["short"], scen[0])

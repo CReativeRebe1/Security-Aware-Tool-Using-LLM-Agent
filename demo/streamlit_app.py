@@ -27,15 +27,6 @@ pages = {
         st.Page("views/research.py", title="The research", icon=":material/biotech:"),
     ],
 }
-nav = st.navigation(pages)
-
-with st.sidebar:
-    src, fin = D.gateexp_source(), D.final_source()
-    st.caption(f"**Results shown**  \nRun 1 · code `{D.CODE_HASH}` (10–11 Nov)  \n"
-               f"GateExp · commit `{src.get('commit', '?')}` (12 Nov)  \n"
-               f"Final design · commit `{fin.get('run_commit', '?')}` (12 Nov)")
-    st.caption("All scored against the same labels. Next: B4 and the ablations, trained 13 Nov, get scored; the "
-               "final design takes the test set once.")
-    st.caption("CL3410 course project  \nPrabhash Padhan · Rinkesh Verma  \nShubham Kumar Sunny · Yogendra Patel")
-
+nav = st.navigation(pages, position="top")
 nav.run()
+C.footer()          # results shown, team and project links (what used to sit in the sidebar)

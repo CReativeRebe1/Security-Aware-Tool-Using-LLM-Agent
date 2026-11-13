@@ -8,7 +8,7 @@ from sagate_demo.gates import NEWEST, OURS, PREV_GX, reports
 C.hero("CL3410 course project · updated 13 Nov",
        "SA-Gate: a security gate for AI assistants",
        "AI assistants can now send emails, share files and move money. SA-Gate checks every risky action before "
-       "it happens. It allows it, blocks it, asks the user, or asks a manager.", art="hero.svg")
+       "it happens. It allows it, blocks it, asks the user, or asks a manager.", art="mock", highlight="AI assistants")
 
 a, b, c, _ = st.columns([1.25, 1.1, 1.1, 0.9])
 if a.button("Watch the gates race", icon=":material/sports_score:", type="primary", width="stretch"):
@@ -32,13 +32,13 @@ def pct(k, key, split="test"):
 C.section("The problem")
 st.markdown("### Three ways an assistant can go wrong")
 C.cards([
-    {"kicker": "Risk 1", "title": '<span class="sg-icon">🤖</span>It can act',
+    {"kicker": "Risk 1", "title": C.icon("smart_toy", "badge") + "It can act",
      "body": "The assistant doesn't just answer. It sends emails, deletes files and pays bills. A mistake can't be "
              "taken back."},
-    {"kicker": "Risk 2", "title": '<span class="sg-icon">📧</span>It can be tricked',
+    {"kicker": "Risk 2", "title": C.icon("mail", "badge") + "It can be tricked",
      "body": "An email or a bill can hide an instruction, a [[prompt injection]]. The assistant may obey it as if "
              "the user had said it."},
-    {"kicker": "Risk 3", "title": '<span class="sg-icon">🪪</span>It can overstep',
+    {"kicker": "Risk 3", "title": C.icon("badge", "badge") + "It can overstep",
      "body": "Even when the user asks, a big payment may need the manager, and secret data must never leave."},
 ])
 

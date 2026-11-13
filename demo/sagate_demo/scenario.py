@@ -154,7 +154,7 @@ def step_live(split, case_id, meta):
     st.markdown("Switch evidence on or off and the **rules gate (B1) runs again, live**, with the project's real "
                 "code. No AI and no GPU are needed. The defaults give exactly the recorded result.")
     if meta and meta.get("try"):
-        C.callout("lesson", "💡 Try this:", meta["try"])
+        C.callout("lesson", "Try this:", meta["try"])
     left, right = st.columns([1, 1.25], gap="large")
     with left:
         prov = st.segmented_control("Provenance: where things came from", ["known", "guessed", "hidden"],
@@ -216,10 +216,10 @@ def technical(split, case_id):
         st.markdown("**Computed checks**")
         st.dataframe(pd.DataFrame([{"Check": X.CHECK_PLAIN.get(a, a), "Result": str(b)} for a, b in gi.checks.items()]),
                      hide_index=True, width="stretch")
-    st.markdown("**The 8 rules the retriever picked** (⭐ = marked relevant by the labellers)")
+    st.markdown("**The 8 rules the retriever picked** (★ = marked relevant by the labellers)")
     gold = set(D.cases(split)[case_id].gold_clause_ids or [])
     for i, cl in enumerate(gi.policy_clauses or [], 1):
-        st.markdown(f"{i}. `{cl['id']}` {'⭐ ' if cl['id'] in gold else ''}**{cl['title']}**: {cl['text']}")
+        st.markdown(f"{i}. `{cl['id']}` {'★ ' if cl['id'] in gold else ''}**{cl['title']}**: {cl['text']}")
 
 
 # ---------------------------------------------------------------- layouts

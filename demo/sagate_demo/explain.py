@@ -186,7 +186,7 @@ def provenance_item(gi) -> EvidenceItem:
             status = _worst(status, "warn")
         else:
             points.append(("info", f"`{a}`: source not found"))
-    return EvidenceItem("Provenance", "🧭", status, headline, points)
+    return EvidenceItem("Provenance", "travel_explore", status, headline, points)
 
 
 def authority_item(gi) -> EvidenceItem:
@@ -200,9 +200,9 @@ def authority_item(gi) -> EvidenceItem:
         points.insert(0, ("warn", f"Why: {why}"))
         points.insert(1, ("warn" if not approvals else "ok",
                           "No recorded approval yet" if not approvals else f"{approvals} recorded approval(s)"))
-        return EvidenceItem("Authority", "🪪", "warn", f"Needs approval from {ROLE_PLAIN.get(a.get('required_role'))}",
+        return EvidenceItem("Authority", "badge", "warn", f"Needs approval from {ROLE_PLAIN.get(a.get('required_role'))}",
                             points)
-    return EvidenceItem("Authority", "🪪", "ok", "The user may do this alone",
+    return EvidenceItem("Authority", "badge", "ok", "The user may do this alone",
                         [("ok", "No one else needs to approve")] + points)
 
 
@@ -211,14 +211,14 @@ def sensitivity_item(gi) -> EvidenceItem:
     res, dest, flow = s.get("resource"), s.get("destination"), s.get("flow")
     basis = [("info", f"Found: {b.split(':', 1)[-1]}") for b in s.get("basis") or []]
     if flow == "high_to_low" and res == "RESTRICTED":
-        return EvidenceItem("Sensitivity", "🔒", "bad", "Top-secret data would leave",
+        return EvidenceItem("Sensitivity", "lock", "bad", "Top-secret data would leave",
                             [("bad", f"`{res}` data → `{dest}` destination")] + basis)
     if flow == "high_to_low":
-        return EvidenceItem("Sensitivity", "🔒", "warn", "Data would go somewhere less trusted",
+        return EvidenceItem("Sensitivity", "lock", "warn", "Data would go somewhere less trusted",
                             [("warn", f"`{res}` data → `{dest}` destination")] + basis)
     if flow == "n/a":
-        return EvidenceItem("Sensitivity", "🔒", "ok", "No data leaves", [("info", f"Item label: `{res}`")] + basis)
-    return EvidenceItem("Sensitivity", "🔒", "ok", "Data and destination match",
+        return EvidenceItem("Sensitivity", "lock", "ok", "No data leaves", [("info", f"Item label: `{res}`")] + basis)
+    return EvidenceItem("Sensitivity", "lock", "ok", "Data and destination match",
                         [("info", f"`{res}` data → `{dest}` destination")] + basis)
 
 
@@ -231,7 +231,7 @@ def rules_item(gi, c: Case | None = None) -> EvidenceItem:
     if len(got) > 4:
         points.append(("info", f"… and {len(got) - 4} more"))
     head = f"Found {found} of the {len(gold)} key rules" if gold else f"The {len(got)} most relevant rules"
-    return EvidenceItem("Handbook rules (RAG)", "📖", status, head, points)
+    return EvidenceItem("Handbook rules (RAG)", "menu_book", status, head, points)
 
 
 def evidence(gi, c: Case | None = None) -> list[EvidenceItem]:

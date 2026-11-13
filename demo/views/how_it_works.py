@@ -46,20 +46,20 @@ with tabs[0]:
 with tabs[1]:
     st.markdown("#### Four kinds of facts the gate gets")
     C.cards([
-        {"kicker": "🧭 Provenance", "title": "Where did it come from?", "status": "info",
+        {"kicker": C.icon("travel_explore") + "Provenance", "title": "Where did it come from?", "status": "info",
          "body": "For the action and every argument: did the **user** say it, or did it come from an email, file or "
                  "transaction? An action caused by content is the mark of a prompt injection. Two versions: "
                  "“known” (the benchmark tells us what was injected, best case) and “guessed” (string matching, "
                  "what a real system can do)."},
-        {"kicker": "🪪 Authority", "title": "Who may approve?", "status": "info",
+        {"kicker": C.icon("badge") + "Authority", "title": "Who may approve?", "status": "info",
          "body": "Tables of roles and limits. For example, a user may pay a known payee up to 1,500 and a new payee "
                  "up to 500. Above that, the relationship manager must approve. “The manager already approved it” "
                  "written inside content never counts."},
-        {"kicker": "🔒 Sensitivity", "title": "How secret, and where to?", "status": "info",
+        {"kicker": C.icon("lock") + "Sensitivity", "title": "How secret, and where to?", "status": "info",
          "body": "Labels PUBLIC < INTERNAL < CONFIDENTIAL < RESTRICTED on data and destinations. Secret data "
                  "going somewhere less trusted is a warning sign. RESTRICTED data (passwords, reset links) never "
                  "leaves."},
-        {"kicker": "📖 Handbook rules", "title": "Which rules apply?", "status": "info",
+        {"kicker": C.icon("menu_book") + "Handbook rules", "title": "Which rules apply?", "status": "info",
          "body": "The 8 most relevant of our 48 written rules, found by retrieval (next tab)."},
     ], two=True)
 
@@ -158,15 +158,15 @@ with tabs[5]:
 with tabs[6]:
     st.markdown("#### How we keep the test honest")
     C.cards([
-        {"kicker": "✂️ Split by family", "title": "No near-copies in the test",
+        {"kicker": C.icon("call_split") + "Split by family", "title": "No near-copies in the test",
          "body": "Cases are split by scenario family, so near-identical cases never appear in both training and "
                  "test."},
-        {"kicker": "🔒 Test is the final exam", "title": "No tuning on test (with one exception)",
+        {"kicker": C.icon("lock") + "Test is the final exam", "title": "No tuning on test (with one exception)",
          "body": "Thresholds and the rule index come from training and dev data only. Exception: some GateExp rules "
                  "were found by looking at test failures. So the final design is [[held back]] from test until one "
                  "final run, and a [[blind test set]] of about 100 new cases is being written from the handbook "
                  "alone."},
-        {"kicker": "🧾 Traceable", "title": "Every result is stamped",
+        {"kicker": C.icon("receipt_long") + "Traceable", "title": "Every result is stamped",
          "body": "Every result file records the code version and settings it came from."},
     ])
     st.markdown("#### What's next")

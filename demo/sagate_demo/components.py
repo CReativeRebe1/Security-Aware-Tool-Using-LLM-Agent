@@ -37,16 +37,28 @@ def show(markup: str) -> None:
     st.html(markup)
 
 
+def icon(name: str, cls: str = "") -> str:
+    """A line icon from Material Symbols (the icon font Streamlit already loads for its own menus)."""
+    return f'<span class="sg-mi {cls}" aria-hidden="true">{esc(name)}</span>'
+
+
+REPO_URL = "https://github.com/CReativeRebe1/Security-Aware-Tool-Using-LLM-Agent"
+REPORT_URL = REPO_URL + "/blob/main/docs/report/gate_report.pdf"
+
+
 def load_css() -> None:
     st.html(f"<style>{D.asset('style.css')}</style>")
 
 
 # ---------------------------------------------------------------- atoms
 
+CHIP_ICON = {"ALLOW": "check", "BLOCK": "block", "ASK_USER": "help", "ESCALATE": "arrow_upward"}
+
+
 def chip(decision: str | None) -> str:
     if not decision:
         return '<span class="sg-chip NONE">—</span>'
-    return f'<span class="sg-chip {esc(decision)}">{X.DECISION_ICON.get(decision, "")} {esc(decision)}</span>'
+    return f'<span class="sg-chip {esc(decision)}">{icon(CHIP_ICON.get(decision, "circle"))}{esc(decision)}</span>'
 
 
 def tag(text: str, cls: str = "") -> str:
@@ -60,13 +72,63 @@ def verdict(v: X.Verdict | None) -> str:
     return f'<span class="sg-verdict {v.tone}">{icon} {esc(v.short)}</span>'
 
 
-def hero(eyebrow: str, title: str, text: str, art: str | None = None) -> None:
+def _img(name: str) -> str:
+    """st.html strips inline <svg>; an <img> with a data URL survives the sanitizer."""
+    return "data:image/svg+xml;base64," + base64.b64encode(D.asset(name).encode()).decode()
+
+
+def decision_mock() -> str:
+    """A product-style preview card for the home banner: one example decision, end to end (illustration)."""
+    ev = [("ok", "person", "Provenance", "payee and amount typed by the user"),
+          ("bad", "badge", "Authority", "1,850 is above the user's 1,500 limit"),
+          ("ok", "lock", "Sensitivity", "no secret data leaves"),
+          ("info", "menu_book", "Handbook", "BANK-2.1 · BANK-2.4")]
+    rows = "".join(f'<div class="sg-mock-ev {t}">{icon(i)}<span><b>{esc(k)}</b>{esc(v)}</span></div>'
+                   for t, i, k, v in ev)
+    opts = "".join(f'<span class="sg-mock-opt{" on" if d == "ESCALATE" else ""}">{esc(d)}</span>' for d in X.DECISIONS)
+    return (f'<div class="sg-mock"><div class="sg-mock-bar"><i></i><i></i><i></i><span>SA-Gate · one decision</span>'
+            f'<em>Example</em></div><div class="sg-mock-body">'
+            f'<div class="sg-mock-req"><span>User</span>“Pay the kitchen fitter 1,850.”</div>'
+            f'<div class="sg-mock-call">{icon("bolt")}<code>send_money(recipient=…, amount=1850)</code></div>'
+            f'<div class="sg-mock-evs">{rows}</div><div class="sg-mock-opts">{opts}</div>'
+            f'<div class="sg-mock-out">{icon("supervisor_account")}The relationship manager must approve first.</div>'
+            f'</div></div>')
+
+
+def hero(eyebrow: str, title: str, text: str, art: str | None = None, highlight: str | None = None) -> None:
     pic = ""
-    if art:   # st.html strips inline <svg>; an <img> with a data URL survives the sanitizer
-        b64 = base64.b64encode(D.asset(art).encode()).decode()
-        pic = f'<div class="sg-hero-art"><img alt="" src="data:image/svg+xml;base64,{b64}"></div>'
-    show(f'<div class="sg-hero{" with-art" if art else ""}"><div><div class="sg-eyebrow">{esc(eyebrow)}</div>'
-         f'<h1>{esc(title)}</h1><p>{esc(text)}</p></div>{pic}</div>')
+    if art == "mock":
+        pic = f'<div class="sg-hero-art mock">{decision_mock()}</div>'
+    elif art:
+        pic = f'<div class="sg-hero-art"><img alt="" src="{_img(art)}"></div>'
+    h = esc(title)
+    if highlight and esc(highlight) in h:
+        h = h.replace(esc(highlight), f'<span class="sg-grad">{esc(highlight)}</span>', 1)
+    show(f'<div class="sg-hero{" with-art" if art else ""}"><div class="sg-hero-copy"><div class="sg-eyebrow">'
+         f'{esc(eyebrow)}</div><h1>{h}</h1><p>{esc(text)}</p></div>{pic}</div>')
+
+
+def footer() -> None:
+    """Site footer: what the site shows, where the numbers come from, the team and the project links."""
+    src, fin = D.gateexp_source(), D.final_source()
+    show(f'<footer class="sg-footer"><div class="sg-footer-grid">'
+         f'<div><img class="sg-footer-logo" alt="SA-Gate" src="{_img("logo.svg")}">'
+         f'<p>A security gate for tool-using AI agents: it allows, blocks, asks the user or asks a manager before '
+         f'any risky action runs. CL3410 course project, IIIT Hyderabad.</p></div>'
+         f'<div><h5>Results shown</h5><ul>'
+         f'<li>Run 1 · code <code>{esc(D.CODE_HASH)}</code> · 10–11 Nov</li>'
+         f'<li>GateExp · commit <code>{esc(src.get("commit", "?"))}</code> · 12 Nov</li>'
+         f'<li>Final design · commit <code>{esc(fin.get("run_commit", "?"))}</code> · 12 Nov</li></ul>'
+         f'<p>All scored against the same labels. Next: B4 and the ablations, trained 13 Nov, get scored; the final '
+         f'design takes the test set once.</p></div>'
+         f'<div><h5>Team</h5><ul><li>Prabhash Padhan</li><li>Rinkesh Verma</li><li>Shubham Kumar Sunny</li>'
+         f'<li>Yogendra Patel</li></ul></div>'
+         f'<div><h5>Project</h5><ul>'
+         f'<li><a href="{REPO_URL}" target="_blank" rel="noopener">{icon("code")}GitHub repository</a></li>'
+         f'<li><a href="{REPORT_URL}" target="_blank" rel="noopener">{icon("description")}Project report (PDF)</a></li>'
+         f'</ul></div></div>'
+         f'<div class="sg-footer-base">Recorded results from the team\'s runs · only the rules gate runs live on '
+         f'this server</div></footer>')
 
 
 def page_hero(eyebrow: str, title: str, text: str) -> None:
@@ -142,8 +204,12 @@ def scoreboard(runs, case) -> None:
     show(f'<div class="sg-scoreboard"><span class="lbl">Who got it right</span>{"".join(bits)}</div>')
 
 
+CALLOUT_ICON = {"catch": "warning", "lesson": "lightbulb", "right": "check_circle", "new": "info"}
+
+
 def callout(kind: str, label: str, text: str) -> None:
-    show(f'<div class="sg-callout {kind}"><b>{esc(label)}</b> {md(text)}</div>')
+    show(f'<div class="sg-callout {kind}">{icon(CALLOUT_ICON.get(kind, "info"), "lead")}<div><b>{esc(label)}</b> '
+         f'{md(text)}</div></div>')
 
 
 def section(label: str) -> None:
@@ -174,7 +240,7 @@ def evidence_cards(items: list[X.EvidenceItem], compact: bool = False) -> None:
     out = []
     for it in items:
         pts = "".join(f'<li><span class="sg-dot {s}">{sym[s]}</span><span>{md(t)}</span></li>' for s, t in it.points)
-        out.append(f'<div class="sg-card {it.status}"><div class="sg-kicker">{it.icon} {esc(it.kind)}</div>'
+        out.append(f'<div class="sg-card {it.status}"><div class="sg-kicker">{icon(it.icon)}{esc(it.kind)}</div>'
                    f'<h4>{md(it.headline)}</h4><ul>{pts}</ul></div>')
     show(f'<div class="sg-grid {"compact" if compact else "two"}">{"".join(out)}</div>')
 
@@ -186,17 +252,17 @@ def user_bubble(text: str) -> None:
 def agent_steps(gi) -> None:
     rows = []
     for p in gi.prior_calls:
-        rows.append(f'<div class="sg-step"><div class="ico">👁️</div><div class="body"><div class="title">'
+        rows.append(f'<div class="sg-step"><div class="ico">{icon("visibility")}</div><div class="body"><div class="title">'
                     f'Reads: <code>{esc(p["function"])}</code></div><div class="sub">Read-only, so it passes '
                     f'without a check. What it returned is shown below as untrusted content.</div></div></div>')
     for h in gi.resolution_history:
         who = "The user" if h.get("responder") == "user" else f"The approver ({esc(h.get('responder'))})"
-        rows.append(f'<div class="sg-step"><div class="ico">💬</div><div class="body"><div class="title">'
+        rows.append(f'<div class="sg-step"><div class="ico">{icon("forum")}</div><div class="body"><div class="title">'
                     f'Earlier round: the gate said {chip(h.get("kind"))}</div><div class="sub">{who} answered: '
                     f'<i>“{esc(h.get("response", ""))}”</i></div></div></div>')
     call = gi.proposed_call
     args = json.dumps(call.get("args") or {}, indent=2, ensure_ascii=False)
-    rows.append(f'<div class="sg-step"><div class="ico risky">⚡</div><div class="body"><div class="title">'
+    rows.append(f'<div class="sg-step"><div class="ico risky">{icon("bolt")}</div><div class="body"><div class="title">'
                 f'Wants to run: <code>{esc(call["function"])}</code></div><div class="sub">This changes something, '
                 f'so it is stopped at the gate before it runs.</div><div class="sg-code">{esc(args)}</div></div></div>')
     show("".join(rows))
@@ -206,9 +272,10 @@ def untrusted(gi) -> None:
     inj = X.injected_block(gi)
     for t in gi.untrusted_content:
         flag = inj == t["id"]
-        label = ("⚠️ The instruction behind the action came from this text" if flag
+        label = ("The instruction behind the action came from this text" if flag
                  else "Treated as data, never as instructions")
-        show(f'<div class="sg-step"><div class="ico">📄</div><div class="body"><div class="title">'
+        show(f'<div class="sg-step"><div class="ico{" risky" if flag else ""}">{icon("warning" if flag else "description")}'
+             f'</div><div class="body"><div class="title">'
              f'{esc(t["id"])} · {md(X.source_plain(t.get("source")))}</div><div class="sub">{esc(label)}</div>'
              f'<div class="sg-quote {"" if flag else "plain"}">{esc(t.get("text", ""))}</div></div></div>')
 
@@ -266,7 +333,7 @@ def prob_bars(probs: dict[str, float]) -> str:
 
 def note(text: str) -> None:
     """Small grey text that understands **bold**, `code` and [[glossary]] tooltips."""
-    show(f'<p style="font-size:.85rem;color:var(--sg-ink3);margin:4px 0 10px;line-height:1.5">{md(text)}</p>')
+    show(f'<p class="sg-note-p">{md(text)}</p>')
 
 
 def lead(text: str) -> None:

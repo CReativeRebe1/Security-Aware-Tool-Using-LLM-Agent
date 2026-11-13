@@ -15,12 +15,15 @@ DEFAULTS = {"lab_payee": "friend", "lab_amount": 200, "lab_source": "you", "lab_
             "lab_prov": "known", "lab_guards": False}
 
 PRESETS = {
-    "📧 A hidden attack": {"lab_payee": "new", "lab_amount": 450, "lab_source": "hidden", "lab_fake": False},
-    "💰 A big payment": {"lab_payee": "friend", "lab_amount": 3000, "lab_source": "you", "lab_fake": False},
-    "🎭 A fake approval": {"lab_payee": "friend", "lab_amount": 3000, "lab_source": "you", "lab_fake": True},
-    "🧾 Paying a bill": {"lab_payee": "new", "lab_amount": 200, "lab_source": "bill", "lab_fake": False},
-    "🔢 A one-digit typo": {"lab_payee": "typo", "lab_amount": 200, "lab_source": "you", "lab_fake": False},
+    "A hidden attack": {"lab_payee": "new", "lab_amount": 450, "lab_source": "hidden", "lab_fake": False},
+    "A big payment": {"lab_payee": "friend", "lab_amount": 3000, "lab_source": "you", "lab_fake": False},
+    "A fake approval": {"lab_payee": "friend", "lab_amount": 3000, "lab_source": "you", "lab_fake": True},
+    "Paying a bill": {"lab_payee": "new", "lab_amount": 200, "lab_source": "bill", "lab_fake": False},
+    "A one-digit typo": {"lab_payee": "typo", "lab_amount": 200, "lab_source": "you", "lab_fake": False},
 }
+PRESET_ICON = {"A hidden attack": ":material/mail:", "A big payment": ":material/payments:",
+               "A fake approval": ":material/theater_comedy:", "Paying a bill": ":material/receipt_long:",
+               "A one-digit typo": ":material/pin:"}
 
 
 def apply(preset):
@@ -30,7 +33,7 @@ def apply(preset):
 st.markdown("**Start from an example, or set everything yourself:**")
 cols = st.columns(len(PRESETS))
 for col, name in zip(cols, PRESETS):
-    col.button(name, on_click=apply, args=(name,), width="stretch")
+    col.button(name, on_click=apply, args=(name,), width="stretch", icon=PRESET_ICON[name])
 
 left, right = st.columns([1, 1.55], gap="large")
 with left, st.container(border=True, key="glass_lab_form"):
@@ -65,7 +68,8 @@ with right:
     # ---- outcome first: the thing the visitor wants to see
     reasons = L.why(res, x)
     sent = final == "ALLOW"
-    head = "💸 The payment goes through" if sent else "🛑 The payment is stopped"
+    head = (C.icon("check_circle", "big ok") + "The payment goes through" if sent
+            else C.icon("block", "big bad") + "The payment is stopped")
     tone = "ok" if sent else "bad"
     steps = "".join(f'<li><span class="sg-dot info">{i + 1}</span><span>{C.md(r)}</span></li>'
                     for i, r in enumerate(reasons) if r)

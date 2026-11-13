@@ -1,27 +1,27 @@
 [theme]
 base = "light"
-primaryColor = "#2a78d6"
-backgroundColor = "#f7f8fb"
-secondaryBackgroundColor = "#eef1f6"
+primaryColor = "#4f46e5"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#f1f5f9"
 textColor = "#0f172a"
-linkColor = "#1c5cab"
-borderColor = "#e2e6ee"
+linkColor = "#4338ca"
+borderColor = "#e2e8f0"
 showWidgetBorder = true
-baseRadius = "0.6rem"
-buttonRadius = "0.6rem"
+baseRadius = "0.65rem"
+buttonRadius = "0.65rem"
 font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap, sans-serif"
-headingFont = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&display=swap, sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap, sans-serif"
 codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
-headingFontWeights = [800, 700, 700, 700, 600, 600]
-dataframeHeaderBackgroundColor = "#f1f4f9"
+headingFontWeights = [800, 800, 700, 700, 600, 600]
+dataframeHeaderBackgroundColor = "#f8fafc"
 
 [theme.sidebar]
-backgroundColor = "#0f1b33"
-secondaryBackgroundColor = "#1a2a4a"
-textColor = "#d7e1f2"
-primaryColor = "#8fbcff"
-borderColor = "#24365a"
-linkColor = "#8fbcff"
+backgroundColor = "#0b1220"
+secondaryBackgroundColor = "#111a2e"
+textColor = "#cbd5e1"
+primaryColor = "#a5b4fc"
+borderColor = "#1e293b"
+linkColor = "#a5b4fc"
 
 [client]
 toolbarMode = "viewer"

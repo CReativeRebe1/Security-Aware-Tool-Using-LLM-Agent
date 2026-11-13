@@ -57,7 +57,7 @@ GATES: dict[str, GateInfo] = {g.key: g for g in [
 OURS = "b5_qlora_4way"
 NEWEST = "b5_v3_combo_gateexp"      # the final design (no test results yet: test is held back)
 PREV_GX = "b5_v2_gateexp"           # the GateExp version that was scored on test
-FAMILY_COLOR = {"trained": "#2a78d6", "prompted": "#eb6834", "rules": "#1baf7a"}   # validated palette
+FAMILY_COLOR = {"trained": "#4f46e5", "prompted": "#eb6834", "rules": "#1baf7a"}   # validated palette (brand indigo)
 # Per-gate colours for grouped bars (order B1, B3, B5, GX, GX3 validated for adjacent pairs; GX3 also clear of B5).
 GATE_COLOR = {"b1_rules": "#1baf7a", "b3_prompt_4way": "#eb6834", "b5_qlora_4way": "#2a78d6",
               "b5_v2_gateexp": "#e87ba4", "b5_v3_combo_gateexp": "#8a5a00"}

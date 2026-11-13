@@ -151,10 +151,10 @@ with tabs[2]:
 
     def status(key):
         if key == NEWEST:
-            return "✅ dev, red-team, combinations, live · test held back"
+            return "✓ dev, red-team, combinations, live · test held back"
         if key == "b4_qlora_binary":
-            return "✅ trained 13 Nov · scoring next"
-        return "✅ done" if key in rep else "⏳ pending"
+            return "✓ trained 13 Nov · scoring next"
+        return "✓ done" if key in rep else "… pending"
 
     def result(key):
         m = rep.get(key) or (devr.get(key) if key == NEWEST else None)
@@ -166,7 +166,7 @@ with tabs[2]:
             out += f" · live: attacks {live.get('attack_success_rate')}"
         return out
 
-    rows = [{"Gate": "B0", "What it is": "No gate at all (the agent alone)", "Status": "✅ measured live",
+    rows = [{"Gate": "B0", "What it is": "No gate at all (the agent alone)", "Status": "✓ measured live",
              "Result so far": "Attacks succeed 10/120 (8.3%); tasks done 49/142 (34.5%)"}]
     for k, g in GATES.items():
         rows.append({"Gate": g.code, "What it is": g.blurb, "Status": status(k), "Result so far": result(k)})
@@ -180,8 +180,8 @@ with tabs[2]:
 
     def tstat(cond, letter):
         if cond in where:
-            return f"✅ trained (run {where[cond][0]}) · scoring next"
-        return f"⏳ training (run {letter})"
+            return f"✓ trained (run {where[cond][0]}) · scoring next"
+        return f"… training (run {letter})"
 
     st.dataframe(pd.DataFrame([
         {"Variant": "B5 − provenance", "Removes": "where things came from", "Tests": "H1",
@@ -202,7 +202,7 @@ with tabs[2]:
                          ("C", "B5 − RAG · B5 − ASK"), ("D", "B5 − ESCALATE · B5 with a second seed")):
         ms = (runs.get(letter) or {}).get("models") or []
         trows.append({"Run": letter, "Models": plan,
-                      "Status": "✅ trained" if ms else "⏳ training",
+                      "Status": "✓ trained" if ms else "… training",
                       "Steps": " · ".join(f"{m.get('global_step')}" for m in ms) or "–",
                       "Final training loss": " · ".join(f"{m.get('train_loss'):.3f}" for m in ms
                                                        if m.get("train_loss") is not None) or "–",

@@ -282,21 +282,21 @@ st.markdown("### Read these numbers carefully")
 dev5, test5 = D.reports("dev").get(OURS, {}), D.reports("test").get(OURS, {})
 devf = D.reports("dev").get(NEWEST, {})
 C.cards([
-    {"kicker": "⚖️ Fairest check", "title": "The test set is held back for one final run", "status": "warn",
+    {"kicker": C.icon("balance") + "Fairest check", "title": "The test set is held back for one final run", "status": "warn",
      "body": "Some GateExp rules were written after looking at test failures, so GX's perfect test score flatters "
              "it. The final design (GX3) is therefore not run on test yet: it takes the test exam once, at the end. "
              f"On dev it lets {devf.get('unauthorized_action_rate', '?')} unsafe actions through "
              f"(B5 in Run 1: {dev5.get('unauthorized_action_rate', '?')}), and a [[blind test set]] of about 100 "
              "new cases is being written from the handbook alone."},
-    {"kicker": "🔍 What went wrong in Run 1", "title": "B5's unsafe cases were missed questions", "status": "info",
+    {"kicker": C.icon("search") + "What went wrong in Run 1", "title": "B5's unsafe cases were missed questions", "status": "info",
      "body": f"On test ({test5.get('unauthorized_action_rate', '?')} unsafe), B5 said ALLOW where it should have "
              "asked the user (12 cases) or the manager (8). GateExp's hard rules and after-checks target exactly "
              "these."},
-    {"kicker": "🧭 Known vs guessed provenance", "title": "Offline numbers use known provenance", "status": "info",
+    {"kicker": C.icon("travel_explore") + "Known vs guessed provenance", "title": "Offline numbers use known provenance", "status": "info",
      "body": "All offline numbers use [[oracle provenance|known provenance]]. With provenance only guessed, Run 1's "
              "B5 rose to 20% unsafe. The live AgentDojo run above guesses provenance, and the final design let "
              "0 of 120 attacks through there."},
-    {"kicker": "⏳ Still open", "title": "B4 and the ablations: trained, scoring next", "status": "info",
+    {"kicker": C.icon("hourglass_top") + "Still open", "title": "B4 and the ablations: trained, scoring next", "status": "info",
      "body": "B4 (yes/no) and the six [[ablation|ablations]] were trained on 13 Nov in four parallel runs (A–D) on "
              "the final recipe, plus a second seed of B5. Their scores, which settle hypotheses H1–H3, come with "
              "the final scoring run."},

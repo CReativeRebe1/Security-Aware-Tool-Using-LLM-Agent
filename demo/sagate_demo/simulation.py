@@ -71,25 +71,25 @@ def html_page(data: dict, seconds: float = 14.0) -> str:
 TEMPLATE = r"""<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
 <style>
-:root { --ink:#0f172a; --ink2:#475569; --ink3:#64748b; --line:#e2e6ee; --soft:#f1f4f9; --blue:#2a78d6; }
+:root { --ink:#0f172a; --ink2:#475569; --ink3:#64748b; --line:#e2e8f0; --soft:#f1f5f9; --blue:#4f46e5; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, sans-serif; color: var(--ink); background: transparent; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-button { font: 600 14px Inter, sans-serif; border-radius: 12px; border: 1px solid rgba(255,255,255,.85);
-  background: rgba(255,255,255,.66); padding: 8px 16px; cursor: pointer; color: var(--ink);
-  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 6px 16px -10px rgba(30,58,110,.35); transition: transform .15s ease; }
-button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(255,255,255,.9); }
-button.primary { background: linear-gradient(120deg, #2a78d6, #5160dc); color: #fff; border-color: rgba(255,255,255,.25);
-  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 10px 22px -10px rgba(42,120,214,.8); }
-button.primary:hover:not(:disabled) { background: linear-gradient(120deg, #2a78d6, #5160dc); }
+button { font: 600 14px Inter, sans-serif; border-radius: 10px; border: 1px solid var(--line); background: #fff;
+  padding: 8px 16px; cursor: pointer; color: var(--ink); box-shadow: 0 1px 2px rgba(15,23,42,.05);
+  transition: border-color .15s ease, color .15s ease; }
+button:hover:not(:disabled) { border-color: #a5b4fc; color: #4338ca; }
+button.primary { background: linear-gradient(180deg, #5b53ef, #4f46e5); color: #fff; border-color: #4338ca;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px -10px rgba(79,70,229,.9); }
+button.primary:hover:not(:disabled) { color: #fff; border-color: #4338ca; }
 button:disabled { opacity: .5; cursor: default; }
 .speed { font-size: 13px; color: var(--ink2); display: flex; align-items: center; gap: 6px; }
 .progress { flex: 1; min-width: 160px; height: 8px; background: rgba(148,163,184,.2); border-radius: 999px; overflow: hidden; }
-.progress > div { height: 100%; width: 0; background: linear-gradient(90deg, #2a78d6, #6a5ae0); transition: width .1s linear;
+.progress > div { height: 100%; width: 0; background: #4f46e5; transition: width .1s linear;
   border-radius: 999px; }
 .count { font: 700 13px Inter; color: var(--ink2); min-width: 86px; text-align: right; }
-.lane { background: rgba(255,255,255,.62); border: 1px solid rgba(255,255,255,.85); border-radius: 18px;
-  padding: 13px 16px; margin-bottom: 10px; box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 12px 28px -16px rgba(30,58,110,.3); }
+.lane { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 13px 16px; margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(15,23,42,.05); }
 .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .lane-name { font: 800 15px "Plus Jakarta Sans", Inter; }
 .lane-name small { font: 500 12px Inter; color: var(--ink3); margin-left: 6px; }
@@ -101,11 +101,11 @@ button:disabled { opacity: .5; cursor: default; }
 .t.on { animation: pop .25s ease; }
 @keyframes pop { 0% { transform: scale(.3); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
 .t:hover { outline: 2px solid var(--ink); outline-offset: 1px; }
-.now { background: radial-gradient(420px 160px at 100% 0%, rgba(130,115,255,.45), transparent 65%),
-  linear-gradient(135deg, #0a1730, #143a72 70%, #22509a); color: #e7eefb; border-radius: 18px; padding: 13px 18px;
+.now { background: radial-gradient(420px 160px at 100% 0%, rgba(99,102,241,.45), transparent 65%),
+  linear-gradient(160deg, #0b1220, #111a2e 60%, #1e1b4b); color: #e2e8f0; border-radius: 14px; padding: 13px 18px;
   margin: 6px 0 12px; font-size: 14px; min-height: 74px; border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 18px 36px -22px rgba(19,54,107,.7), inset 0 1px 0 rgba(255,255,255,.14); }
-.now .k { font: 700 11px Inter; text-transform: uppercase; letter-spacing: .1em; color: #9cc4f5; }
+.now .k { font: 700 11px Inter; text-transform: uppercase; letter-spacing: .1em; color: #a5b4fc; }
 .now .req { font-size: 15px; margin: 4px 0 8px; color: #fff; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { font: 700 11.5px Inter; padding: 2px 9px; border-radius: 999px; background: rgba(255,255,255,.12);
