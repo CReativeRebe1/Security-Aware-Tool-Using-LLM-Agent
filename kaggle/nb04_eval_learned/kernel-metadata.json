@@ -9,11 +9,7 @@
   "enable_tpu": "false",
   "enable_internet": "true",
   "dataset_sources": [
-    "__OWNER__/sagate-code",
-    "__OWNER__/sagate-adapters-run-a",
-    "__OWNER__/sagate-adapters-run-b",
-    "__OWNER__/sagate-adapters-run-c",
-    "__OWNER__/sagate-adapters-run-d"
+    "__OWNER__/sagate-code"
   ],
   "kernel_sources": [
     "__OWNER__/sagate-nb03-train-qlora"
