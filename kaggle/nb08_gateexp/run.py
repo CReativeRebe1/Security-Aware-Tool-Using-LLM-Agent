@@ -12,7 +12,7 @@ import time
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
 import bootstrap  # noqa: E402
 
-CONDITIONS = ["b5_v3_combo_gateexp"]               # final gate; two names = side-by-side selection run
+CONDITIONS = ["b5_v4_combo_gateexp"]               # final gate; two names = side-by-side selection run
 POOLS = ("dev", "combos", "attacks", "test")       # e.g. ("custom",) with CUSTOM for a user-supplied case file
 CUSTOM = "user_cases_2026-11-12.jsonl"             # annotations/extra/<CUSTOM>
 ADAPTERS = {"b5_gateexp": "b5_qlora_4way", "b5_v2_gateexp": "b5_v2", "b5_v3_gateexp": "b5_v3",

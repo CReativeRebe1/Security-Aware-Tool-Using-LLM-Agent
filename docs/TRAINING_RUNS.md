@@ -107,10 +107,11 @@ kaggle datasets create -p /tmp/adapters-run-a --dir-mode zip
 ```
 
 On the dataset's Kaggle page: Settings → Sharing → add **satorugojo13** as collaborator (viewer is enough). Post the
-dataset id in the team chat. The scoring run (NB04) attaches all four.
+dataset id in the team chat. This is the backup copy of the models; scoring (`docs/SCORING_RUNS.md`) reads them from
+your NB03 output, so no sharing is needed for it.
 
 ## Rules
 
 - Train only from `locked-v4`; the one edit is `GROUP`.
-- Do not start scoring on test yourself: test is scored once, by NB04 / NB08, after all four runs are in.
+- Scoring (dev, attacks, test) follows `docs/SCORING_RUNS.md`: each model's test set is scored once, there.
 - If something looks different from the table in step 4, stop and post the log; do not fix it on your branch.
