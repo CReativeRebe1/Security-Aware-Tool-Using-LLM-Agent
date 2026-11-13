@@ -5,14 +5,14 @@ import streamlit as st
 from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
-from sagate_demo.gates import GATES, NEWEST, recorded
+from sagate_demo.gates import GATES, newest, recorded
 
 C.page_hero("Game", "You be the gate",
             "Read a real case from the [[test set]] and decide what the gate should do. Then see the right answer, "
             "why it is right, and what the AI gates decided. Can you beat them?")
 
 SPLIT = "test"
-RIVALS = ["b1_rules", "b5_qlora_4way", NEWEST]
+RIVALS = ["b1_rules", "b5_qlora_4way", newest(SPLIT)]   # final design is held back on test
 cases = D.cases(SPLIT)
 
 

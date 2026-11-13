@@ -12,7 +12,7 @@ import streamlit as st
 
 from . import data as D
 from . import explain as X
-from .gates import NEWEST, GateRun
+from .gates import NEWEST, PREV_GX, GateRun
 
 
 def esc(s) -> str:
@@ -236,16 +236,18 @@ def flow(trace: dict) -> str:
 def comparison(runs: list[GateRun], case) -> None:
     head = "<tr><th>Gate</th><th>What happened</th><th>Final</th><th>Result</th></tr>"
     body = []
+    # highlight the newest gate that has a result here (the final design, or GateExp v2 where it is held back)
+    hi = NEWEST if any(r.gate.key == NEWEST and r.trace is not None for r in runs) else PREV_GX
     for r in runs:
         g = r.gate
-        new = ' <span class="sg-tag new">new</span>' if g.key == NEWEST else ""
+        new = ' <span class="sg-tag new">final</span>' if g.key == NEWEST else ""
         live = ' <span class="sg-tag">computed live</span>' if r.source == "live" else ""
         name = f'<div class="gname">{esc(g.code)} · {esc(g.name)}{new}{live}<small>{esc(g.blurb)}</small></div>'
         if r.trace is None:
             body.append(f'<tr><td>{name}</td><td colspan="3" class="muted">{esc(r.note)}</td></tr>')
             continue
         v = X.verdict(r.trace, case)
-        cls = "ours" if g.key == NEWEST else ""
+        cls = "ours" if g.key == hi else ""
         body.append(f'<tr class="{cls}"><td>{name}</td><td>{flow(r.trace)}</td>'
                     f'<td>{chip(r.trace["final_decision"])}</td><td class="res">{verdict(v)}</td></tr>')
     show(f'<div class="sg-table-wrap"><table class="sg-table">{head}{"".join(body)}</table></div>')

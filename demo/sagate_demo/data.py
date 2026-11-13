@@ -26,15 +26,22 @@ from sagate.eval import metrics as M  # noqa: E402
 RUN_DIR = REPO / "results" / "data" / "run1"
 GX_DIR = DEMO / "data" / "gateexp"            # copied by tools/sync_gateexp.py from the GateExp branch
 GX = "b5_v2_gateexp"
-SPLITS = {"test": "Test set · 212", "dev": "Dev set · 236", "attacks": "Red-team attacks · 61"}
+FINAL_DIR = DEMO / "data" / "final"           # copied by tools/sync_final.py from main
+FINAL = "b5_v3_combo_gateexp"
+RECORDED_DIRS = {GX: GX_DIR, FINAL: FINAL_DIR}
+SPLITS = {"test": "Test set · 212", "dev": "Dev set · 236", "attacks": "Red-team attacks · 61",
+          "combos": "Combinations · 216"}
+EXTRA_SPLITS = ("attacks", "combos")          # sets made after Run 1: Run 1's gates were never run on them
 SPLIT_HELP = ("Test = the final exam (never used to make design choices). Dev = used for tuning. Red-team = 61 cases "
-              "written on the GateExp branch to try to break the newest gate.")
+              "written to try to break the gate. Combinations = 216 generated cases that mix risk factors in pairs "
+              "the training data never had, labelled by the team's rule program.")
 CODE_HASH = "da42a96"
 
 
 @st.cache_resource(show_spinner=False)
 def cases(split: str) -> dict[str, Case]:
-    path = GX_DIR / "attack_cases.jsonl" if split == "attacks" else REPO / "annotations" / f"{split}_cases.jsonl"
+    path = {"attacks": GX_DIR / "attack_cases.jsonl", "combos": FINAL_DIR / "combo_cases.jsonl"}.get(
+        split, REPO / "annotations" / f"{split}_cases.jsonl")
     return {c.case_id: c for c in load_cases(path)}
 
 
@@ -46,9 +53,9 @@ def train_cases() -> dict[str, Case]:
 
 @st.cache_resource(show_spinner=False)
 def predictions(split: str, cond: str, noisy: bool = False) -> dict[str, dict] | None:
-    """Recorded predictions: Run 1 files, or the GateExp run copied into demo/data/gateexp."""
-    if cond == GX:
-        path = GX_DIR / split / f"{GX}{'_noisy' if noisy else ''}.jsonl"
+    """Recorded predictions: Run 1 files, or the GateExp / final-gate runs copied into demo/data/."""
+    if cond in RECORDED_DIRS:
+        path = RECORDED_DIRS[cond] / split / f"{cond}{'_noisy' if noisy else ''}.jsonl"
     else:
         path = RUN_DIR / split / f"{cond}{'_noisy' if noisy else ''}.jsonl"
     if not path.exists():
@@ -59,29 +66,66 @@ def predictions(split: str, cond: str, noisy: bool = False) -> dict[str, dict] |
 
 @st.cache_data(show_spinner=False)
 def reports(split: str) -> dict[str, dict]:
-    """Run 1 reports as committed, plus GateExp scored here against the same frozen labels."""
+    """Run 1 reports as committed, plus GateExp and the final gate scored here against the same labels."""
     out: dict[str, dict] = {}
     for name in ("report.json", "report_nb04_b5.json"):
         p = RUN_DIR / split / name
         if p.exists():
             out.update(json.loads(p.read_text()))
-    gx = predictions(split, GX)
-    if gx is not None:
-        out[GX] = {k: (str(v) if not isinstance(v, (int, float, dict)) else v)
-                   for k, v in M.compute(gx.values(), cases(split).values()).items()}
+    for cond in RECORDED_DIRS:
+        preds = predictions(split, cond)
+        if preds is not None:
+            out[cond] = {k: (str(v) if not isinstance(v, (int, float, dict)) else v)
+                         for k, v in M.compute(preds.values(), cases(split).values()).items()}
     return out
 
 
 @st.cache_data(show_spinner=False)
+def team_report(cond: str, split: str) -> dict:
+    """The team's own report for GateExp or the final gate (their labels; confirmations counted separately)."""
+    if cond not in RECORDED_DIRS:
+        return {}
+    p = RECORDED_DIRS[cond] / split / f"{cond}.report.json"
+    if not p.exists():
+        return {}
+    r = json.loads(p.read_text())
+    return r.get(cond, r) if isinstance(r.get(cond), dict) else r
+
+
 def gateexp_report(split: str) -> dict:
-    """GateExp's own report (its revised labels; confirmations counted separately)."""
-    p = GX_DIR / split / f"{GX}.report.json"
-    return json.loads(p.read_text()) if p.exists() else {}
+    return team_report(GX, split)
 
 
 @st.cache_data(show_spinner=False)
 def gateexp_source() -> dict:
     p = GX_DIR / "SOURCE.json"
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
+def final_relabels() -> dict[str, dict]:
+    """case_id -> {field: [frozen label, label used for the final gate]} on dev."""
+    p = FINAL_DIR / "relabels.json"
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
+def final_source() -> dict:
+    p = FINAL_DIR / "SOURCE.json"
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
+def e2e() -> dict:
+    """Live AgentDojo runs: B0 (no gate) and the final gate, 142 test scenarios (120 attacked)."""
+    p = FINAL_DIR / "e2e.json"
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+@st.cache_data(show_spinner=False)
+def training_runs() -> dict:
+    """Final training runs A-D (13 Nov): which models each run trained, from their train summaries."""
+    p = FINAL_DIR / "training_runs.json"
     return json.loads(p.read_text()) if p.exists() else {}
 
 

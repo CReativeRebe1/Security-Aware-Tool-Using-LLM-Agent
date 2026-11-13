@@ -30,7 +30,15 @@ GateExp layers: test, dev and the 61 red-team cases) is copied into `demo/data/g
 `python demo/tools/sync_gateexp.py`, which also records the commit (`SOURCE.json`) and the 25 cases GateExp
 relabelled (`relabels.json`). The site scores GateExp's predictions against the same frozen labels as every other
 gate, and shows GateExp's own report (its labels, confirmations counted apart) next to it. Re-run the script
-after a new GateExp run. On the red-team set, B1 is computed live with this branch's code. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
+after a new GateExp run. On the red-team set, B1 is computed live with this branch's code.
+
+**Final design (main).** The gate main's README reports as final (b5_v3_combo inside the GateExp layers: dev, the 61
+red-team cases and 216 factor-combination cases, plus the live AgentDojo run) is copied into `demo/data/final/` by
+`python demo/tools/sync_final.py`. It also copies the combination cases, the dev label differences
+(`relabels.json`), the status of the final training runs A–D (`training_runs.json`) and the commit (`SOURCE.json`).
+The final design has no test results on purpose (test is held back for one final run), so on the test set the site
+shows GateExp v2 as the newest gate. When the final b5_v4_combo results land, run the script again with
+`--cond`, `--run` and `--e2e` pointed at them. On the combination set, B1 is also computed live. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
 checked against the recorded predictions for code `da42a96`. Re-check them after a new run.
 
 **Gate Lab:** only the conversation is made up (the user's words and what the bank tools return). The project's real
@@ -96,6 +104,9 @@ demo/
   featured.yaml             the 7 Playground scenarios and their explanations
   data/gateexp/             GateExp predictions, reports, red-team cases, relabels, SOURCE.json (copied, not merged)
   tools/sync_gateexp.py     refreshes data/gateexp from the GateExp branch
+  data/final/               final-design predictions and reports, combination cases, live AgentDojo report,
+                            dev label differences, training runs A–D status, SOURCE.json (copied from main)
+  tools/sync_final.py       refreshes data/final from main
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
   .streamlit/config.toml    theme: Inter / Plus Jakarta Sans / JetBrains Mono (Google Fonts), navy sidebar
 ```

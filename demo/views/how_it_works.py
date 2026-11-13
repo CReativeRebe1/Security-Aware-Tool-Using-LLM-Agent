@@ -119,13 +119,17 @@ with tabs[4]:
         {"Gate": "B1", "What it is": "Hand-written rules", "Decisions": "4", "Trained?": "No AI"},
         {"Gate": "B2", "What it is": "Qwen3-8B with instructions", "Decisions": "2 (yes/no)", "Trained?": "No"},
         {"Gate": "B3", "What it is": "Qwen3-8B with instructions", "Decisions": "4", "Trained?": "No"},
-        {"Gate": "B4", "What it is": "Qwen3-8B fine-tuned", "Decisions": "2 (yes/no)", "Trained?": "Yes (pending)"},
+        {"Gate": "B4", "What it is": "Qwen3-8B fine-tuned", "Decisions": "2 (yes/no)",
+         "Trained?": "Yes (13 Nov, scoring next)"},
         {"Gate": "B5", "What it is": "Qwen3-8B fine-tuned, all evidence (ours)", "Decisions": "4", "Trained?": "Yes"},
+        {"Gate": "GX / GX3", "What it is": "B5 retrained (v2, then v3 combo) inside the GateExp layers",
+         "Decisions": "4", "Trained?": "Yes"},
     ], hide_index=True, width="stretch")
 
 with tabs[5]:
     st.markdown("#### The newest design: three layers around one trained model")
-    C.lead("Branch [[GateExp]] (Rinkesh, 11–12 Nov). The idea: **the model judges intent and risk; code keeps "
+    C.lead("Branch [[GateExp]] (Rinkesh, 11–12 Nov, now merged into main). The idea: **the model judges intent and "
+           "risk; code keeps "
            "exact state.** An AI is good at reading a request and the text around it, and bad at exact bookkeeping, "
            "like comparing two IBANs digit by digit or adding up today's payments. So exact checks moved into code.")
     C.cards([
@@ -137,12 +141,14 @@ with tabs[5]:
          "body": "Policy that no argument may override. If one fires, it decides and the model is not asked: the "
                  "user already said no · a password or reset link would leave · the details came from injected "
                  "content · the user may not approve this alone."},
-        {"kicker": "Layer 3", "status": "info", "title": "The trained model (B5 v2)",
-         "body": "Qwen3-8B with a retrained adapter. It reads everything and picks one of the four decisions."},
+        {"kicker": "Layer 3", "status": "info", "title": "The trained model",
+         "body": "Qwen3-8B with a retrained adapter: B5 v2 in GX, and B5 v3 combo in the [[final design]] (GX3), "
+                 "trained with a cost-matrix loss and cases that mix risk factors in new pairs. It reads everything "
+                 "and picks one of the four decisions."},
         {"kicker": "Layer 4", "status": "info", "title": "Checks after",
          "body": "Can only make the answer stricter: confirm a first payment to a new payee, confirm an amount the "
-                 "user never stated, confirm a risky action the user did not ask for, and route to an approver "
-                 "when only an approver can decide."},
+                 "user never stated, confirm a risky action the user did not ask for, confirm a detail the agent "
+                 "made up, and route to an approver when only an approver can decide."},
     ], two=True)
     C.note("Every decision keeps a trace of all four layers. In the Playground and Explore, the decisions step "
            "shows it as a coloured path, so you can see exactly which layer decided.")
@@ -157,13 +163,14 @@ with tabs[6]:
                  "test."},
         {"kicker": "🔒 Test is the final exam", "title": "No tuning on test (with one exception)",
          "body": "Thresholds and the rule index come from training and dev data only. Exception: some GateExp rules "
-                 "were found by looking at test failures, so for that design the dev set and the 61 new red-team "
-                 "attacks are the fairer check."},
+                 "were found by looking at test failures. So the final design is [[held back]] from test until one "
+                 "final run, and a [[blind test set]] of about 100 new cases is being written from the handbook "
+                 "alone."},
         {"kicker": "🧾 Traceable", "title": "Every result is stamped",
          "body": "Every result file records the code version and settings it came from."},
     ])
     st.markdown("#### What's next")
-    st.markdown("Ablations (retrain B5 without provenance, without authority, without RAG… to measure what each part "
-                "is worth), B4, full runs inside AgentDojo, and statistics. For this website: a live connection to "
-                "the trained model on a GPU, once the architecture is final. Today the AI results are the real "
-                "recorded ones, and only the rules gate runs live.")
+    st.markdown("B4 and the ablations (B5 without provenance, without authority, without RAG… to measure what each "
+                "part is worth) were trained on 13 Nov; one scoring run on dev, red-team and test comes next, then "
+                "the blind test set and the statistics. For this website: a live connection to the trained model on "
+                "a GPU. Today the AI results are the real recorded ones, and only the rules gate runs live.")

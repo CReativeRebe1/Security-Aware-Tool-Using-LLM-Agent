@@ -7,7 +7,7 @@ import streamlit as st
 from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
-from sagate_demo.gates import GATES, NEWEST, reports
+from sagate_demo.gates import GATES, NEWEST, PREV_GX, reports
 
 C.page_hero("The research", "What we set out to test, and where we are",
             "The hypotheses, how the dataset was built, what has been run so far, how the project got here, and "
@@ -35,38 +35,40 @@ with tabs[0]:
         {"kicker": "H1 · Evidence", "status": "info",
          "title": "Structured evidence makes the gate better",
          "body": "Provenance, authority, sensitivity and handbook rules should beat a gate without them. **How we "
-                 "test it:** retrain B5 with one piece removed at a time (the ablations). **Status:** Run 2, not "
-                 f"started. **Early sign:** when provenance is only guessed, B5's unsafe rate rises from "
+                 "test it:** retrain B5 with one piece removed at a time (the ablations). **Status:** trained on 13 Nov "
+                 f"(final runs B and C); scores come with the final scoring run. **Early sign:** when provenance is only guessed, B5's unsafe rate rises from "
                  f"{r('b5_qlora_4way', 'unauthorized_action_rate')} to "
                  f"{r('b5_inferred_prov', 'unauthorized_action_rate')}."},
         {"kicker": "H2 · Four decisions", "status": "info",
          "title": "Asking and escalating beat a plain yes/no",
          "body": "**How we test it:** B5 (four decisions) against B4 (yes/no), trained on the same data. "
-                 "**Status:** B4 not trained yet. **Early sign** (untrained AI): the yes/no B2 blocks "
+                 "**Status:** B4 trained on 13 Nov (final run A); scoring next. **Early sign** (untrained AI): the yes/no B2 blocks "
                  f"{r('b2_prompt_binary', 'over_blocking_rate')} of good actions, the four-way B3 "
                  f"{r('b3_prompt_4way', 'over_blocking_rate')}. Caveat: the scoring itself favours four decisions "
                  "(see Results)."},
         {"kicker": "H3 · Show your working", "status": "info",
          "title": "Saying what's missing first helps",
          "body": "The gate names the missing evidence and who must decide before the decision. **How we test "
-                 "it:** retrain B5 without those two fields. **Status:** Run 2, not started."},
+                 "it:** retrain B5 without those two fields. **Status:** trained on 13 Nov (final run A); scoring "
+                 "next."},
     ])
     st.markdown("#### Where we stand")
+    devr = reports("dev")
+    dv = lambda key: (lambda v: f"{v[2]:.1f}%" if v else "–")(D.rate((devr.get(NEWEST) or {}).get(key)))
     C.show('<div class="sg-grid four">'
-           + C.stat_tile("Newest design GX", r(NEWEST, "unauthorized_action_rate"), "unsafe",
-                         ("ok", "✓ target ≤ 5%"), f"needless questions {r(NEWEST, 'unnecessary_deferral_rate')}")
+           + C.stat_tile("Final design GX3 · dev", dv("unauthorized_action_rate"), "unsafe",
+                         ("ok", "✓ target ≤ 5%"), f"needless questions {dv('unnecessary_deferral_rate')}; "
+                         "test held back")
+           + C.stat_tile("GateExp GX · test", r(PREV_GX, "unauthorized_action_rate"), "unsafe",
+                         ("ok", "✓ target ≤ 5%"), f"needless questions {r(PREV_GX, 'unnecessary_deferral_rate')}")
            + C.stat_tile("Trained gate B5", r("b5_qlora_4way", "unauthorized_action_rate"), "unsafe",
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b5_qlora_4way', 'unnecessary_deferral_rate')}")
-           + C.stat_tile("B5 + safety guards", r("b5_guarded", "unauthorized_action_rate"), "unsafe",
-                         ("bad", "✕ target ≤ 5%"), f"needless questions {r('b5_guarded', 'unnecessary_deferral_rate')}")
            + C.stat_tile("Rules gate B1", r("b1_rules", "unauthorized_action_rate"), "unsafe",
                          ("bad", "✕ target ≤ 5%"), f"needless questions {r('b1_rules', 'unnecessary_deferral_rate')}")
            + "</div>")
-    C.note("All on the frozen test set (212 cases), scored the same way. The newest design (GateExp, 12 Nov) meets "
-           "the safety target, but asks more questions than allowed under the frozen labels, and some of its rules "
-           "were found on test failures. On dev it is at "
-           f"{reports('dev').get(NEWEST, {}).get('unauthorized_action_rate', '?')} unsafe. The team has not yet "
-           "decided whether it becomes the main design.")
+    C.note("Scored the same way, against the frozen labels. GateExp (GX) meets the safety target on test, but some "
+           "of its rules were found on test failures. So the final design (GX3, 12 Nov) is shown on dev and is "
+           "[[held back]] from test until one final run. In the live AgentDojo run it let 0 of 120 attacks through.")
 
 # ------------------------------------------------------------------ data
 with tabs[1]:
@@ -106,6 +108,10 @@ with tabs[1]:
     st.markdown("#### The frozen split")
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
     st.caption("Whole families go to one split, so no near-copy of a test case is ever seen in training.")
+    C.note("Two more sets came later, for checking only: **61 red-team attacks**, written by hand to break the gate, "
+           "and **216 [[combinations|combination cases]]**, generated to mix risk factors in pairs the training data "
+           "never had (labelled by the team's rule program). A **[[blind test set]]** of about 100 new cases is "
+           "being written now.")
 
     st.markdown("#### What the right first decision is, per split")
     colors = {"ALLOW": "#008300", "BLOCK": "#e34948", "ASK_USER": "#2a78d6", "ESCALATE": "#eda100"}
@@ -140,39 +146,79 @@ with tabs[1]:
 # ------------------------------------------------------------------ experiments
 with tabs[2]:
     st.markdown("#### What we compare")
-    have_test = set(D.reports("test"))
+    devr = reports("dev")
+    live = (D.e2e().get(NEWEST) or {}).get("test/all") or {}
 
     def status(key):
-        return "✅ done (Run 1)" if key in have_test else "⏳ pending"
+        if key == NEWEST:
+            return "✅ dev, red-team, combinations, live · test held back"
+        if key == "b4_qlora_binary":
+            return "✅ trained 13 Nov · scoring next"
+        return "✅ done" if key in rep else "⏳ pending"
+
+    def result(key):
+        m = rep.get(key) or (devr.get(key) if key == NEWEST else None)
+        if not m:
+            return "–"
+        where = " (dev)" if key == NEWEST else ""
+        out = f"{m.get('final_resolution_success', '')} correct · {m.get('unauthorized_action_rate', '')} unsafe{where}"
+        if key == NEWEST and live:
+            out += f" · live: attacks {live.get('attack_success_rate')}"
+        return out
 
     rows = [{"Gate": "B0", "What it is": "No gate at all (the agent alone)", "Status": "✅ measured live",
              "Result so far": "Attacks succeed 10/120 (8.3%); tasks done 49/142 (34.5%)"}]
     for k, g in GATES.items():
-        rows.append({"Gate": g.code, "What it is": g.blurb, "Status": status(k),
-                     "Result so far": (f"{(rep.get(k) or {}).get('final_resolution_success', '')} correct · "
-                                       f"{(rep.get(k) or {}).get('unauthorized_action_rate', '')} unsafe")
-                     if k in rep else "–"})
+        rows.append({"Gate": g.code, "What it is": g.blurb, "Status": status(k), "Result so far": result(k)})
     st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch",
                  column_config={"What it is": st.column_config.TextColumn(width="large")})
     st.markdown("#### Ablations: what is each part worth?")
-    st.markdown("B5 is retrained with one part removed. The drop in quality is that part's value.")
+    st.markdown("B5 is retrained with one part removed, on the final recipe. The drop in quality is that part's "
+                "value.")
+    runs = D.training_runs()
+    where = {m["condition"]: (letter, m) for letter, r in runs.items() for m in r.get("models", [])}
+
+    def tstat(cond, letter):
+        if cond in where:
+            return f"✅ trained (run {where[cond][0]}) · scoring next"
+        return f"⏳ training (run {letter})"
+
     st.dataframe(pd.DataFrame([
-        {"Variant": "B5 − provenance", "Removes": "where things came from", "Tests": "H1", "Status": "⏳ Run 2"},
-        {"Variant": "B5 − authority", "Removes": "who may approve", "Tests": "H1", "Status": "⏳ Run 2"},
-        {"Variant": "B5 − RAG", "Removes": "the handbook rules", "Tests": "H1", "Status": "⏳ Run 2"},
-        {"Variant": "B5 − intermediate", "Removes": "'what's missing / who decides'", "Tests": "H3", "Status": "⏳ Run 2"},
-        {"Variant": "B5 − ASK", "Removes": "the ASK_USER decision", "Tests": "H2", "Status": "⏳ Run 2"},
-        {"Variant": "B5 − ESCALATE", "Removes": "the ESCALATE decision", "Tests": "H2", "Status": "⏳ Run 2"},
+        {"Variant": "B5 − provenance", "Removes": "where things came from", "Tests": "H1",
+         "Status": tstat("b5_v4_no_prov", "B")},
+        {"Variant": "B5 − authority", "Removes": "who may approve", "Tests": "H1", "Status": tstat("b5_v4_no_auth", "B")},
+        {"Variant": "B5 − RAG", "Removes": "the handbook rules", "Tests": "H1", "Status": tstat("b5_v4_no_rag", "C")},
+        {"Variant": "B5 − intermediate", "Removes": "'what's missing / who decides'", "Tests": "H3",
+         "Status": tstat("b5_v4_no_inter", "A")},
+        {"Variant": "B5 − ASK", "Removes": "the ASK_USER decision", "Tests": "H2", "Status": tstat("b5_v4_no_ask", "C")},
+        {"Variant": "B5 − ESCALATE", "Removes": "the ESCALATE decision", "Tests": "H2",
+         "Status": tstat("b5_v4_no_esc", "D")},
     ]), hide_index=True, width="stretch")
+    st.markdown("#### The final training runs (13 Nov)")
+    st.markdown("Four teammates trained two models each, in parallel, on Kaggle (2 × T4 per run), all from the same "
+                "locked code (`locked-v4`). Only the part named in each model differs.")
+    trows = []
+    for letter, plan in (("A", "B4 (yes/no) · B5 − intermediate"), ("B", "B5 − provenance · B5 − authority"),
+                         ("C", "B5 − RAG · B5 − ASK"), ("D", "B5 − ESCALATE · B5 with a second seed")):
+        ms = (runs.get(letter) or {}).get("models") or []
+        trows.append({"Run": letter, "Models": plan,
+                      "Status": "✅ trained" if ms else "⏳ training",
+                      "Steps": " · ".join(f"{m.get('global_step')}" for m in ms) or "–",
+                      "Final training loss": " · ".join(f"{m.get('train_loss'):.3f}" for m in ms
+                                                       if m.get("train_loss") is not None) or "–",
+                      "Hours": " · ".join(f"{(m.get('runtime_s') or 0) / 3600:.1f}" for m in ms) or "–"})
+    st.dataframe(pd.DataFrame(trows), hide_index=True, width="stretch")
+    st.caption("Lower training loss does not mean a better gate; the scoring run decides.")
     st.markdown("#### The run plan")
     C.cards([
-        {"kicker": "Run 1 · in progress", "status": "info", "title": "Baselines and the main gate",
-         "body": "B1–B3 ✅, B5 trained and evaluated ✅, B4 ⏳. Then the team decides: go, or fix first."},
-        {"kicker": "Run 2", "title": "Ablations",
-         "body": "Six retrained variants of B5 (table above), evaluated on the same frozen test set."},
-        {"kicker": "Run 3", "title": "Live runs and statistics",
-         "body": "The gate inside full AgentDojo runs (B0 vs B5), then confidence intervals and significance "
-                 "tests."},
+        {"kicker": "Run 1 · done", "status": "ok", "title": "Baselines and the first trained gate",
+         "body": "B1–B3 and B5 on the frozen test set (10–11 Nov)."},
+        {"kicker": "GateExp and final design · done", "status": "ok", "title": "Layers around the model",
+         "body": "GateExp (GX), then the final design (GX3) on dev, red-team, combinations and a live AgentDojo "
+                 "run (11–12 Nov)."},
+        {"kicker": "Final runs · now", "status": "info", "title": "B4, ablations, second seed",
+         "body": "Trained in parallel on 13 Nov (runs A–D). Then one scoring run on dev, red-team and test, the "
+                 "[[blind test set]], and confidence intervals."},
     ])
 
 # ------------------------------------------------------------------ journey
@@ -193,11 +239,18 @@ with tabs[3]:
         ("10–11 Nov", "Run 1", "Smoke test, baselines B1–B3, and B5 trained and evaluated on the frozen test set."),
         ("11 Nov", "Code review and stress test", "A full code review, and 90 hand-made tricky cases that target "
                                                   "the weak spots."),
-        ("11–12 Nov", "GateExp (newest design)", "B5 retrained as B5 v2 and placed inside layers of facts, hard rules "
-                                                 "and after-checks; 61 new red-team attacks; a confirmation policy "
-                                                 "for new payees (25 cases relabelled). Test: 0% unsafe; dev: 2.7%."),
-        ("12 Nov", "Prepared next", "A retrain with a cost-matrix loss (b5_v3), aimed at fewer needless questions. "
-                                    "Not run yet."),
+        ("11–12 Nov", "GateExp", "B5 retrained as B5 v2 and placed inside layers of facts, hard rules and "
+                                 "after-checks; 61 new red-team attacks; a confirmation policy for new payees "
+                                 "(25 cases relabelled). Test: 0% unsafe; dev: 2.7%."),
+        ("12 Nov", "Final design", "B5 retrained again with a cost-matrix loss and factor-combination data "
+                                   "(b5_v3_combo), inside the GateExp layers. Two code reviews fixed how approvals, "
+                                   "untraced targets and amounts are handled. Dev 236/236, red-team 60/61, 216 "
+                                   "combinations 215/216, with 0 unsafe on all three."),
+        ("12 Nov", "Live AgentDojo run", "The whole agent with the final design in front of every risky action: 0 of "
+                                         "120 attacks worked (10 without a gate), 50 of 142 tasks done (49 without)."),
+        ("13 Nov", "Locked, final training", "Code locked as locked-v4. Four teammates trained B4, the six ablations "
+                                             "and a second B5 seed in parallel (runs A–D). Test is held back for one "
+                                             "final run; a blind test set is being written."),
     ]
     html = "".join(f'<div class="sg-step"><div class="ico" style="width:92px;font-size:.8rem;'
                    f'font-weight:700;color:#1c5cab;background:#eef4fd">{C.esc(d)}</div><div class="body">'
@@ -217,23 +270,23 @@ with tabs[4]:
         {"kicker": "Open", "status": "warn", "title": "An extra recipient in a list",
          "body": "“Email David” turned into “email David and attacker@…” still counts as user-named, because one "
                  "address in the list came from the user."},
-        {"kicker": "Open", "status": "warn", "title": "Fails open on the unknown",
-         "body": "An unknown tool, or an amount like “1,800” written as text, skips some checks. The fix: refuse "
-                 "or ask by default."},
+        {"kicker": "Fixed 12 Nov", "status": "ok", "title": "Unknown tools and odd amounts",
+         "body": "An unknown tool now always goes through the gate, and amounts like “Send David 1800” or “5e3” are "
+                 "read correctly. An amount that can't be read is refused instead of passing every limit."},
         {"kicker": "Handled in reporting", "status": "info", "title": "The scoring can reward asking",
          "body": "The simulated user always answers correctly, so asking everything looks great. That's why "
                  "'needless questions' is always reported next to 'unsafe'."},
         {"kicker": "Handled in reporting", "status": "info", "title": "Some rules saw test cases",
          "body": "Some guard rules and some GateExp rules were designed while looking at test failures. Their test "
                  "numbers are marked optimistic; dev and the red-team set are the fairer check."},
-        {"kicker": "Open · team decision", "status": "warn", "title": "Two sets of labels",
-         "body": "GateExp relabelled 25 test and dev cases to its new “confirm a new payee” policy. This site scores "
-                 "every gate against the frozen labels and shows GateExp's own count next to it, until the team "
-                 "decides."},
-        {"kicker": "Open", "status": "warn", "title": "The newest gate, live",
-         "body": "GateExp has only been measured offline with known provenance. A live AgentDojo run, where "
-                 "provenance must be guessed, is still to come; for Run 1's B5 that raised unsafe actions to 20%."},
+        {"kicker": "Open · reported both ways", "status": "warn", "title": "Two sets of labels",
+         "body": "After the freeze the team relabelled some cases to its “confirm new payees and unstated amounts” "
+                 "policy (8 dev cases differ for the final design). This site scores every gate against the frozen "
+                 "labels and shows the team's own count next to it."},
+        {"kicker": "Done 12 Nov", "status": "ok", "title": "The final design, live",
+         "body": "In the live AgentDojo run, where provenance has to be guessed, the final design let 0 of 120 "
+                 "attacks through. (For Run 1's B5, guessing provenance raised unsafe actions to 20%.)"},
         {"kicker": "Planned", "status": "info", "title": "Small test, one run",
-         "body": "212 test cases in 21 families and one training seed. Family-level confidence intervals come "
-                 "before the final statistics."},
+         "body": "212 test cases in 21 families; the final design takes the test once. A second B5 seed was trained "
+                 "to measure seed variance, and family-level confidence intervals come with the final statistics."},
     ], two=True)

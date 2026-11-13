@@ -43,6 +43,7 @@ CATEGORY_PLAIN = {
     "ambiguity": "Unclear request",
     "delegation": "“Do what the email says”",
     "sensitivity": "Secret data",
+    "generated": "Generated combination",
 }
 BASIS_PLAIN = {
     "transfer_over_limit": "the amount is above what the user may pay alone",
@@ -267,14 +268,28 @@ GLOSSARY = {
                     "GateExp counts these separately from needless questions.",
     "ablation": "Retrain the model with one part removed, to measure what that part is worth.",
     "qlora": "A cheap way to fine-tune a big model: keep it frozen in 4-bit form and train a small add-on.",
-    "gateexp": "The newest gate design (branch GateExp, 11–12 Nov): fixed facts and hard rules around the trained "
-               "model, plus checks after it that can only make its answer stricter.",
+    "gateexp": "The gate design from branch GateExp (11–12 Nov, now on main): fixed facts and hard rules around "
+               "the trained model, plus checks after it that can only make its answer stricter.",
+    "final design": "What the team reports as its final gate (12 Nov): B5 retrained with factor-combination data, "
+                    "inside the GateExp layers.",
+    "combination cases": "216 generated cases that mix risk factors in pairs the training data never had. Labelled "
+                         "by the team's rule program, not by hand.",
+    "held back": "Not run on the test set on purpose: the final gate takes the test exam once, at the end, so no "
+                 "design choice can be tuned on it.",
+    "blind test set": "About 100 new cases written only from the handbook, without looking at the code, the "
+                      "training data or any result. Run once, after all fixes.",
+    "agentdojo": "A public benchmark where an AI agent does real banking and workspace tasks while some emails and "
+                 "files contain hidden attacks. It scores whether the task got done and whether an attack worked.",
+    "utility": "How many of the user's tasks the agent actually completed.",
+    "attack success": "How many hidden attacks made the agent do what the attacker wanted.",
     "guards": "Hard rules applied after the model that can only make an ALLOW stricter, never looser.",
     "oracle provenance": "Provenance when we know which text the attacker injected: the best case, used offline.",
     "guessed provenance": "Provenance found by string matching, as a real system must: harder and more realistic.",
     "dev set": "Cases used to tune and choose settings. Not the final exam.",
     "test set": "The final exam: cases never used to make design choices (in principle).",
     "red team": "Cases written on purpose to try to break the gate.",
+    "combinations": "216 generated cases that mix risk factors in pairs the training data never had. Labelled by the "
+                    "team's rule program, not by hand.",
     "frozen labels": "The team's official labels for train, dev and test, fixed on 9 Nov.",
 }
 
@@ -290,6 +305,8 @@ GX_RULE_PLAIN = {
     "guards": "a safety guard (placeholder, over the limit, out of scope) made the answer stricter",
     "no_reescalate": "a real approver already approved this call, so no second escalation",
     "no_reask": "the user already confirmed this call, so no second question",
+    "unknown_args": "a detail that neither the user nor any document gave was filled in by the agent, so the user "
+                    "confirms it",
     "intent_confirm": "a risky action the user did not ask for (or left to an email) needs the user's confirmation",
     "new_payee_confirm": "the first payment to a new payee needs the user to confirm the IBAN",
     "amount_confirm": "the amount is not one the user stated, so the user confirms it",
@@ -297,7 +314,8 @@ GX_RULE_PLAIN = {
     "route_authority": "the model asked the user, but only an approver can decide, so escalate",
 }
 FACT_PLAIN = {"intent": "Did the user ask?", "risk": "Risk", "data_source": "Details came from",
-              "split_payment": "Part of a bigger payment", "paid_today": "Paid today"}
+              "split_payment": "Part of a bigger payment", "paid_today": "Paid today",
+              "unknown_args": "Made-up details", "contact_list": "Copies a contact list"}
 _FACT_VALUES = {"asked": "yes", "not_asked": "no", "delegated": "left it to an email", "high": "high", "low": "low",
                 "user": "the user", "third_party": "a document or email", "untrusted": "injected content"}
 

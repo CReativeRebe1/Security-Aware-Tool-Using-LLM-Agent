@@ -30,10 +30,12 @@ pages = {
 nav = st.navigation(pages)
 
 with st.sidebar:
-    src = D.gateexp_source()
+    src, fin = D.gateexp_source(), D.final_source()
     st.caption(f"**Results shown**  \nRun 1 · code `{D.CODE_HASH}` (10–11 Nov)  \n"
-               f"GateExp · commit `{src.get('commit', '?')}` (12 Nov)")
-    st.caption("All scored against the team's frozen labels. Work in progress: B4 and the ablations are not run yet.")
+               f"GateExp · commit `{src.get('commit', '?')}` (12 Nov)  \n"
+               f"Final design · commit `{fin.get('run_commit', '?')}` (12 Nov)")
+    st.caption("All scored against the same labels. Next: B4 and the ablations, trained 13 Nov, get scored; the "
+               "final design takes the test set once.")
     st.caption("CL3410 course project  \nPrabhash Padhan · Rinkesh Verma  \nShubham Kumar Sunny · Yogendra Patel")
 
 nav.run()

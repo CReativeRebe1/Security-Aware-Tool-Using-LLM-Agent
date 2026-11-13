@@ -39,23 +39,28 @@ GATES: dict[str, GateInfo] = {g.key: g for g in [
     GateInfo("b3_prompt_4way", "B3", "Prompted AI · 4 choices", "prompted",
              "Qwen3-8B with instructions only, no training. All four decisions."),
     GateInfo("b4_qlora_binary", "B4", "Trained AI · yes/no", "trained",
-             "Qwen3-8B trained on our labels, but only ALLOW or BLOCK. Not trained yet."),
+             "Qwen3-8B trained on our labels, but only ALLOW or BLOCK. Trained on 13 Nov (final run A); its scores "
+             "come with the final scoring run."),
     GateInfo("b5_qlora_4way", "B5", "Trained AI · 4 choices", "trained",
              "Our gate: Qwen3-8B fine-tuned (QLoRA) on our labels, all evidence, all four decisions."),
     GateInfo("b5_guarded", "B5+G", "B5 + safety guards", "trained",
              "B5, then hard rules that can only make an ALLOW stricter, never looser."),
     GateInfo("b5_inferred_prov", "B5-R", "B5 · realistic provenance", "trained",
              "B5 when 'where did this come from' is guessed by string matching, as a real system must."),
-    GateInfo("b5_v2_gateexp", "GX", "B5 v2 + GateExp (newest)", "trained",
-             "Newest design (GateExp branch, 12 Nov): a retrained B5 v2 inside layers of facts, hard rules and "
-             "after-checks."),
+    GateInfo("b5_v2_gateexp", "GX", "B5 v2 + GateExp", "trained",
+             "GateExp design (11–12 Nov): a retrained B5 v2 inside layers of facts, hard rules and after-checks. "
+             "Scored on test, dev and the red-team set."),
+    GateInfo("b5_v3_combo_gateexp", "GX3", "B5 v3 combo + GateExp (final design)", "trained",
+             "The design the team reports as final (12 Nov): B5 retrained with factor-combination data, inside the "
+             "GateExp layers with the review fixes. Test is held back for one final run."),
 ]}
 OURS = "b5_qlora_4way"
-NEWEST = "b5_v2_gateexp"
+NEWEST = "b5_v3_combo_gateexp"      # the final design (no test results yet: test is held back)
+PREV_GX = "b5_v2_gateexp"           # the GateExp version that was scored on test
 FAMILY_COLOR = {"trained": "#2a78d6", "prompted": "#eb6834", "rules": "#1baf7a"}   # validated palette
-# Per-gate colours for grouped bars (order B1, B3, B5, GX validated for adjacent pairs).
+# Per-gate colours for grouped bars (order B1, B3, B5, GX, GX3 validated for adjacent pairs; GX3 also clear of B5).
 GATE_COLOR = {"b1_rules": "#1baf7a", "b3_prompt_4way": "#eb6834", "b5_qlora_4way": "#2a78d6",
-              "b5_v2_gateexp": "#e87ba4"}
+              "b5_v2_gateexp": "#e87ba4", "b5_v3_combo_gateexp": "#8a5a00"}
 
 
 @dataclass
@@ -67,23 +72,26 @@ class GateRun:
 
 
 class RecordedSource:
-    """Real predictions: Run 1 (results/data/run1) and the GateExp run (demo/data/gateexp). On the red-team set,
-    which Run 1 never saw, B1 is computed here with the same code (it needs no GPU)."""
+    """Real predictions: Run 1 (results/data/run1), the GateExp run (demo/data/gateexp) and the final gate
+    (demo/data/final). On the sets Run 1 never saw (red-team, combinations), B1 is computed here with the same code
+    (it needs no GPU)."""
 
     def available(self, split: str) -> list[str]:
         return [k for k in GATES if self.preds(split, k) is not None]
 
     def preds(self, split: str, key: str, noisy: bool = False) -> dict | None:
-        if split == "attacks" and key == "b1_rules" and not noisy:
+        if split in D.EXTRA_SPLITS and key == "b1_rules" and not noisy:
             return _b1_on(split)
         return D.predictions(split, key, noisy)
 
     def run(self, split: str, key: str, case_id: str, noisy: bool = False) -> GateRun:
         g = GATES[key]
-        if split == "attacks":
+        if key == NEWEST and split == "test":
+            return GateRun(g, None, "recorded", "Held back: the final design runs on the test set once, at the end.")
+        if split in D.EXTRA_SPLITS:
             p = self.preds(split, key)
             if p is None:
-                return GateRun(g, None, "recorded", "Not run on the red-team set.")
+                return GateRun(g, None, "recorded", f"Not run on the {D.SPLITS[split].split(' ·')[0].lower()} set.")
             return GateRun(g, p.get(case_id), "live" if key == "b1_rules" else "recorded",
                            None if case_id in p else "Not scored here.")
         preds = D.predictions(split, key, noisy) if noisy else None
@@ -93,7 +101,8 @@ class RecordedSource:
                 note = "No confusing-reply run for this gate; showing the normal reply."
             preds = D.predictions(split, key)
         if preds is None:
-            return GateRun(g, None, "recorded", "Not trained yet in Run 1.")
+            return GateRun(g, None, "recorded", "Trained on 13 Nov; not scored yet." if key == "b4_qlora_binary"
+                           else "No recorded run on this set.")
         if case_id not in preds:
             return GateRun(g, None, "recorded", "Not scored here: the case starts after an answered question, and a "
                                                "yes/no gate has no question rounds.")
@@ -159,10 +168,15 @@ recorded = RecordedSource()
 live = LiveRulesSource()
 
 
+def newest(split: str) -> str:
+    """The newest gate with results on this set: the final design, or GateExp v2 on test (final held back)."""
+    return NEWEST if recorded.preds(split, NEWEST) is not None else PREV_GX
+
+
 def reports(split: str) -> dict[str, dict]:
     """Every gate's metrics on this split, all against the same labels (see data.reports)."""
     out = dict(D.reports(split))
-    if split == "attacks":
+    if split in D.EXTRA_SPLITS:
         from sagate.eval import metrics as M
 
         out["b1_rules"] = {k: (str(v) if not isinstance(v, (int, float, dict)) else v)

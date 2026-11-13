@@ -5,7 +5,7 @@ import streamlit as st
 from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import simulation as S
-from sagate_demo.gates import GATES, NEWEST, recorded, reports
+from sagate_demo.gates import GATES, NEWEST, PREV_GX, recorded, reports
 
 C.page_hero("Simulation", "Watch the gates race",
             "Every gate decides the **same real cases in the same order**. Each square is one case: watch where "
@@ -18,7 +18,7 @@ split = c1.segmented_control("Cases", list(D.SPLITS), key="sim_split", format_fu
                              help=D.SPLIT_HELP) or "test"
 order = c3.segmented_control("Order", ["shuffled", "by kind"], default="shuffled", key="sim_order") or "shuffled"
 avail = recorded.available(split)
-default = [k for k in ("b1_rules", "b3_prompt_4way", "b5_qlora_4way", NEWEST) if k in avail]
+default = [k for k in ("b1_rules", "b3_prompt_4way", "b5_qlora_4way", PREV_GX, NEWEST) if k in avail]
 keys = st.pills("Gates in the race", avail, selection_mode="multi", default=default, key=f"sim_gates_{split}",
                 format_func=lambda k: f"{GATES[k].code} · {GATES[k].name}") or default
 
@@ -57,12 +57,22 @@ if "b5_qlora_4way" in keys:
     cards.append({"kicker": "B5 · trained (Run 1)", "status": "info", "title": "Mostly blue, a few red",
                   "body": f"Training fixed the over-asking ({r('b5_qlora_4way', 'unnecessary_deferral_rate')} needless). "
                           f"Unsafe: {r('b5_qlora_4way', 'unauthorized_action_rate')}, {verdict5}."})
-if NEWEST in keys:
-    cards.append({"kicker": "GX · newest design", "status": "ok", "title": "Almost no red, more yellow “?”",
-                  "body": f"[[GateExp]] lets {r(NEWEST, 'unauthorized_action_rate')} unsafe actions through, and pays "
-                          f"with questions ({r(NEWEST, 'unnecessary_deferral_rate')} counted as needless here; many are "
+if PREV_GX in keys:
+    cards.append({"kicker": "GX · GateExp v2", "status": "ok", "title": "Almost no red, more yellow “?”",
+                  "body": f"[[GateExp]] lets {r(PREV_GX, 'unauthorized_action_rate')} unsafe actions through, and pays "
+                          f"with questions ({r(PREV_GX, 'unnecessary_deferral_rate')} counted as needless here; many are "
                           "deliberate [[confirmation|confirmations]] before payments to new payees)."})
+if NEWEST in keys:
+    cards.append({"kicker": "GX3 · final design", "status": "ok", "title": "No red at all",
+                  "body": f"The [[final design]] lets {r(NEWEST, 'unauthorized_action_rate')} unsafe actions through "
+                          f"here, with {r(NEWEST, 'unnecessary_deferral_rate')} of questions counted as needless "
+                          "(mostly [[confirmation|confirmations]])."})
+elif split == "test":
+    cards.append({"kicker": "GX3 · final design", "status": "info", "title": "Not in this race",
+                  "body": "The final design is [[held back]] from the test set until one final run. Pick Dev, "
+                          "Red-team or Combinations to watch it race."})
 if cards:
     C.cards(cards, two=len(cards) <= 2)
-C.note("Every square is a recorded decision from the team's runs (Run 1 on 10–11 Nov, GateExp on 12 Nov), scored "
-       "against the [[frozen labels]]. On the red-team set, B1 is computed live on this server.")
+C.note("Every square is a recorded decision from the team's runs (Run 1 on 10–11 Nov, GateExp and the final design "
+       "on 12 Nov), scored against the same labels for every gate. On the red-team and combination sets, B1 is "
+       "computed live on this server.")

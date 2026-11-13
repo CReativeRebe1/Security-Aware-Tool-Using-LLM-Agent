@@ -14,7 +14,7 @@ import streamlit as st
 from . import components as C
 from . import data as D
 from . import explain as X
-from .gates import GATES, NEWEST, OURS, LiveSettings, live, recorded
+from .gates import GATES, NEWEST, OURS, PREV_GX, LiveSettings, live, recorded
 
 STEPS = ["The request", "The agent acts", "The evidence", "The decisions", "The right answer", "Try it live"]
 
@@ -64,16 +64,17 @@ def step_decisions(split, case_id, meta):
     with left:
         C.show('<p class="sg-lead" style="font-size:.95rem">' + C.md(
             "Each gate's first decision, any question and answer, and the final outcome. The highlighted row is the "
-            "**newest design ([[GateExp]])**; B5 is the Run 1 version of our trained gate.") + "</p>")
+            "newest gate with a result here: the **[[final design]] (GX3)**, or **GateExp v2 (GX)** on the test set, "
+            "where the final design is [[held back]]. B5 is the Run 1 version of our trained gate.") + "</p>")
     noisy = right.toggle("Use the confusing user reply", key=f"noisy{k}", disabled=not has_noisy,
                          help="15% of cases also have a deliberately confusing reply, to test robustness. "
                               "Only those cases can use it.")
     runs = recorded.all(split, case_id, noisy)
     C.comparison(runs, c)
-    gx = next((r for r in runs if r.gate.key == NEWEST and r.trace is not None), None)
+    gx = next((r for k in (NEWEST, PREV_GX) for r in runs if r.gate.key == k and r.trace is not None), None)
     if gx is not None:
         with st.container(border=True, key=f"glass_path{k}"):
-            st.markdown("**How the newest gate decided, layer by layer**")
+            st.markdown(f"**How the newest gate ({gx.gate.code}) decided, layer by layer**")
             st.caption("GateExp computes facts, applies hard rules, asks the trained model only if no rule "
                        "decided, then runs checks that can only make the answer stricter. The highlighted layer "
                        "made the decision. Hover a rule name to see what it means.")
