@@ -1,0 +1,29 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794568525.079876      61 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_ask] 25 cases (3.92s/case)
+[b5_v4_no_ask] 50 cases (3.96s/case)
+[b5_v4_no_ask] 75 cases (4.16s/case)
+[b5_v4_no_ask] 100 cases (4.27s/case)
+[b5_v4_no_ask] 125 cases (4.24s/case)
+[b5_v4_no_ask] 150 cases (4.21s/case)
+[b5_v4_no_ask] 175 cases (4.26s/case)
+b5_v4_no_ask: 192 predictions -> /kaggle/working/outputs/predictions/dev/b5_v4_no_ask.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794569425.572533     155 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_ask] 25 cases (4.95s/case)
+[b5_v4_no_ask] 50 cases (4.74s/case)
+warning: 3 gate prompts exceeded model.max_input_tokens
+b5_v4_no_ask: 57 predictions -> /kaggle/working/outputs/predictions/attacks/b5_v4_no_ask.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794569710.685894      59 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_ask] 25 cases (4.25s/case)
+[b5_v4_no_ask] 50 cases (4.87s/case)
+[b5_v4_no_ask] 75 cases (5.09s/case)
+[b5_v4_no_ask] 100 cases (4.75s/case)
+[b5_v4_no_ask] 125 cases (4.61s/case)
+[b5_v4_no_ask] 150 cases (4.58s/case)
+warning: 4 gate prompts exceeded model.max_input_tokens
+b5_v4_no_ask: 170 predictions -> /kaggle/working/outputs/predictions/test/b5_v4_no_ask.jsonl
