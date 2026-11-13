@@ -19,7 +19,7 @@ GROUPS = {"V2": ["b5_v2"],        # retrained B5: + annotations/train_augmented.
           "C": ["b5_v4_no_rag", "b5_v4_no_ask"],
           "D": ["b5_v4_no_esc", "b5_v4_combo_seed2"]}
 # the first-round groups (b5_qlora_4way, b4_qlora_binary, b5_no_*) are in git history; their results are archived
-GROUP = "A"                      # A | B | C | D (docs/TRAINING_RUNS.md); V4 = the B5 run
+GROUP = "D"                      # A | B | C | D (docs/TRAINING_RUNS.md); V4 = the B5 run
 VARIANTS = False                  # add the ~1,000 generated variants (old runs: True)
 CONDITIONS = GROUPS[GROUP]
 NUM_GPUS = 2

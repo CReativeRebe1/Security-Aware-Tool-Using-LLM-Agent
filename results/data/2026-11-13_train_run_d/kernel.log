@@ -1,0 +1,65 @@
+[{"stream_name":"stdout","time":5.102322448,"data":"sagate code version: 7435346  (from /kaggle/input/datasets/creativerebel/sagate-code)\n"}
+,{"stream_name":"stderr","time":37.226858754,"data":"ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.\n"}
+,{"stream_name":"stderr","time":37.226881743,"data":"gradio-client 2.7.2 requires huggingface-hub\u003c3.0,\u003e=1.16.0, but you have huggingface-hub 0.36.2 which is incompatible.\n"}
+,{"stream_name":"stderr","time":37.226888541,"data":"gradio 6.30.0 requires huggingface-hub\u003c3.0,\u003e=1.16.0, but you have huggingface-hub 0.36.2 which is incompatible.\n"}
+,{"stream_name":"stderr","time":37.226893472,"data":"gradio 6.30.0 requires pillow\u003c13.0,\u003e=8.0, but you have pillow 13.0.0 which is incompatible.\n"}
+,{"stream_name":"stderr","time":37.226898434,"data":"diffusers 0.42.0 requires huggingface-hub\u003c3.0,\u003e=1.32.0, but you have huggingface-hub 0.36.2 which is incompatible.\n"}
+,{"stream_name":"stdout","time":37.488999883,"data":"GPU 0: Tesla T4 (UUID: GPU-054070d4-3c9c-a30f-3527-57b7d86ec55b)\n"}
+,{"stream_name":"stdout","time":37.489025785,"data":"GPU 1: Tesla T4 (UUID: GPU-e9b7056c-bce2-557b-3dbd-7ba7aea5d8d4)\n"}
+,{"stream_name":"stdout","time":39.067906647,"data":"$ /usr/bin/python3 -m sagate.train.variants --pool dev --out /kaggle/working/outputs/sft/dev_cases.jsonl\n"}
+,{"stream_name":"stdout","time":49.341998494,"data":"559 seeds -\u003e 2699 candidate cases -\u003e 300 sampled -\u003e /kaggle/working/outputs/sft/dev_cases.jsonl\n"}
+,{"stream_name":"stdout","time":49.342061255,"data":"  first-round gold mix: {'BLOCK': 100, 'ESCALATE': 61, 'ASK_USER': 62, 'ALLOW': 77}\n"}
+,{"stream_name":"stdout","time":49.342069943,"data":"  later-round gold mix: {}\n"}
+,{"stream_name":"stdout","time":49.342075348,"data":"  final action mix:    {'BLOCK': 128, 'ALLOW': 172}\n"}
+,{"stream_name":"stdout","time":49.342081487,"data":"  mutators:            {'seed': 155, 'over_manager_max': 8, 'over_limit': 6, 'inject': 37, 'internal_recipient': 23, 'recipient_from_content': 24, 'spoof_approval': 11, 'external_recipient': 17, 'new_payee': 8, 'delete_others': 5, 'redirect_standing_order': 4, 'payee_from_document': 2}\n"}
+,{"stream_name":"stdout","time":49.36420382,"data":"note: annotations/train_nl.jsonl not staged\n"}
+,{"stream_name":"stdout","time":49.36426017,"data":"group D: ['b5_v4_no_esc', 'b5_v4_combo_seed2']\n"}
+,{"stream_name":"stdout","time":49.389715051,"data":"$ /usr/bin/python3 -m sagate.train.build_sft --condition b5_v4_no_esc --cases /kaggle/tmp/sagate-code/annotations/train_human.jsonl /kaggle/tmp/sagate-code/annotations/train_augmented.jsonl /kaggle/tmp/sagate-code/annotations/train_combos.jsonl --out /kaggle/working/outputs/sft\n"}
+,{"stream_name":"stdout","time":52.374549188,"data":"b5_v4_no_esc: 2650 examples -\u003e /kaggle/working/outputs/sft/b5_v4_no_esc.jsonl  targets {'ALLOW': 908, 'ASK_USER': 603, 'BLOCK': 1139}\n"}
+,{"stream_name":"stdout","time":52.395644279,"data":"$ /usr/bin/python3 -m sagate.train.build_sft --condition b5_v4_combo_seed2 --cases /kaggle/tmp/sagate-code/annotations/train_human.jsonl /kaggle/tmp/sagate-code/annotations/train_augmented.jsonl /kaggle/tmp/sagate-code/annotations/train_combos.jsonl --out /kaggle/working/outputs/sft\n"}
+,{"stream_name":"stdout","time":55.381108733,"data":"b5_v4_combo_seed2: 2698 examples -\u003e /kaggle/working/outputs/sft/b5_v4_combo_seed2.jsonl  targets {'ALLOW': 944, 'ASK_USER': 603, 'BLOCK': 749, 'ESCALATE': 402}\n"}
+,{"stream_name":"stdout","time":55.399327351,"data":"to train: ['b5_v4_no_esc', 'b5_v4_combo_seed2']\n"}
+,{"stream_name":"stdout","time":55.436670523,"data":"[gpu 0] $ bash -c /usr/bin/python3 -m sagate.train.train_qlora --condition b5_v4_no_esc --sft /kaggle/working/outputs/sft/b5_v4_no_esc.jsonl --out /kaggle/working/outputs\n"}
+,{"stream_name":"stdout","time":55.437698348,"data":"[gpu 1] $ bash -c /usr/bin/python3 -m sagate.train.train_qlora --condition b5_v4_combo_seed2 --sft /kaggle/working/outputs/sft/b5_v4_combo_seed2.jsonl --out /kaggle/working/outputs\n"}
+,{"stream_name":"stdout","time":12795.528776881,"data":"job0 exited with 0; tail of log:\n"}
+,{"stream_name":"stdout","time":12795.529374747,"data":"{'loss': 0.3161, 'grad_norm': 0.10501959174871445, 'learning_rate': 9.314053963669245e-07, 'epoch': 0.97}\n"}
+,{"stream_name":"stdout","time":12795.529400173,"data":"\n"}
+,{"stream_name":"stdout","time":12795.529425715,"data":" 96%|█████████▋| 160/166 [3:22:34\u003c07:40, 76.83s/it]\n"}
+,{"stream_name":"stdout","time":12795.529432507,"data":" 97%|█████████▋| 161/166 [3:23:47\u003c06:19, 75.90s/it]\n"}
+,{"stream_name":"stdout","time":12795.529437513,"data":" 98%|█████████▊| 162/166 [3:25:00\u003c05:00, 75.04s/it]\n"}
+,{"stream_name":"stdout","time":12795.529442279,"data":" 98%|█████████▊| 163/166 [3:26:19\u003c03:48, 76.10s/it]\n"}
+,{"stream_name":"stdout","time":12795.529446495,"data":" 99%|█████████▉| 164/166 [3:27:32\u003c02:30, 75.21s/it]\n"}
+,{"stream_name":"stdout","time":12795.529451135,"data":" 99%|█████████▉| 165/166 [3:28:51\u003c01:16, 76.36s/it]\n"}
+,{"stream_name":"stdout","time":12795.529456245,"data":"100%|██████████| 166/166 [3:29:41\u003c00:00, 68.39s/it]\n"}
+,{"stream_name":"stdout","time":12795.529460857,"data":"                                                   \n"}
+,{"stream_name":"stdout","time":12795.529465313,"data":"{'train_runtime': 12582.3248, 'train_samples_per_second': 0.211, 'train_steps_per_second': 0.013, 'train_loss': 0.37468549932341977, 'epoch': 1.0}\n"}
+,{"stream_name":"stdout","time":12795.52947045,"data":"\n"}
+,{"stream_name":"stdout","time":12795.529547621,"data":"100%|██████████| 166/166 [3:29:42\u003c00:00, 68.39s/it]\n"}
+,{"stream_name":"stdout","time":12795.529727017,"data":"100%|██████████| 166/166 [3:29:42\u003c00:00, 75.80s/it]\n"}
+,{"stream_name":"stdout","time":12795.529824106,"data":"b5_v4_no_esc: loss 0.3747 after 166 steps (209.7 min) -\u003e /kaggle/working/outputs/adapters/b5_v4_no_esc\n"}
+,{"stream_name":"stdout","time":12795.529948246,"data":"\n"}
+,{"stream_name":"stdout","time":13215.533723633,"data":"job1 exited with 0; tail of log:\n"}
+,{"stream_name":"stdout","time":13215.534120038,"data":" 95%|█████████▌| 161/169 [3:26:41\u003c10:13, 76.71s/it]\n"}
+,{"stream_name":"stdout","time":13215.534140445,"data":" 96%|█████████▌| 162/169 [3:28:02\u003c09:05, 77.99s/it]\n"}
+,{"stream_name":"stdout","time":13215.534145748,"data":" 96%|█████████▋| 163/169 [3:29:19\u003c07:45, 77.66s/it]\n"}
+,{"stream_name":"stdout","time":13215.534150278,"data":" 97%|█████████▋| 164/169 [3:30:38\u003c06:30, 78.20s/it]\n"}
+,{"stream_name":"stdout","time":13215.534155145,"data":" 98%|█████████▊| 165/169 [3:32:04\u003c05:22, 80.61s/it]\n"}
+,{"stream_name":"stdout","time":13215.534159516,"data":" 98%|█████████▊| 166/169 [3:33:22\u003c03:59, 79.69s/it]\n"}
+,{"stream_name":"stdout","time":13215.534163916,"data":" 99%|█████████▉| 167/169 [3:34:36\u003c02:36, 78.02s/it]\n"}
+,{"stream_name":"stdout","time":13215.534168472,"data":" 99%|█████████▉| 168/169 [3:35:54\u003c01:18, 78.05s/it]\n"}
+,{"stream_name":"stdout","time":13215.534178894,"data":"100%|██████████| 169/169 [3:36:44\u003c00:00, 69.73s/it]\n"}
+,{"stream_name":"stdout","time":13215.534208141,"data":"                                                   \n"}
+,{"stream_name":"stdout","time":13215.534212976,"data":"{'train_runtime': 13005.7123, 'train_samples_per_second': 0.207, 'train_steps_per_second': 0.013, 'train_loss': 0.4313504893398849, 'epoch': 1.0}\n"}
+,{"stream_name":"stdout","time":13215.534216809,"data":"\n"}
+,{"stream_name":"stdout","time":13215.534220165,"data":"100%|██████████| 169/169 [3:36:45\u003c00:00, 69.73s/it]\n"}
+,{"stream_name":"stdout","time":13215.534223779,"data":"100%|██████████| 169/169 [3:36:45\u003c00:00, 76.96s/it]\n"}
+,{"stream_name":"stdout","time":13215.534227422,"data":"b5_v4_combo_seed2: loss 0.4314 after 169 steps (216.8 min) -\u003e /kaggle/working/outputs/adapters/b5_v4_combo_seed2\n"}
+,{"stream_name":"stdout","time":13215.534231145,"data":"\n"}
+,{"stream_name":"stdout","time":13235.534527309,"data":"adapters missing: none\n"}
+,{"stream_name":"stderr","time":13237.507204271,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":13237.507257897,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":13237.731707708,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":13237.731740351,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":13238.47424178,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":13238.957974531,"data":"[NbConvertApp] Writing 295611 bytes to __results__.html\n"}
+]
