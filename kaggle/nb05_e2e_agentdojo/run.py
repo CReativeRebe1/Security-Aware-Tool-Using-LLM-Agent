@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, sorted(glob.glob("/kaggle/input/**/bootstrap.py", recursive=True), key=len)[0].rsplit("/", 1)[0])
 import bootstrap  # noqa: E402
 
-CONDITIONS = ["b5_v3_combo_gateexp"]   # final gate; add "b5_v3_gateexp" etc. to compare (one session runs them in turn)
+CONDITIONS = ["b5_v4_combo_gateexp"]   # final gate; add "b5_v4_gateexp" etc. to compare (one session runs them in turn)
 EXTRA = []   # e.g. ["b3_prompt_4way"] if the session has time (proposal §7: B3 if time permits)
 NUM_SHARDS = 2
 LIMIT = None
