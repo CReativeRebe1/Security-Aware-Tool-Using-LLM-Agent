@@ -108,7 +108,8 @@ demo/
                             dev label differences, training runs A–D status, SOURCE.json (copied from main)
   tools/sync_final.py       refreshes data/final from main
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
-  .streamlit/config.toml    dark theme "Midnight": indigo brand on deep navy, Inter / JetBrains Mono (Google Fonts)
+  .streamlit/config.toml    two themes: dark "Midnight" and light "Aurora Glass" (visitors pick in ⋮ → Light / Dark / System)
+  assets/light.css          light-theme overrides, active when the page carries data-sg-theme="light" (set by components.theme_probe)
 ```
 
 Chart colors (green = rules, orange = prompted AI, blue = trained AI) were checked for colour-blind safety. Every

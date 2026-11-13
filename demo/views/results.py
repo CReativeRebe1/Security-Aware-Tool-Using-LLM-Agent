@@ -8,7 +8,8 @@ from sagate_demo import explain as X
 from sagate_demo.gates import FAMILY_COLOR, GATE_COLOR, GATES, NEWEST, OURS, PREV_GX, newest, recorded, reports
 
 SURFACE = "rgba(0,0,0,0)"   # transparent: the chart sits on a glass panel
-INK, INK2, GRID, RING = "#e2e8f0", "#94a3b8", "rgba(148,163,184,0.14)", "#0b1120"   # dark theme
+# neutral slate text and grid that read on both the dark and the light theme; no rings (surface differs per theme)
+INK, INK2, GRID, RING = "#64748b", "#64748b", "rgba(100,116,139,0.18)", "rgba(0,0,0,0)"
 
 C.page_hero("Results", "How well does each gate do?",
             "Every number comes straight from the team's result files and is scored the same way for every gate, "

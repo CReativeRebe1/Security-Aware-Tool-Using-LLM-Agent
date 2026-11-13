@@ -1,27 +1,30 @@
 [theme]
 base = "dark"
+baseRadius = "0.65rem"
+buttonRadius = "0.65rem"
+showWidgetBorder = true
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap, sans-serif"
+headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap, sans-serif"
+codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
+headingFontWeights = [800, 800, 700, 700, 600, 600]
+
+[theme.dark]
 primaryColor = "#818cf8"
 backgroundColor = "#070b16"
 secondaryBackgroundColor = "#111a2e"
 textColor = "#e2e8f0"
 linkColor = "#a5b4fc"
 borderColor = "#1e293b"
-showWidgetBorder = true
-baseRadius = "0.65rem"
-buttonRadius = "0.65rem"
-font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap, sans-serif"
-headingFont = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&display=swap, sans-serif"
-codeFont = "JetBrains Mono:https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap, monospace"
-headingFontWeights = [800, 800, 700, 700, 600, 600]
 dataframeHeaderBackgroundColor = "#0f172a"
 
-[theme.sidebar]
-backgroundColor = "#0b1220"
-secondaryBackgroundColor = "#111a2e"
-textColor = "#cbd5e1"
-primaryColor = "#a5b4fc"
-borderColor = "#1e293b"
-linkColor = "#a5b4fc"
+[theme.light]
+primaryColor = "#4f46e5"
+backgroundColor = "#eef2fb"
+secondaryBackgroundColor = "#e4e9f6"
+textColor = "#0f172a"
+linkColor = "#4338ca"
+borderColor = "#d6dcef"
+dataframeHeaderBackgroundColor = "#eaeefa"
 
 [client]
 toolbarMode = "viewer"

@@ -21,7 +21,7 @@ TONES = {
     "unsafe": ("#e34948", "✕", "Unsafe: an action ran that should not have"),
     "over": ("#64748b", "–", "Over-blocked: a good action was refused"),
     "wrong": ("#e34948", "✕", "Wrong outcome"),
-    "none": ("#1e293b", "", "Not scored for this gate"),
+    "none": ("var(--none)", "", "Not scored for this gate"),       # follows the dark / light theme
 }
 
 
@@ -71,7 +71,17 @@ def html_page(data: dict, seconds: float = 14.0) -> str:
 TEMPLATE = r"""<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
 <style>
-:root { --ink:#e2e8f0; --ink2:#94a3b8; --ink3:#64748b; --line:rgba(148,163,184,.16); --soft:#1e293b; --blue:#818cf8; }
+:root { --ink:#e2e8f0; --ink2:#94a3b8; --ink3:#64748b; --line:rgba(148,163,184,.16); --soft:#1e293b; --none:#1e293b; --blue:#818cf8; }
+html.light { --ink:#0f172a; --ink2:#475569; --ink3:#64748b; --line:rgba(30,41,90,.12); --soft:#e2e8f0; --none:#e2e8f0; }
+html.light .lane { background: rgba(255,255,255,.62); border-color: rgba(255,255,255,.9); box-shadow: 0 14px 34px -22px rgba(30,41,90,.35); }
+html.light .lane-name { color: #0b1020; }
+html.light button { background: rgba(255,255,255,.75); border-color: rgba(255,255,255,.95); color: #1e293b;
+  box-shadow: 0 6px 16px -10px rgba(30,41,90,.4); }
+html.light button:hover:not(:disabled) { color: #3730a3; border-color: #818cf8; background: #fff; }
+html.light button.primary { color: #fff; border-color: #6366f1; background: linear-gradient(180deg, #6d68f2, #4f46e5); }
+html.light .progress { background: rgba(30,41,90,.08); }
+html.light .t:hover { outline-color: #0f172a; }
+html.light .done { color: #047857; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: Inter, sans-serif; color: var(--ink); background: transparent; }
 .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
@@ -136,6 +146,9 @@ button:disabled { opacity: .5; cursor: default; }
 <script>
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const D = JSON.parse(document.getElementById('data').textContent);
+// follow the app's theme (the app sets <html data-sg-theme> on its page)
+(function themeSync() { try { const t = window.parent.document.documentElement.getAttribute('data-sg-theme');
+  document.documentElement.classList.toggle('light', t === 'light'); } catch (e) {} setTimeout(themeSync, 400); })();
 const N = D.cases.length, T = D.tones, BASE = __SECONDS__ * 1000;
 const lanesEl = document.getElementById('lanes');
 const order = ["ok","extra","skip","unsafe","over","none"];

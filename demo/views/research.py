@@ -121,16 +121,16 @@ with tabs[1]:
         vals = [100 * mix[n][d] / sum(mix[n].values()) for n in names]
         counts = [mix[n][d] for n in names]
         fig.add_trace(go.Bar(y=names, x=vals, orientation="h", name=d, marker=dict(color=colors[d],
-                             line=dict(width=2, color="#0b1120")),
+                             line=dict(width=0)),
                              text=[f"{d} {v:.0f}%" for v in vals], textposition="inside", insidetextanchor="middle",
                              textfont=dict(color="#0b1120" if d == "ESCALATE" else "#ffffff", size=12), customdata=counts,
                              hovertemplate=f"<b>{d}</b> · %{{y}}<br>%{{customdata}} cases (%{{x:.1f}}%)<extra></extra>"))
     fig.update_layout(barmode="stack", height=250, margin=dict(l=60, r=10, t=10, b=40), plot_bgcolor="rgba(0,0,0,0)",
                       paper_bgcolor="rgba(0,0,0,0)", showlegend=True,
                       legend=dict(orientation="h", y=-0.22, x=0, traceorder="normal"),
-                      font=dict(color="#94a3b8"), hoverlabel=dict(bgcolor="#111a2e", font_color="#e2e8f0"))
+                      font=dict(color="#64748b"), hoverlabel=dict(bgcolor="#111a2e", font_color="#e2e8f0"), bargap=0.35)
     fig.update_xaxes(range=[0, 100], ticksuffix="%", showgrid=False)
-    fig.update_yaxes(autorange="reversed", tickfont=dict(color="#e2e8f0", size=13), automargin=True)
+    fig.update_yaxes(autorange="reversed", tickfont=dict(color="#64748b", size=13), automargin=True)
     with st.container(border=True, key="glass_research_mix"):
         st.plotly_chart(fig, width="stretch", theme=None)
     with st.expander("Show as a table", icon=":material/table:"):

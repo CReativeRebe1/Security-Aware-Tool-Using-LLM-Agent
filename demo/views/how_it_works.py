@@ -4,9 +4,13 @@ from sagate_demo import components as C
 from sagate_demo import explain as X
 from sagate_demo import flow as F
 
-G = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
-     'color="#334155" fillcolor="#111a2e" fontcolor="#e2e8f0" margin="0.18,0.08"]; edge [color="#64748b" '
-     'fontname="Helvetica" fontsize=10 fontcolor="#94a3b8"];')
+# Graphviz colours are baked into the drawing, so the diagram is drawn once per theme and CSS shows the matching one.
+G_DARK = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
+          'color="#334155" fillcolor="#111a2e" fontcolor="#e2e8f0" margin="0.18,0.08"]; edge [color="#64748b" '
+          'fontname="Helvetica" fontsize=10 fontcolor="#94a3b8"];')
+G_LIGHT = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
+           'color="#c7d2fe" fillcolor="#ffffff" fontcolor="#0f172a" margin="0.18,0.08"]; edge [color="#94a3b8" '
+           'fontname="Helvetica" fontsize=10 fontcolor="#475569"];')
 BLUE = 'fillcolor="#6366f1" fontcolor="white" color="#818cf8"'
 
 C.page_hero("How it works", "From a request to a decision, in plain words",
@@ -69,12 +73,14 @@ with tabs[2]:
     st.markdown("**RAG** (retrieval-augmented generation) means: first *look up* the relevant text, then put it in "
                 "front of the model with the question. The model doesn't have to memorise the rulebook. It reads the "
                 "right page.")
-    st.graphviz_chart("digraph { rankdir=LR; " + G + f"""
-      q [label="Facts about the action\\n(only trusted fields)"]; bm [label="Word matching\\n(BM25)"];
-      ix [label="Fact → rule index\\n(learned from training labels)"]; fu [label="Merge the two\\nrankings"];
-      top [label="Top 8 rules" {BLUE}]; gate [label="Gate input"];
-      q -> bm; q -> ix; bm -> fu; ix -> fu; fu -> top -> gate;
-    }}""")
+    for mode, g in (("dark_only", G_DARK), ("light_only", G_LIGHT)):
+        with st.container(key=f"{mode}_rag"):
+            st.graphviz_chart("digraph { rankdir=LR; " + g + f"""
+              q [label="Facts about the action\\n(only trusted fields)"]; bm [label="Word matching\\n(BM25)"];
+              ix [label="Fact → rule index\\n(learned from training labels)"]; fu [label="Merge the two\\nrankings"];
+              top [label="Top 8 rules" {BLUE}]; gate [label="Gate input"];
+              q -> bm; q -> ix; bm -> fu; ix -> fu; fu -> top -> gate;
+            }}""")
     C.cards([
         {"kicker": "Why only trusted fields", "title": "The attacker can't steer it",
          "body": "The search query is built from the action and the evidence, not from email text, so injected text "

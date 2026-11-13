@@ -46,8 +46,32 @@ REPO_URL = "https://github.com/CReativeRebe1/Security-Aware-Tool-Using-LLM-Agent
 REPORT_URL = REPO_URL + "/blob/main/docs/report/gate_report.pdf"
 
 
+THEME_PROBE = """<!doctype html><html><body style="margin:0"><script>
+(function () {
+  // Streamlit does not expose the visitor's theme to CSS, but it colours the app text from it: light text means the
+  // dark theme. Mirror that onto <html data-sg-theme> of the app page, so style.css / light.css can follow it.
+  var P; try { P = window.parent.document; } catch (e) { return; }
+  function sync() {
+    var app = P.querySelector('.stApp'); if (!app) return;
+    var m = getComputedStyle(app).color.match(/[0-9.]+/g); if (!m) return;
+    var lum = (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255;
+    var t = lum > 0.5 ? 'dark' : 'light';
+    if (P.documentElement.getAttribute('data-sg-theme') !== t) P.documentElement.setAttribute('data-sg-theme', t);
+  }
+  sync(); setInterval(sync, 300);
+})();
+</script></body></html>"""
+
+
+def theme_probe() -> None:
+    """An invisible helper frame that keeps <html data-sg-theme="light|dark"> in step with the visitor's theme."""
+    with st.container(key="sg_theme_probe"):
+        st.iframe(THEME_PROBE, height=1, tab_index=-1, alt="")
+
+
 def load_css() -> None:
-    st.html(f"<style>{D.asset('style.css')}</style>")
+    """Dark theme (style.css) plus the light theme's overrides (light.css, active when <html data-sg-theme="light">)."""
+    st.html(f"<style>{D.asset('style.css')}\n{D.asset('light.css')}</style>")
 
 
 # ---------------------------------------------------------------- atoms
@@ -138,21 +162,6 @@ def team_section() -> None:
     cards = "".join(f'<div class="sg-member">{avatar(n, i)}<b>{esc(n)}</b><span>CL3410 · IIIT Hyderabad</span></div>'
                     for i, n in enumerate(TEAM))
     show(f'<div class="sg-team">{cards}</div>')
-
-
-def footer() -> None:
-    """Site footer: what the project is, the team and the project links."""
-    show(f'<footer class="sg-footer"><div class="sg-footer-grid">'
-         f'<div><img class="sg-footer-logo" alt="SA-Gate" src="{_img("logo.svg")}">'
-         f'<p>A security gate for tool-using AI agents: it allows, blocks, asks the user or asks a manager before '
-         f'any risky action runs.</p><p>{esc(COURSE)}</p></div>'
-         f'<div><h5>Team</h5><ul>{"".join(f"<li>{esc(n)}</li>" for n in TEAM)}</ul></div>'
-         f'<div><h5>Project</h5><ul>'
-         f'<li><a href="{REPO_URL}" target="_blank" rel="noopener">{icon("code")}GitHub repository</a></li>'
-         f'<li><a href="{REPORT_URL}" target="_blank" rel="noopener">{icon("description")}Project report (PDF)</a></li>'
-         f'</ul></div></div>'
-         f'<div class="sg-footer-base"><span>Recorded results from the team\'s runs · only the rules gate runs live '
-         f'on this server</span><span>SA-Gate</span></div></footer>')
 
 
 def page_hero(eyebrow: str, title: str, text: str) -> None:

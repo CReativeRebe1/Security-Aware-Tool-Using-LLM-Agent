@@ -461,21 +461,6 @@ code { color: var(--sg-brand-pale); }
 .sg-when { width: 92px; font-size: .78rem; font-weight: 700; color: var(--sg-brand-pale); background: var(--sg-brand-soft) !important;
   border-color: var(--sg-brand-line) !important; }
 
-/* ================================================================ footer */
-.sg-footer { margin-top: 56px; border-radius: 24px; padding: 34px 36px 20px; color: var(--sg-ink2); font-size: .88rem;
-  background: radial-gradient(520px 220px at 100% 0%, rgba(99, 102, 241, .2), transparent 70%), rgba(255, 255, 255, .025);
-  border: 1px solid var(--sg-line); }
-.sg-footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 32px; }
-.sg-footer-logo { height: 30px; display: block; margin-bottom: 14px; }
-.sg-footer p { margin: 0 0 8px; line-height: 1.65; color: var(--sg-ink2); max-width: 420px; }
-.sg-footer h5 { color: #e2e8f0; font-size: .72rem; text-transform: uppercase; letter-spacing: .14em; margin: 4px 0 14px; padding: 0; font-weight: 700; }
-.sg-footer ul { list-style: none; margin: 0; padding: 0; }
-.sg-footer li { margin: 7px 0; color: #cbd5e1; }
-.sg-footer a { color: var(--sg-brand-pale); text-decoration: none; display: inline-flex; align-items: center; }
-.sg-footer a:hover { color: #fff; }
-.sg-footer-base { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--sg-line); font-size: .76rem; color: var(--sg-ink3);
-  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-
 /* ================================================================ Streamlit widgets */
 [class*="st-key-glass"] { background: var(--sg-glass); border: 1px solid var(--sg-line) !important; border-radius: var(--sg-r) !important;
   padding: 18px 20px !important; }
@@ -552,3 +537,7 @@ button[data-variant="pills"][aria-checked="true"], button[data-variant="segmente
   .sg-footer-grid { grid-template-columns: 1fr; gap: 20px; }
   .sg-bars-panel .plot { height: 200px; gap: 10px; }
 }
+
+/* the invisible theme helper (components.theme_probe): out of the layout, still running */
+.st-key-sg_theme_probe { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important;
+  opacity: 0 !important; pointer-events: none !important; }

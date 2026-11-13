@@ -41,6 +41,7 @@ elif _deployed()["fingerprint"] != _fp:
     _deployed()["fingerprint"] = _fp
 
 C.load_css()
+C.theme_probe()       # tells our stylesheet whether the visitor picked Light or Dark (⋮ menu → Light / Dark / System)
 if not st.session_state.get("_intro_shown"):      # the opening intro plays once per visit, not on every click
     st.session_state["_intro_shown"] = True
     C.splash()
@@ -63,4 +64,3 @@ pages = {
 }
 nav = st.navigation(pages, position="top")
 nav.run()
-C.footer()          # results shown, team and project links (what used to sit in the sidebar)
