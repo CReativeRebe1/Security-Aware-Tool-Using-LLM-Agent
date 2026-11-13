@@ -1,0 +1,32 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794566822.863286      63 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_auth] 25 cases (5.88s/case)
+[b5_v4_no_auth] 50 cases (5.49s/case)
+[b5_v4_no_auth] 75 cases (5.30s/case)
+[b5_v4_no_auth] 100 cases (5.07s/case)
+[b5_v4_no_auth] 125 cases (5.10s/case)
+[b5_v4_no_auth] 150 cases (4.92s/case)
+[b5_v4_no_auth] 175 cases (4.86s/case)
+[b5_v4_no_auth] 200 cases (4.79s/case)
+[b5_v4_no_auth] 225 cases (4.88s/case)
+b5_v4_no_auth: 236 predictions -> /kaggle/working/outputs/predictions/dev/b5_v4_no_auth.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794568040.337178     172 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_auth] 25 cases (5.14s/case)
+[b5_v4_no_auth] 50 cases (4.82s/case)
+warning: 3 gate prompts exceeded model.max_input_tokens
+b5_v4_no_auth: 61 predictions -> /kaggle/working/outputs/predictions/attacks/b5_v4_no_auth.jsonl
+`torch_dtype` is deprecated! Use `dtype` instead!
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1794568348.674051      61 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+[b5_v4_no_auth] 25 cases (5.33s/case)
+[b5_v4_no_auth] 50 cases (5.28s/case)
+[b5_v4_no_auth] 75 cases (5.44s/case)
+[b5_v4_no_auth] 100 cases (5.16s/case)
+[b5_v4_no_auth] 125 cases (4.96s/case)
+[b5_v4_no_auth] 150 cases (4.95s/case)
+[b5_v4_no_auth] 175 cases (4.85s/case)
+[b5_v4_no_auth] 200 cases (4.87s/case)
+b5_v4_no_auth: 212 predictions -> /kaggle/working/outputs/predictions/test/b5_v4_no_auth.jsonl
