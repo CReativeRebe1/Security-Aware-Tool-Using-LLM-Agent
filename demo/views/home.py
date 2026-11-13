@@ -3,6 +3,7 @@ import streamlit as st
 from sagate_demo import components as C
 from sagate_demo import data as D
 from sagate_demo import explain as X
+from sagate_demo import flow as F
 from sagate_demo.gates import NEWEST, OURS, PREV_GX, reports
 
 C.hero("CL3410 course project · updated 13 Nov",
@@ -44,21 +45,8 @@ C.cards([
 
 C.section("Our idea")
 st.markdown("### A gate in front of every risky action")
-st.graphviz_chart("""
-digraph {
-  rankdir=LR; bgcolor="transparent"; nodesep=0.35; node [shape=box style="rounded,filled" fontname="Helvetica"
-  fontsize=11 color="#d6dbe4" fillcolor="#ffffff" fontcolor="#0f172a" margin="0.18,0.08"];
-  edge [color="#94a3b8" fontname="Helvetica" fontsize=10 fontcolor="#475569"];
-  user [label="User request"]; agent [label="AI agent"];
-  ev [label="Evidence\\nwhere it came from · who may approve\\nhow secret · which rules apply"];
-  gate [label="SA-Gate" fillcolor="#2a78d6" fontcolor="white" color="#2a78d6" fontsize=13];
-  tool [label="Action runs" fillcolor="#e5f5ec" color="#bfe5cf"]; stop [label="Refused" fillcolor="#fdecea" color="#f6c7c3"];
-  ask [label="Ask the user" fillcolor="#eaf2fd" color="#c6dbf6"]; esc [label="Ask the manager" fillcolor="#fdf2dc" color="#f2d49b"];
-  user -> agent; agent -> gate [label=" wants to act"]; ev -> gate;
-  gate -> tool [label="ALLOW"]; gate -> stop [label="BLOCK"]; gate -> ask [label="ASK_USER"]; gate -> esc [label="ESCALATE"];
-  ask -> gate [style=dashed label="answer"]; esc -> gate [style=dashed label="answer"];
-}
-""")
+st.iframe(F.html_page(), height="content", alt="Animated diagram: a request goes from the user to the AI agent, "
+          "the gate checks four kinds of evidence and picks ALLOW, BLOCK, ASK_USER or ESCALATE.")
 C.lead("Reading is harmless, so it passes. Every action that **changes something** stops at the gate. The gate "
        "gets four kinds of facts: [[provenance]], [[authority]], [[sensitivity]] and the relevant handbook rules "
        "([[RAG]]). Then it picks one of **four decisions**:")

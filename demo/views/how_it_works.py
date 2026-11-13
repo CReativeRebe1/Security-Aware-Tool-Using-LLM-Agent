@@ -2,11 +2,12 @@ import streamlit as st
 
 from sagate_demo import components as C
 from sagate_demo import explain as X
+from sagate_demo import flow as F
 
 G = ('bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=11 '
      'color="#d6dbe4" fillcolor="#ffffff" fontcolor="#0f172a" margin="0.18,0.08"]; edge [color="#94a3b8" '
      'fontname="Helvetica" fontsize=10 fontcolor="#475569"];')
-BLUE = 'fillcolor="#2a78d6" fontcolor="white" color="#2a78d6"'
+BLUE = 'fillcolor="#4f46e5" fontcolor="white" color="#4f46e5"'
 
 C.page_hero("How it works", "From a request to a decision, in plain words",
             "Each tab explains one part. Words with a dotted underline, like [[provenance]], show a short "
@@ -85,15 +86,8 @@ with tabs[2]:
 
 with tabs[3]:
     st.markdown("#### The four decisions and the question loop")
-    st.graphviz_chart("digraph { rankdir=LR; " + G + f"""
-      g [label="Gate" {BLUE}];
-      allow [label="ALLOW\\nrun it" fillcolor="#e6f4ec" color="#bfe3cd"];
-      block [label="BLOCK\\nrefuse" fillcolor="#fdeceb" color="#f6c7c3"];
-      ask [label="ASK_USER\\n“Which meeting?”" fillcolor="#eef4fd" color="#c9dcf6"];
-      esc [label="ESCALATE\\n“Manager, approve 3,000?”" fillcolor="#fdf1dc" color="#f2d49b"];
-      g -> allow; g -> block; g -> ask; g -> esc;
-      ask -> g [style=dashed label="user answers"]; esc -> g [style=dashed label="manager answers"];
-    }}""")
+    st.iframe(F.html_page(), height="content", alt="Animated diagram of the four decisions and the question loop: "
+              "ASK_USER and ESCALATE get an answer that goes back to the gate.")
     C.cards([{"kicker": C.chip(d), "title": X.DECISION_PLAIN[d], "body": X.DECISION_EXAMPLE[d]} for d in X.DECISIONS], four=True)
     st.markdown("ASK_USER is for gaps **the user** can fill (which recipient, which file, did you mean it?). ESCALATE "
                 "is for things the user **may not** decide alone. After at most 2 rounds, anything still unclear is "
