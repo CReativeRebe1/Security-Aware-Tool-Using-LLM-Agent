@@ -14,7 +14,7 @@ import streamlit as st
 from . import components as C
 from . import data as D
 from . import explain as X
-from .gates import GATES, NEWEST, OURS, PREV_GX, LiveSettings, live, recorded
+from .gates import B5_FINAL, FINAL, GATES, HISTORY, V1, LiveSettings, live, recorded
 
 STEPS = ["The request", "The agent acts", "The evidence", "The decisions", "The right answer", "Try it live"]
 
@@ -64,14 +64,14 @@ def step_decisions(split, case_id, meta):
     with left:
         C.show('<p class="sg-lead" style="font-size:.95rem">' + C.md(
             "Each gate's first decision, any question and answer, and the final outcome. The highlighted row is the "
-            "newest gate with a result here: the **[[final design]] (GX3)**, or **GateExp v2 (GX)** on the test set, "
-            "where the final design is [[held back]]. B5 is the Run 1 version of our trained gate.") + "</p>")
+            "newest version with a case-by-case result here. **B5** and **Final** are the team's final model and "
+            "[[final system]]; **v1**, **v2** and **v3** are the earlier versions of our trained gate.") + "</p>")
     noisy = right.toggle("Use the confusing user reply", key=f"noisy{k}", disabled=not has_noisy,
                          help="15% of cases also have a deliberately confusing reply, to test robustness. "
                               "Only those cases can use it.")
     runs = recorded.all(split, case_id, noisy)
     C.comparison(runs, c)
-    gx = next((r for k in (NEWEST, PREV_GX) for r in runs if r.gate.key == k and r.trace is not None), None)
+    gx = next((r for k in (FINAL,) + HISTORY for r in runs if r.gate.key == k and r.trace is not None), None)
     if gx is not None:
         with st.container(border=True, key=f"glass_path{k}"):
             st.markdown(f"**How the newest gate ({gx.gate.code}) decided, layer by layer**")
@@ -84,9 +84,10 @@ def step_decisions(split, case_id, meta):
                 C.show(C.gx_path(r["output"]))
     scored = [r for r in runs if r.trace is not None]
     with st.expander("Look closer at one gate: how sure was it?", icon=":material/zoom_in:"):
-        pick = st.selectbox("Gate", [r.gate.key for r in scored], key=f"pick{k}",
-                            index=[r.gate.key for r in scored].index(OURS) if any(r.gate.key == OURS for r in scored)
-                            else 0, format_func=lambda key: f"{GATES[key].code} · {GATES[key].name}")
+        keys = [r.gate.key for r in scored]
+        first = next((x for x in (B5_FINAL, V1) if x in keys), keys[0] if keys else None)
+        pick = st.selectbox("Gate", keys, key=f"pick{k}", index=keys.index(first) if first else 0,
+                            format_func=lambda key: f"{GATES[key].code} · {GATES[key].name}")
         run = next(r for r in scored if r.gate.key == pick)
         gate_detail(run, c)
 
@@ -133,13 +134,6 @@ def step_answer(split, case_id, meta):
     if meta:
         C.callout("right", "Why:", meta["right"])
         C.callout("lesson", "What this shows:", meta["lesson"])
-    rl = D.relabels().get(case_id)
-    if rl:
-        what = "; ".join(f"{k.replace('gold_', '').replace('_', ' ')}: {a} → {b}" for k, (a, b) in rl.items())
-        C.callout("new", "Note:", f"on the [[GateExp]] branch this case was relabelled ({what}). The new policy "
-                                  "asks the user to confirm before a first payment to a new payee, or an amount "
-                                  "the user never stated. This site scores every gate against the team's "
-                                  "[[frozen labels]].")
     if c.gold_clause_ids:
         book = D.handbook()
         st.markdown("**The handbook rules that apply**")

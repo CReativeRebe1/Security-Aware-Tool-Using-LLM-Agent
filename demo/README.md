@@ -16,30 +16,27 @@ A website that shows what the project does, using **real Run 1 results**. It has
 
 ## Where the numbers come from
 
-Nothing is copied or typed in. The app reads the repo's own files when it starts:
+The demo lives on `main` and reads the team's own files there; nothing is copied:
 
-- `annotations/{test,dev}_cases.jsonl`: the frozen cases, with gold labels
-- `results/data/run1/{test,dev}/*.jsonl` and `report*.json`: the recorded gate predictions and metrics
-- `resources/handbooks/*.md`: the rule texts
+- `annotations/{test,dev,attack,...}_cases.jsonl` and `annotations/dev_combos.jsonl`: the cases with the team's
+  current labels. Every number on the site is scored against these labels, the same ones the final reports use.
+- `results/data/`: the recorded predictions, read case by case. B1-B3 and the first trained gate (v1) from
+  `run1/` (or the final re-run `2026-11-14_baselines_b1b3/` once it is committed), GateExp v2 from
+  `2026-11-12_gateexp_tags_ab_b5v2/tags/`, v3 from `2026-11-12_replay_review_fixes/`. On the red-team and
+  combination sets, B1 is computed live with the same code.
+- `demo/data/reported.json`: the team's final numbers (final system, B5, B4, the ablations, the re-run baselines,
+  AgentDojo, the hypothesis verdicts), copied by hand from `results/final/*.pdf`. These are the numbers on Home,
+  Results and Research.
+- `resources/handbooks/*.md`: the rule texts.
 
-When a new run is committed to `results/data/run1/` (for example B4), the site shows it automatically, with no
-code change.
+**Final per-case files.** The final reports point to `results/data/2026-11-13_gateexp_b5v4combo_final/` (the final
+system), `2026-11-13_eval_v4/` (B5 alone) and `2026-11-14_baselines_b1b3/`. They are not committed yet. The data
+layer (`sagate_demo/data.py`, `SOURCES`) already looks for them: once they are pushed, the final system and B5 appear
+in the Playground, Simulation, Explore and the case-by-case charts with no code change (a new results folder also
+clears the app's caches).
 
-**Newest design (GateExp).** The GateExp branch is not merged into this branch. Its current run (B5 v2 inside the
-GateExp layers: test, dev and the 61 red-team cases) is copied into `demo/data/gateexp/` by
-`python demo/tools/sync_gateexp.py`, which also records the commit (`SOURCE.json`) and the 25 cases GateExp
-relabelled (`relabels.json`). The site scores GateExp's predictions against the same frozen labels as every other
-gate, and shows GateExp's own report (its labels, confirmations counted apart) next to it. Re-run the script
-after a new GateExp run. On the red-team set, B1 is computed live with this branch's code.
-
-**Final design (main).** The gate main's README reports as final (b5_v3_combo inside the GateExp layers: dev, the 61
-red-team cases and 216 factor-combination cases, plus the live AgentDojo run) is copied into `demo/data/final/` by
-`python demo/tools/sync_final.py`. It also copies the combination cases, the dev label differences
-(`relabels.json`), the status of the final training runs A–D (`training_runs.json`) and the commit (`SOURCE.json`).
-The final design has no test results on purpose (test is held back for one final run), so on the test set the site
-shows GateExp v2 as the newest gate. When the final b5_v4_combo results land, run the script again with
-`--cond`, `--run` and `--e2e` pointed at them. On the combination set, B1 is also computed live. `featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were
-checked against the recorded predictions for code `da42a96`. Re-check them after a new run.
+`featured.yaml` holds the explanation text for the 7 Playground cases. Its result statements were checked against
+the recorded predictions under the current labels. Re-check them after a new run.
 
 **Gate Lab:** only the conversation is made up (the user's words and what the bank tools return). The project's real
 `ContextBuilder` turns it into evidence, exactly the way the 2,000 dataset cases were built, then `EvidenceMask`,
@@ -102,11 +99,7 @@ demo/
   assets/style.css          the design: colours, cards, chips, tables (classes start with sg-)
   assets/logo.svg, shield.svg  logo (top bar, footer); shield emblem (intro, home banner). hero.svg: unused
   featured.yaml             the 7 Playground scenarios and their explanations
-  data/gateexp/             GateExp predictions, reports, red-team cases, relabels, SOURCE.json (copied, not merged)
-  tools/sync_gateexp.py     refreshes data/gateexp from the GateExp branch
-  data/final/               final-design predictions and reports, combination cases, live AgentDojo report,
-                            dev label differences, training runs A–D status, SOURCE.json (copied from main)
-  tools/sync_final.py       refreshes data/final from main
+  data/reported.json        the team's final numbers, copied from results/final/*.pdf
   requirements.txt          streamlit, plotly, pandas, pyyaml, numpy (pinned)
   .streamlit/config.toml    two themes: dark "Midnight" and light "Aurora Glass" (visitors pick in ⋮ → Light / Dark / System)
   assets/light.css          light-theme overrides, active when the page carries data-sg-theme="light" (set by components.theme_probe)

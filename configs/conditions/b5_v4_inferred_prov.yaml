@@ -1,0 +1,7 @@
+name: b5_v4_inferred_prov
+gate: {kind: llm, adapter: adapters/b5_v4_combo}   # test-time swap of the final B5: runtime-inferred provenance, no retraining
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: inferred, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}
+train: {gateexp_facts: true}   # the adapter's input format (facts shown); never trained under this name

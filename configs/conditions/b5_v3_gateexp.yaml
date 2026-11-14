@@ -1,0 +1,10 @@
+name: b5_v3_gateexp
+gate: {kind: llm, adapter: adapters/b5_v3}   # cost-matrix retrain inside the GateExp layers
+decision_space: [ALLOW, BLOCK, ASK_USER, ESCALATE]
+evidence: {provenance: oracle, authority: true, sensitivity: true, rag: true}
+supervision: {intermediate: true}
+resolution: {enabled: true}
+gateexp:
+  pre: [declined, credential_flow, untrusted_provenance, authority]
+  post: [guards, no_reescalate, no_reask, unknown_args, untraced_target, intent_confirm, new_payee_confirm, amount_confirm, unlabelled_external, route_authority]
+  show_facts: true

@@ -270,12 +270,13 @@ GLOSSARY = {
     "qlora": "A cheap way to fine-tune a big model: keep it frozen in 4-bit form and train a small add-on.",
     "gateexp": "The gate design from branch GateExp (now on main): fixed facts and hard rules around "
                "the trained model, plus checks after it that can only make its answer stricter.",
-    "final design": "What the team reports as its final gate: B5 retrained with factor-combination data, "
-                    "inside the GateExp layers.",
+    "final design": "The team's final gate: the final trained model (B5) inside the GateExp rule layers.",
+    "final system": "The team's final gate: the final trained model (B5) inside the GateExp rule layers. Scored on "
+                    "the test set once, after the model and the code were final.",
     "combination cases": "216 generated cases that mix risk factors in pairs the training data never had. Labelled "
                          "by the team's rule program, not by hand.",
-    "held back": "Not run on the test set on purpose: the final gate takes the test exam once, at the end, so no "
-                 "design choice can be tuned on it.",
+    "held back": "Not run on the test set until the very end: the final gate took the test exam once, after the "
+                 "model and code were final, so no design choice could be tuned on it.",
     "blind test set": "About 100 new cases written only from the handbook, without looking at the code, the "
                       "training data or any result. Run once, after all fixes.",
     "agentdojo": "A public benchmark where an AI agent does real banking and workspace tasks while some emails and "
@@ -286,15 +287,19 @@ GLOSSARY = {
     "oracle provenance": "Provenance when we know which text the attacker injected: the best case, used offline.",
     "guessed provenance": "Provenance found by string matching, as a real system must: harder and more realistic.",
     "dev set": "Cases used to tune and choose settings. Not the final exam.",
-    "test set": "The final exam: cases never used to make design choices (in principle).",
+    "test set": "The final exam: 212 cases, scored once for each final model.",
     "red team": "Cases written on purpose to try to break the gate.",
     "combinations": "216 generated cases that mix risk factors in pairs the training data never had. Labelled by the "
                     "team's rule program, not by hand.",
-    "frozen labels": "The team's official labels for train, dev and test, fixed before Run 1.",
+    "frozen labels": "The team's labels for train, dev and test. A few were updated by written policy (for "
+                     "example: confirm a first payment to a new payee), and every final number uses the same labels.",
+    "team labels": "The right answers written by the team for every case. A few were updated by written policy (for "
+                   "example: confirm a first payment to a new payee), and every number on this site uses the same "
+                   "labels as the team's final reports.",
 }
 
 
-# ---------------------------------------------------------------- GateExp (newest design) in plain words
+# ---------------------------------------------------------------- GateExp rule layers in plain words
 
 GX_PRE = ("declined", "credential_flow", "untrusted_provenance", "authority")
 GX_RULE_PLAIN = {

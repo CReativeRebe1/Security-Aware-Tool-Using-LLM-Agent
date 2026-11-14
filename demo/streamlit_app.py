@@ -24,6 +24,10 @@ def _fingerprint() -> str:
             parts.append(f"{f.relative_to(root)}:{s.st_mtime_ns}:{s.st_size}")
     s = (root / "featured.yaml").stat()
     parts.append(f"featured.yaml:{s.st_mtime_ns}:{s.st_size}")
+    # the team's results and labels on main: a newly committed run folder or relabelled cases also refresh the caches
+    repo = root.parent
+    parts += sorted(p.name for p in (repo / "results" / "data").iterdir() if p.is_dir())
+    parts += [f"{f.name}:{f.stat().st_mtime_ns}" for f in sorted((repo / "annotations").glob("*.jsonl"))]
     return hashlib.md5("|".join(parts).encode()).hexdigest()
 
 

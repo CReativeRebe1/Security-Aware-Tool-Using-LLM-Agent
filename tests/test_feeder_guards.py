@@ -274,10 +274,13 @@ def test_stale_or_missing_index_falls_back_to_bm25(monkeypatch):
     gi = EvidenceMask().apply(_pay("Send 50", authority={"user_may_authorize": False, "basis": ["transfer_over_limit"]}))
     pi._usable.cache_clear()
     monkeypatch.setattr(pi, "load_index", lambda: None)
-    assert pi.rank(gi) == []
+    tags_only = pi.rank(gi)                         # no labelled index: the clause coverage tags still rank
+    assert "BANK-2.4" in tags_only                  # tagged basis=transfer_over_limit
+    monkeypatch.setattr(pi, "load_tags", lambda: {})
+    assert pi.rank(gi) == []                        # neither index nor tags: plain BM25
     pi._usable.cache_clear()
     monkeypatch.setattr(pi, "load_index", lambda: {"handbooks": {"banking": "old"}, "support": {}, "links": {}, "min_support": 5})
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        assert pi.rank(gi) == [] and "stale" in str(w[0].message)
+        assert pi.rank(gi) == [] and "stale" in str(w[0].message)   # a stale index is never used
     pi._usable.cache_clear()

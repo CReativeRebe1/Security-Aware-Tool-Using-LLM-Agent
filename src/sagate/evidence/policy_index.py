@@ -10,6 +10,8 @@ added at a lower weight: it supplements the labelled cases, it does not replace 
 
 from __future__ import annotations
 
+import os
+
 import argparse
 import hashlib
 import json
@@ -25,12 +27,35 @@ from ..gate.schema import GateInput
 
 MIN_SUPPORT = 5          # a fact seen in fewer training cases says nothing reliable
 INDEX_FILE = "policy_index.json"
+TAGS_FILE = "policy_tags.yaml"   # per-clause coverage tags, written from the clause text
+TAG_WEIGHT = 0.25        # chosen on dev: Recall@8 0.946 -> 0.956 (0.5: 0.952, 1.0: 0.948)
+
+
+def _context_cfg() -> dict:
+    cfg = load_config()
+    try:
+        return cfg["context"] or {}
+    except (KeyError, TypeError):
+        return {}
+
+
+@lru_cache(maxsize=None)
+def load_tags() -> dict[str, list[str]]:
+    import yaml
+
+    env = os.environ.get("SAGATE_RAG_TAGS")             # A/B override; otherwise configs/base.yaml rag_tags
+    on = env != "0" if env is not None else bool(_context_cfg().get("rag_tags", True))
+    if not on:
+        return {}
+    path = load_config().resources_dir / TAGS_FILE
+    return yaml.safe_load(path.read_text()) if path.exists() else {}
 
 
 def handbook_hashes() -> dict[str, str]:
     """Fingerprint of each handbook the index was built against; an edited handbook makes the index stale."""
     return {p.stem: hashlib.sha256(p.read_bytes()).hexdigest()[:16]
             for p in sorted((load_config().resources_dir / "handbooks").glob("*.md"))}
+
 
 
 def facts(gi: GateInput) -> set[str]:
@@ -88,17 +113,22 @@ def _usable(suite: str) -> bool:
 
 
 def rank(gi: GateInput) -> list[str]:
-    """Clause ids for this call's facts, best first. Empty, so retrieval falls back to BM25, when no index exists
-    or the handbook changed since it was built."""
-    if not _usable(gi.suite):
-        return []
-    index = load_index()
+    """Clause ids for this call's facts, best first: labelled links (if an index exists and matches the handbook)
+    plus the per-clause coverage tags. Empty only when neither exists; retrieval then uses BM25 alone."""
+    seen = facts(gi)
     score: Counter = Counter()
-    for f in facts(gi):
-        n = index["support"].get(f, 0)
-        if n >= index["min_support"]:
-            for clause, k in index["links"].get(f, {}).items():
-                score[clause] += k / n
+    if _usable(gi.suite):                       # labelled links; without them the tags alone still rank clauses
+        index = load_index()
+        for f in seen:
+            n = index["support"].get(f, 0)
+            if n >= index["min_support"]:
+                for clause, k in index["links"].get(f, {}).items():
+                    score[clause] += k / n
+    # coverage: every clause can be reached through its own tags, also for fact combinations no label ever had
+    for clause, tags in load_tags().items():
+        matched = sum(t in seen for t in tags)
+        if matched:
+            score[clause] += TAG_WEIGHT * matched / len(tags)
     prefix = {"banking": "BANK-", "workspace": "WS-"}.get(gi.suite, "")
     return [c for c, _ in score.most_common() if c.startswith(prefix)]
 

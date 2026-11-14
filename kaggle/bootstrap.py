@@ -63,7 +63,8 @@ def collect_adapters(dest: str = os.path.join(WORK, "adapters")) -> str | None:
     """One adapter dir for --adapter-dir out of every attached NB03 output (training is split over several kernels
     and accounts): adapters/<condition> is linked from the most recently trained copy (manifest "created")."""
     best = {}
-    for cfg in glob.glob("/kaggle/input/**/adapters/*/adapter_config.json", recursive=True):
+    # any folder holding an adapter_config.json counts (Kaggle may strip a top "adapters/" folder from an upload)
+    for cfg in glob.glob("/kaggle/input/**/adapter_config.json", recursive=True):
         d = os.path.dirname(cfg)
         try:
             manifest = json.load(open(os.path.join(d, "manifest.json")))

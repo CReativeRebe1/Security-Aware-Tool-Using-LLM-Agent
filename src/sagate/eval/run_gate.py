@@ -48,6 +48,15 @@ def make_gate(cond: Condition, cfg, out_dir: Path, model_id: str | None = None, 
     gate = LLMGate(backend, cond.decision_space, cond.intermediate, adapter=cond.name if cond.adapter else None,
                    cache=GateCache(out_dir / "gate_cache" / f"{cond.name}.jsonl"), cite=cite,
                    allow_threshold=threshold)
+    exp = cond.extra.get("gateexp")
+    if exp:
+        from ..gate.gateexp import POST, PRE, ExpGate
+        return ExpGate(gate, cond.decision_space, exp.get("pre", PRE), exp.get("post", POST),
+                       exp.get("show_facts", True)), backend
+    if (cond.extra.get("train") or {}).get("gateexp_facts"):
+        # model alone, but on the input it was trained on: the computed facts are shown, no rule runs
+        from ..gate.gateexp import ExpGate
+        gate = ExpGate(gate, cond.decision_space, pre=(), post=(), show_facts=True)
     return (GuardedGate(gate, cond.decision_space) if cond.guards else gate), backend
 
 

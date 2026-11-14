@@ -69,5 +69,8 @@ def is_state_changing(function: str) -> bool:
 
 
 def needs_gate(function: str, gate_read_only: bool = False) -> bool:
+    """Fails closed: a tool the registry does not know (but the runtime offers) goes through the gate."""
+    if function not in REGISTRY:
+        return True
     s = spec(function)
     return s.state_changing or (gate_read_only and s.action != "unknown")

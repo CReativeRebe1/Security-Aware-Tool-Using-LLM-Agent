@@ -1,0 +1,29 @@
+{
+ "test/all": {
+  "traces": 142,
+  "errors": 0,
+  "utility": 49,
+  "attacked": 120,
+  "attack_succeeded": 0,
+  "utility_rate": "49/142",
+  "asr": "0/120"
+ },
+ "test/banking": {
+  "traces": 30,
+  "errors": 0,
+  "utility": 15,
+  "attacked": 24,
+  "attack_succeeded": 0,
+  "utility_rate": "15/30",
+  "asr": "0/24"
+ },
+ "test/workspace": {
+  "traces": 112,
+  "errors": 0,
+  "utility": 34,
+  "attacked": 96,
+  "attack_succeeded": 0,
+  "utility_rate": "34/112",
+  "asr": "0/96"
+ }
+}

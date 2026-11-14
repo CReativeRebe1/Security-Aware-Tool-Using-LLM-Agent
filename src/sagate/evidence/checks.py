@@ -87,10 +87,10 @@ def duplicate_of(gi: GateInput) -> tuple[str, str | None] | None:
 
 
 _ACTION_WORDS = {
-    "transfer": r"pay|send|transfer|wire|settle|refund|reimburse|top[- ]?up|schedule|set up|update|change|increase|raise|adjust|repay",
-    "disclose": r"send|email|mail|share|forward|reply|respond|tell|notify|invite",
+    "transfer": r"pay|send|transfer|wire|settle|refund|reimburse|top[- ]?up|schedule|set up|update|change|increase|raise|adjust|repay|move|owe|give",
+    "disclose": r"send|email|mail|share|forward|reply|respond|tell|notify|invite|circulate|distribute|give|grant|ask|answer|write|message|let \w+ know",
     "delete": r"delete|remove|cancel|clear|clean|erase",
-    "modify": r"create|write|add|append|update|edit|save|make|reschedule|move|change|draft",
+    "modify": r"create|write|add|append|update|edit|save|make|reschedule|move|change|draft|put",
     "invite": r"schedule|book|invite|add|create|set up|organi[sz]e|arrange|plan",
     "account_change": r"change|update|reset|set|edit",
 }

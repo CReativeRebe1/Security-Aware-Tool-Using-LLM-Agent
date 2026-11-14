@@ -19,7 +19,7 @@ C.page_hero("How it works", "From a request to a decision, in plain words",
 
 tabs = st.tabs([":material/route: Pipeline", ":material/fact_check: Evidence", ":material/menu_book: RAG",
                 ":material/forum: Questions", ":material/model_training: Training",
-                ":material/layers: Newest design", ":material/balance: Fair testing"])
+                ":material/layers: Final design", ":material/balance: Fair testing"])
 
 with tabs[0]:
     st.markdown("#### From request to decision")
@@ -105,11 +105,12 @@ with tabs[4]:
     C.cards([
         {"kicker": "1 · The model", "title": "Qwen3-8B, compressed to 4 bits",
          "body": "An open model with 8 billion parameters. Compression lets it fit on a free 16 GB GPU (Kaggle T4)."},
-        {"kicker": "2 · The data", "title": "About 2,000 examples",
-         "body": "1,049 cases labelled by our team plus 1,000 generated variants, each with the right decision."},
+        {"kicker": "2 · The data", "title": "2,698 examples",
+         "body": "The team's labelled cases, rule-based copies of them, and generated cases that mix risk factors in "
+                 "new pairs, each with the right decision (ALLOW 944, ASK_USER 603, BLOCK 749, ESCALATE 402)."},
         {"kicker": "3 · The training", "title": "QLoRA: a small add-on",
-         "body": "The big model stays frozen. Only a small adapter (about 167 MB) is trained, for 2 passes over the "
-                 "data."},
+         "body": "The big model stays frozen; only a small adapter is trained, one pass over the data. The loss "
+                 "punishes an ALLOW where BLOCK or ESCALATE was right five times harder than other mistakes."},
         {"kicker": "4 · The answer", "title": "Always a valid answer",
          "body": "The gate doesn't write free text. It scores every allowed value of each field and picks the best, "
                  "which also gives a probability for every decision."},
@@ -119,17 +120,18 @@ with tabs[4]:
         {"Gate": "B1", "What it is": "Hand-written rules", "Decisions": "4", "Trained?": "No AI"},
         {"Gate": "B2", "What it is": "Qwen3-8B with instructions", "Decisions": "2 (yes/no)", "Trained?": "No"},
         {"Gate": "B3", "What it is": "Qwen3-8B with instructions", "Decisions": "4", "Trained?": "No"},
-        {"Gate": "B4", "What it is": "Qwen3-8B fine-tuned", "Decisions": "2 (yes/no)",
-         "Trained?": "Yes (scoring next)"},
+        {"Gate": "B4", "What it is": "Qwen3-8B fine-tuned on the same data", "Decisions": "2 (yes/no)", "Trained?": "Yes"},
         {"Gate": "B5", "What it is": "Qwen3-8B fine-tuned, all evidence (ours)", "Decisions": "4", "Trained?": "Yes"},
-        {"Gate": "GX / GX3", "What it is": "B5 retrained (v2, then v3 combo) inside the GateExp layers",
+        {"Gate": "Final", "What it is": "B5 inside the GateExp rule layers (the final system)", "Decisions": "4",
+         "Trained?": "Yes"},
+        {"Gate": "v1 · v2 · v3", "What it is": "Earlier versions of the trained gate (Run 1, GateExp, factor combinations)",
          "Decisions": "4", "Trained?": "Yes"},
     ], hide_index=True, width="stretch")
 
 with tabs[5]:
-    st.markdown("#### The newest design: three layers around one trained model")
-    C.lead("Branch [[GateExp]] (now merged into main). The idea: **the model judges intent and "
-           "risk; code keeps "
+    st.markdown("#### The final design: layers of rules around one trained model")
+    C.lead("The [[final system]]: the final model B5 inside the [[GateExp]] rule layers. The idea: **the model "
+           "judges intent and risk; code keeps "
            "exact state.** An AI is good at reading a request and the text around it, and bad at exact bookkeeping, "
            "like comparing two IBANs digit by digit or adding up today's payments. So exact checks moved into code.")
     C.cards([
@@ -142,9 +144,8 @@ with tabs[5]:
                  "user already said no · a password or reset link would leave · the details came from injected "
                  "content · the user may not approve this alone."},
         {"kicker": "Layer 3", "status": "info", "title": "The trained model",
-         "body": "Qwen3-8B with a retrained adapter: B5 v2 in GX, and B5 v3 combo in the [[final design]] (GX3), "
-                 "trained with a cost-matrix loss and cases that mix risk factors in new pairs. It reads everything "
-                 "and picks one of the four decisions."},
+         "body": "The final model B5: Qwen3-8B with a QLoRA adapter, trained with a cost-matrix loss and cases that "
+                 "mix risk factors in new pairs. It reads everything and picks one of the four decisions."},
         {"kicker": "Layer 4", "status": "info", "title": "Checks after",
          "body": "Can only make the answer stricter: confirm a first payment to a new payee, confirm an amount the "
                  "user never stated, confirm a risky action the user did not ask for, confirm a detail the agent "
@@ -161,16 +162,16 @@ with tabs[6]:
         {"kicker": C.icon("call_split") + "Split by family", "title": "No near-copies in the test",
          "body": "Cases are split by scenario family, so near-identical cases never appear in both training and "
                  "test."},
-        {"kicker": C.icon("lock") + "Test is the final exam", "title": "No tuning on test (with one exception)",
-         "body": "Thresholds and the rule index come from training and dev data only. Exception: some GateExp rules "
-                 "were found by looking at test failures. So the final design is [[held back]] from test until one "
-                 "final run, and a [[blind test set]] of about 100 new cases is being written from the handbook "
-                 "alone."},
+        {"kicker": C.icon("lock") + "Test is the final exam", "title": "Scored once, at the end",
+         "body": "Thresholds and the rule index come from training and dev data only. Each final model was scored on "
+                 "the test set once, after the model and the code were final. An independent [[blind test set]] of "
+                 "about 100 new cases, written from the handbook alone, is the next check."},
         {"kicker": C.icon("receipt_long") + "Traceable", "title": "Every result is stamped",
          "body": "Every result file records the code version and settings it came from."},
     ])
     st.markdown("#### What's next")
-    st.markdown("B4 and the ablations (B5 without provenance, without authority, without RAG… to measure what each "
-                "part is worth) are trained; one scoring run on dev, red-team and test comes next, then "
-                "the blind test set and the statistics. For this website: a live connection to the trained model on "
+    st.markdown("The blind test: about 100 new cases written from the handbook alone, run once. After that, the "
+                "team's list: accept a clear user answer on unlabelled-data sharing, more attack-style training cases "
+                "where a plain BLOCK is right, re-ask once instead of blocking after a confusing answer, a stronger "
+                "agent model, and more AgentDojo domains. For this website: a live connection to the trained model on "
                 "a GPU. Today the AI results are the real recorded ones, and only the rules gate runs live.")

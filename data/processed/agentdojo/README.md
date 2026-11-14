@@ -60,3 +60,67 @@ These heuristic flags are weak labels for analysis and for generating structured
 - 468 injection-task-only runs (no user task) in `runs/*/<suite>/injection_task_*` are not exported.
 - Provenance is substring matching; short or generic values (e.g. `100`, dates) are often `unknown`.
 - Slack and travel suites are in the raw checkout but not exported (out of the proposal's scope).
+
+## Full schema (moved from the top-level README)
+
+
+### `user_tasks.jsonl`
+| Field | Type | Notes |
+|---|---|---|
+| `suite` | str | `workspace` \| `banking` |
+| `id` | str | e.g. `user_task_0` |
+| `prompt` | str | what the user asks the agent |
+| `difficulty` | str \| null | `EASY` \| `MEDIUM` \| `HARD` |
+| `comment`, `ground_truth_output` | str \| null | from AgentDojo |
+| `ground_truth_calls` | list[{`function`, `args`}] | expected tool calls; runtime-computed values appear as `{"__expr__": "<source>"}` |
+| `ground_truth_static` | bool | all calls fully resolved (false for workspace 10, 13, 19, 31, 32, 34, 36, 37) |
+| `ground_truth_source` | str \| null | original Python `ground_truth` method |
+| `combined_from` | list[str] | only for combined tasks (two user tasks in one prompt) |
+| `benchmark_version`, `versions_available`, `defined_in` | | AgentDojo version bookkeeping |
+| `injection_vectors` | list[str] | injection slots this task's tool outputs expose |
+
+### `injection_tasks.jsonl`
+Same as above with `goal` (attacker instruction) instead of `prompt`, and no `injection_vectors`.
+
+### `injection_vectors.jsonl`
+`suite`, `vector_id`, `description`, `default` (benign text in the slot), `reached_by_user_tasks`.
+
+### `tools.jsonl`
+`suite`, `name`, `module`, `description`, `parameters` (list of `name`, `type`, `description`, `required`, `default`).
+
+### `scenarios.jsonl`
+`scenario_id` (`suite|user_task|injection_task-or-benign`), `suite`, `user_task_id`, `injection_task_id`,
+`type` (`benign` | `injection`), `injection_vectors`, `user_task_split`, `injection_task_split`, `strict_split`.
+
+### `traces.jsonl.gz`
+| Field | Notes |
+|---|---|
+| `trace_id` | `pipeline\|suite\|user_task\|attack\|injection_task` |
+| `pipeline`, `suite`, `user_task_id`, `injection_task_id`, `attack_type` | |
+| `injections` | slot → exact injected text |
+| `utility` | user task completed |
+| `attack_succeeded` | AgentDojo `security` flag; null for benign runs |
+| `tool_calls` | ordered list of `{function, args}` |
+| `messages` | full conversation (system, user, assistant, tool) |
+| `error`, `duration` | |
+
+### `tool_call_proposals.jsonl.gz` — one row per proposed tool call
+| Field | Notes |
+|---|---|
+| `proposal_id`, `trace_id`, `step`, `message_index` | link back to the trace |
+| `pipeline`, `suite`, `user_task_id`, `injection_task_id`, `attack_type` | |
+| `user_prompt`, `prior_calls`, `proposed_call` | gate input |
+| `arg_provenance` | per argument: any of `user_prompt`, `injection`, `tool_output`, `unknown`, `too_short` |
+| `injection_seen_before_call` | injected text already in context |
+| `matches_user_task_ground_truth`, `matches_injection_task_ground_truth` | loose heuristic (same function + a shared distinctive value such as an IBAN/email/filename) |
+| `trace_utility`, `trace_attack_succeeded` | outcome of the whole trace |
+
+`arg_provenance` is oracle-style: it uses the known injected strings, so it is an upper bound for the
+inferred-provenance condition. The `matches_*` flags are weak labels for analysis and variant generation —
+**not** gold ALLOW / BLOCK / ASK_USER / ESCALATE labels.
+
+### Caveats
+
+- Run logs have no benchmark-version field; some were produced against older task versions (v1.0–v1.1).
+- Provenance is substring matching; numbers, dates and short values are often `unknown`.
+- 468 injection-only runs (no user task) are not exported. Slack and travel suites are out of scope.

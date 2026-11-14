@@ -17,7 +17,6 @@
 !/data/processed/
 !/data/synthetic_data/
 !/data/labled-data/
-!/data/stress_test/
 !/outputs/
 !/demo/
 # Local-only: raw downloads, papers, reference code, proposal PDF, envs, run outputs

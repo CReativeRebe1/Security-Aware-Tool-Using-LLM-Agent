@@ -79,7 +79,7 @@ bash kaggle/stage_code.sh --owner <your-kaggle-username>
 
 ## What to record
 
-Fill one row per kernel in the run sheet below (copy it into `docs/JOURNAL.md` after each run).
+Fill one row per kernel in the run sheet below (record each run in `results/data/RUNS.md` and `docs/GATE_EVALUATION.md`).
 
 | Date | Person | Kernel | Group | Code hash (from log) | Config hash (manifest) | Status | GPU h | Notes |
 |---|---|---|---|---|---|---|---|---|

@@ -1,7 +1,9 @@
-"""Read-only access to the project's real files: frozen cases, recorded gate predictions, reports, handbooks.
+"""Read-only access to the project's own files on main: cases, recorded gate predictions, reports, handbooks.
 
-Nothing is exported or copied: the demo reads the files the team commits, so it always shows the numbers on the
-branch it is deployed from.
+Nothing is copied: the demo reads the team's committed files, so it shows the numbers of the branch it is deployed
+from. Every number is computed against the team's current labels (annotations/), the labels the final reports use.
+Numbers that exist only in the team's final PDF reports (the final system, B4, the ablations, AgentDojo) are kept in
+data/reported.json, copied from those reports.
 """
 
 from __future__ import annotations
@@ -23,122 +25,113 @@ from sagate.data.cases import Case, load_cases  # noqa: E402
 from sagate.evidence.mask import EvidenceMask  # noqa: E402
 from sagate.eval import metrics as M  # noqa: E402
 
-RUN_DIR = REPO / "results" / "data" / "run1"
-GX_DIR = DEMO / "data" / "gateexp"            # copied by tools/sync_gateexp.py from the GateExp branch
-GX = "b5_v2_gateexp"
-FINAL_DIR = DEMO / "data" / "final"           # copied by tools/sync_final.py from main
-FINAL = "b5_v3_combo_gateexp"
-RECORDED_DIRS = {GX: GX_DIR, FINAL: FINAL_DIR}
+RESULTS = REPO / "results" / "data"
 SPLITS = {"test": "Test set · 212", "dev": "Dev set · 236", "attacks": "Red-team attacks · 61",
           "combos": "Combinations · 216"}
 EXTRA_SPLITS = ("attacks", "combos")          # sets made after Run 1: Run 1's gates were never run on them
-SPLIT_HELP = ("Test = the final exam (never used to make design choices). Dev = used for tuning. Red-team = 61 cases "
-              "written to try to break the gate. Combinations = 216 generated cases that mix risk factors in pairs "
-              "the training data never had, labelled by the team's rule program.")
-CODE_HASH = "da42a96"
+SPLIT_HELP = ("Test = the final exam, scored once at the end. Dev = used for tuning. Red-team = 61 cases written to "
+              "try to break the gate. Combinations = 216 generated cases that mix risk factors in pairs the training "
+              "data never had, labelled by the team's rule program.")
+CASE_FILES = {"test": "test_cases.jsonl", "dev": "dev_cases.jsonl", "attacks": "attack_cases.jsonl",
+              "combos": "dev_combos.jsonl"}
+
+# Where each recorded gate's predictions live on main, newest run first: the first file that exists is used.
+# {pool} is test / dev / attacks / combos; {n} is "" or "_noisy" (patterns without {n} have no noisy run).
+_RUN1 = "run1/{pool}/{cond}{n}.jsonl"
+_BASELINES = "2026-11-14_baselines_b1b3/{pool}/{cond}{n}.jsonl"           # final re-run of B1-B3 (if committed)
+SOURCES = {
+    "b1_rules": [_BASELINES, _RUN1],
+    "b2_prompt_binary": [_BASELINES, _RUN1],
+    "b3_prompt_4way": [_BASELINES, _RUN1],
+    "b5_qlora_4way": [_RUN1],
+    "b5_guarded": [_RUN1],
+    "b5_inferred_prov": [_RUN1],
+    "b5_v2_gateexp": ["2026-11-12_gateexp_tags_ab_b5v2/tags/{pool}/{cond}{n}.jsonl"],
+    "b5_v3_combo_gateexp": ["2026-11-12_replay_review_fixes/{cond}.{pool}.new.jsonl"],
+    # the final model alone and the final system: used as soon as the team commits these folders
+    "b5_v4_combo": ["2026-11-13_eval_v4/{pool}/{cond}{n}.jsonl"],
+    "b5_v4_combo_gateexp": ["2026-11-13_gateexp_b5v4combo_final/{pool}/{cond}{n}.jsonl"],
+}
+# the team's own reports for the GateExp versions (they count policy confirmations separately)
+TEAM_REPORTS = {"b5_v2_gateexp": "2026-11-12_gateexp_tags_ab_b5v2/tags/{pool}/{cond}.report.json",
+                "b5_v3_combo_gateexp": "2026-11-12_replay_review_fixes/{cond}.{pool}.new.report.json",
+                "b5_v4_combo_gateexp": "2026-11-13_gateexp_b5v4combo_final/{pool}/{cond}.report.json"}
+
+
+def _path(cond: str, split: str, noisy: bool = False) -> Path | None:
+    for pat in SOURCES.get(cond, []):
+        if noisy and "{n}" not in pat:
+            continue
+        p = RESULTS / pat.format(pool=split, cond=cond, n="_noisy" if noisy else "")
+        if p.exists():
+            return p
+    return None
+
+
+def source_of(cond: str, split: str) -> str:
+    """Which recorded run a gate's predictions on this set come from (the results folder name)."""
+    p = _path(cond, split)
+    return p.relative_to(RESULTS).parts[0] if p else ""
 
 
 @st.cache_resource(show_spinner=False)
 def cases(split: str) -> dict[str, Case]:
-    path = {"attacks": GX_DIR / "attack_cases.jsonl", "combos": FINAL_DIR / "combo_cases.jsonl"}.get(
-        split, REPO / "annotations" / f"{split}_cases.jsonl")
-    return {c.case_id: c for c in load_cases(path)}
+    return {c.case_id: c for c in load_cases(REPO / "annotations" / CASE_FILES[split])}
 
 
 @st.cache_resource(show_spinner=False)
 def train_cases() -> dict[str, Case]:
-    """The frozen training split (only used for dataset statistics; never shown as a scored case)."""
+    """The training split (only used for dataset statistics; never shown as a scored case)."""
     return {c.case_id: c for c in load_cases(REPO / "annotations" / "train_human.jsonl")}
 
 
 @st.cache_resource(show_spinner=False)
 def predictions(split: str, cond: str, noisy: bool = False) -> dict[str, dict] | None:
-    """Recorded predictions: Run 1 files, or the GateExp / final-gate runs copied into demo/data/."""
-    if cond in RECORDED_DIRS:
-        path = RECORDED_DIRS[cond] / split / f"{cond}{'_noisy' if noisy else ''}.jsonl"
-    else:
-        path = RUN_DIR / split / f"{cond}{'_noisy' if noisy else ''}.jsonl"
-    if not path.exists():
+    p = _path(cond, split, noisy)
+    if p is None:
         return None
-    with open(path) as f:
+    with open(p) as f:
         return {r["case_id"]: r for r in map(json.loads, f)}
 
 
 @st.cache_data(show_spinner=False)
 def reports(split: str) -> dict[str, dict]:
-    """Run 1 reports as committed, plus GateExp and the final gate scored here against the same labels."""
+    """Every recorded gate scored here, the same way, against the team's current labels."""
     out: dict[str, dict] = {}
-    for name in ("report.json", "report_nb04_b5.json"):
-        p = RUN_DIR / split / name
-        if p.exists():
-            out.update(json.loads(p.read_text()))
-    for cond in RECORDED_DIRS:
-        preds = predictions(split, cond)
-        if preds is not None:
-            out[cond] = {k: (str(v) if not isinstance(v, (int, float, dict)) else v)
-                         for k, v in M.compute(preds.values(), cases(split).values()).items()}
+    for cond in SOURCES:
+        for noisy in (False, True):
+            preds = predictions(split, cond, noisy)
+            if preds is not None:
+                out[cond + ("_noisy" if noisy else "")] = {
+                    k: (str(v) if not isinstance(v, (int, float, dict)) else v)
+                    for k, v in M.compute(preds.values(), cases(split).values()).items()}
     return out
 
 
 @st.cache_data(show_spinner=False)
 def team_report(cond: str, split: str) -> dict:
-    """The team's own report for GateExp or the final gate (their labels; confirmations counted separately)."""
-    if cond not in RECORDED_DIRS:
-        return {}
-    p = RECORDED_DIRS[cond] / split / f"{cond}.report.json"
-    if not p.exists():
+    """The team's own report for a GateExp version (confirmations counted separately)."""
+    pat = TEAM_REPORTS.get(cond)
+    p = RESULTS / pat.format(pool=split, cond=cond) if pat else None
+    if not p or not p.exists():
         return {}
     r = json.loads(p.read_text())
-    return r.get(cond, r) if isinstance(r.get(cond), dict) else r
-
-
-def gateexp_report(split: str) -> dict:
-    return team_report(GX, split)
+    return r.get(cond) if isinstance(r.get(cond), dict) else r
 
 
 @st.cache_data(show_spinner=False)
-def gateexp_source() -> dict:
-    p = GX_DIR / "SOURCE.json"
-    return json.loads(p.read_text()) if p.exists() else {}
+def reported() -> dict:
+    """The team's final numbers, copied from results/final/*.pdf (see the file's _source)."""
+    return json.loads((DEMO / "data" / "reported.json").read_text())
 
 
-@st.cache_data(show_spinner=False)
-def final_relabels() -> dict[str, dict]:
-    """case_id -> {field: [frozen label, label used for the final gate]} on dev."""
-    p = FINAL_DIR / "relabels.json"
-    return json.loads(p.read_text()) if p.exists() else {}
-
-
-@st.cache_data(show_spinner=False)
-def final_source() -> dict:
-    p = FINAL_DIR / "SOURCE.json"
-    return json.loads(p.read_text()) if p.exists() else {}
-
-
-@st.cache_data(show_spinner=False)
-def e2e() -> dict:
-    """Live AgentDojo runs: B0 (no gate) and the final gate, 142 test scenarios (120 attacked)."""
-    p = FINAL_DIR / "e2e.json"
-    return json.loads(p.read_text()) if p.exists() else {}
-
-
-@st.cache_data(show_spinner=False)
-def training_runs() -> dict:
-    """Final training runs A-D (13 Nov): which models each run trained, from their train summaries."""
-    p = FINAL_DIR / "training_runs.json"
-    return json.loads(p.read_text()) if p.exists() else {}
-
-
-@st.cache_data(show_spinner=False)
-def relabels() -> dict[str, dict]:
-    """case_id -> {field: [frozen label, GateExp label]} for the cases GateExp relabelled."""
-    p = GX_DIR / "relabels.json"
-    return json.loads(p.read_text()) if p.exists() else {}
+def official(model: str, split: str = "test") -> dict:
+    return (reported()["pools"].get(split) or {}).get(model) or {}
 
 
 @st.cache_resource(show_spinner=False)
 def gate_view(split: str, case_id: str):
-    """The GateInput exactly as B1/B5 see it (oracle provenance, all evidence, 8 retrieved clauses, checks)."""
+    """The GateInput exactly as the trained gates see it (known provenance, all evidence, retrieved clauses)."""
     c = cases(split)[case_id]
     return EvidenceMask.from_condition(load_condition("b5_qlora_4way")).apply(c.input, c.alt_provenance)
 

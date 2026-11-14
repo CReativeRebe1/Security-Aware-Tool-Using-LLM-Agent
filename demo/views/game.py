@@ -12,7 +12,7 @@ C.page_hero("Game", "You be the gate",
             "why it is right, and what the AI gates decided. Can you beat them?")
 
 SPLIT = "test"
-RIVALS = ["b1_rules", "b5_qlora_4way", newest(SPLIT)]   # final design is held back on test
+RIVALS = list(dict.fromkeys(["b1_rules", "b5_qlora_4way", newest(SPLIT)]))   # the newest version with test results
 cases = D.cases(SPLIT)
 
 
@@ -107,9 +107,6 @@ with right:
                         f'<span><b>{C.esc(GATES[k].code)}</b> {C.esc(GATES[k].name)}: {C.chip(p["first_decision"])}'
                         f'</span></li>')
         C.show(f'<div class="sg-card"><ul style="margin:0">{"".join(rows)}</ul></div>')
-        if cid in D.relabels():
-            C.note("This case was relabelled on the [[GateExp]] branch (new payee or new amount = confirm). The game "
-                   "uses the team's [[frozen labels]].")
         st.button("Next case →", on_click=next_case, type="primary", width="stretch")
 
 st.divider()

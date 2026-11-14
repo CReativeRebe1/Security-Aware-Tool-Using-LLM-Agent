@@ -37,7 +37,7 @@ from ..data.cases import Case, save_cases
 from ..data.loaders import AgentDojoData, read_jsonl, write_jsonl
 from ..evidence.context_builder import ContextBuilder, with_resolution
 from ..evidence.policy_rag import parse_handbook
-from ..evidence.tools_registry import REGISTRY, spec
+from ..evidence.tools_registry import REGISTRY
 from ..gate.prompts import render_input
 from ..gate.schema import DEFERRALS, FIELD_VALUES, GateOutput
 from ..resolution.responders import MockApprover
