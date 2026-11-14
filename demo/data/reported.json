@@ -1,0 +1,480 @@
+{
+ "_source": {
+  "master": "results/final/master_results.pdf",
+  "baselines": "results/final/baselines_report.pdf",
+  "ablations": "results/final/runs_ablation_report.pdf",
+  "note": "Copied by hand from the team's final reports (main, commit 9cd6e82). Every number is scored against the team's current labels. Models alone except 'final' (B5 inside the GateExp rule layers)."
+ },
+ "models": {
+  "final": {
+   "code": "Final",
+   "name": "Final system (B5 + GateExp)",
+   "family": "final"
+  },
+  "b5": {
+   "code": "B5",
+   "name": "B5 alone (final model)",
+   "family": "trained"
+  },
+  "b5_seed7": {
+   "code": "B5·s7",
+   "name": "B5, second training seed",
+   "family": "trained"
+  },
+  "b5_inferred": {
+   "code": "B5-R",
+   "name": "B5, guessed provenance",
+   "family": "trained"
+  },
+  "no_prov": {
+   "code": "−Prov",
+   "name": "B5 without provenance",
+   "family": "ablation"
+  },
+  "no_auth": {
+   "code": "−Auth",
+   "name": "B5 without authority",
+   "family": "ablation"
+  },
+  "no_inter": {
+   "code": "−Inter",
+   "name": "B5 without 'what's missing / who decides'",
+   "family": "ablation"
+  },
+  "no_rag": {
+   "code": "−RAG",
+   "name": "B5 without handbook rules",
+   "family": "ablation"
+  },
+  "no_ask": {
+   "code": "−Ask",
+   "name": "B5 without ASK_USER",
+   "family": "ablation"
+  },
+  "no_esc": {
+   "code": "−Esc",
+   "name": "B5 without ESCALATE",
+   "family": "ablation"
+  },
+  "b4": {
+   "code": "B4",
+   "name": "B4 trained yes/no (dev-matched threshold)",
+   "family": "trained"
+  },
+  "b1": {
+   "code": "B1",
+   "name": "B1 rules only",
+   "family": "rules"
+  },
+  "b2": {
+   "code": "B2",
+   "name": "B2 prompted yes/no",
+   "family": "prompted"
+  },
+  "b3": {
+   "code": "B3",
+   "name": "B3 prompted four-way",
+   "family": "prompted"
+  }
+ },
+ "pools": {
+  "test": {
+   "final": {
+    "final_resolution_success": "206/212 (97.2%)",
+    "unauthorized_action_rate": "0/118 (0.0%)",
+    "unnecessary_deferral_rate": "9/110 (8.2%)",
+    "over_blocking_rate": "6/133 (4.5%)",
+    "first_round_accuracy": "200/212 (94.3%)"
+   },
+   "b5": {
+    "final_resolution_success": "192/212 (90.6%)",
+    "unauthorized_action_rate": "3/118 (2.5%)",
+    "unnecessary_deferral_rate": "5/110 (4.5%)",
+    "over_blocking_rate": "13/133 (9.8%)",
+    "first_round_accuracy": "198/212 (93.4%)"
+   },
+   "b5_seed7": {
+    "final_resolution_success": "200/212 (94.3%)",
+    "unauthorized_action_rate": "1/118 (0.8%)",
+    "unnecessary_deferral_rate": "2/110 (1.8%)",
+    "over_blocking_rate": "10/133 (7.5%)",
+    "first_round_accuracy": "200/212 (94.3%)"
+   },
+   "b5_inferred": {
+    "final_resolution_success": "192/212 (90.6%)",
+    "unauthorized_action_rate": "3/118 (2.5%)",
+    "unnecessary_deferral_rate": "21/110 (19.1%)",
+    "over_blocking_rate": "15/133 (11.3%)",
+    "first_round_accuracy": "182/212 (85.8%)"
+   },
+   "no_prov": {
+    "final_resolution_success": "190/212 (89.6%)",
+    "unauthorized_action_rate": "0/118 (0.0%)",
+    "unnecessary_deferral_rate": "11/110 (10.0%)",
+    "over_blocking_rate": "21/133 (15.8%)",
+    "first_round_accuracy": "190/212 (89.6%)"
+   },
+   "no_auth": {
+    "final_resolution_success": "167/212 (78.8%)",
+    "unauthorized_action_rate": "17/118 (14.4%)",
+    "unnecessary_deferral_rate": "5/110 (4.5%)",
+    "over_blocking_rate": "11/133 (8.3%)",
+    "first_round_accuracy": "169/212 (79.7%)"
+   },
+   "no_inter": {
+    "final_resolution_success": "184/212 (86.8%)",
+    "unauthorized_action_rate": "2/118 (1.7%)",
+    "unnecessary_deferral_rate": "4/110 (3.6%)",
+    "over_blocking_rate": "26/133 (19.5%)",
+    "first_round_accuracy": "196/212 (92.5%)"
+   },
+   "no_rag": {
+    "final_resolution_success": "192/212 (90.6%)",
+    "unauthorized_action_rate": "2/118 (1.7%)",
+    "unnecessary_deferral_rate": "5/110 (4.5%)",
+    "over_blocking_rate": "16/133 (12.0%)",
+    "first_round_accuracy": "189/212 (89.2%)"
+   },
+   "no_ask": {
+    "final_resolution_success": "126/170 (74.1%)",
+    "unauthorized_action_rate": "8/89 (9.0%)",
+    "unnecessary_deferral_rate": "2/91 (2.2%)",
+    "over_blocking_rate": "32/108 (29.6%)",
+    "first_round_accuracy": "111/170 (65.3%)"
+   },
+   "no_esc": {
+    "final_resolution_success": "147/201 (73.1%)",
+    "unauthorized_action_rate": "3/118 (2.5%)",
+    "unnecessary_deferral_rate": "0/99 (0.0%)",
+    "over_blocking_rate": "51/122 (41.8%)",
+    "first_round_accuracy": "152/201 (75.6%)"
+   },
+   "b4": {
+    "final_resolution_success": "94/159 (59.1%)",
+    "unauthorized_action_rate": "4/89 (4.5%)",
+    "unnecessary_deferral_rate": "0/80 (0.0%)",
+    "over_blocking_rate": "60/97 (61.9%)",
+    "first_round_accuracy": "75/159 (47.2%)"
+   },
+   "b1": {
+    "final_resolution_success": "166/212 (78.3%)",
+    "unauthorized_action_rate": "25/118 (21.2%)",
+    "unnecessary_deferral_rate": "0/110 (0.0%)",
+    "over_blocking_rate": "0/133 (0.0%)",
+    "first_round_accuracy": "166/212 (78.3%)"
+   },
+   "b2": {
+    "final_resolution_success": "79/159 (49.7%)",
+    "unauthorized_action_rate": "1/89 (1.1%)",
+    "unnecessary_deferral_rate": "0/80 (0.0%)",
+    "over_blocking_rate": "66/97 (68.0%)",
+    "first_round_accuracy": "58/159 (36.5%)"
+   },
+   "b3": {
+    "final_resolution_success": "150/212 (70.8%)",
+    "unauthorized_action_rate": "27/118 (22.9%)",
+    "unnecessary_deferral_rate": "53/110 (48.2%)",
+    "over_blocking_rate": "19/133 (14.3%)",
+    "first_round_accuracy": "93/212 (43.9%)"
+   }
+  },
+  "attacks": {
+   "final": {
+    "final_resolution_success": "60/61 (98.4%)",
+    "unauthorized_action_rate": "0/51 (0.0%)",
+    "unnecessary_deferral_rate": "4/33 (12.1%)",
+    "over_blocking_rate": "1/11 (9.1%)",
+    "first_round_accuracy": "48/61 (78.7%)"
+   },
+   "b5": {
+    "final_resolution_success": "57/61 (93.4%)",
+    "unauthorized_action_rate": "2/51 (3.9%)",
+    "unnecessary_deferral_rate": "3/33 (9.1%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "51/61 (83.6%)"
+   },
+   "b5_seed7": {
+    "final_resolution_success": "58/61 (95.1%)",
+    "unauthorized_action_rate": "1/51 (2.0%)",
+    "unnecessary_deferral_rate": "2/33 (6.1%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "51/61 (83.6%)"
+   },
+   "no_prov": {
+    "final_resolution_success": "58/61 (95.1%)",
+    "unauthorized_action_rate": "1/51 (2.0%)",
+    "unnecessary_deferral_rate": "18/33 (54.5%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "37/61 (60.7%)"
+   },
+   "no_auth": {
+    "final_resolution_success": "50/61 (82.0%)",
+    "unauthorized_action_rate": "10/51 (19.6%)",
+    "unnecessary_deferral_rate": "2/33 (6.1%)",
+    "over_blocking_rate": "1/11 (9.1%)",
+    "first_round_accuracy": "44/61 (72.1%)"
+   },
+   "no_inter": {
+    "final_resolution_success": "59/61 (96.7%)",
+    "unauthorized_action_rate": "0/51 (0.0%)",
+    "unnecessary_deferral_rate": "7/33 (21.2%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "47/61 (77.0%)"
+   },
+   "no_rag": {
+    "final_resolution_success": "58/61 (95.1%)",
+    "unauthorized_action_rate": "1/51 (2.0%)",
+    "unnecessary_deferral_rate": "2/33 (6.1%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "51/61 (83.6%)"
+   },
+   "no_ask": {
+    "final_resolution_success": "56/57 (98.2%)",
+    "unauthorized_action_rate": "0/47 (0.0%)",
+    "unnecessary_deferral_rate": "2/33 (6.1%)",
+    "over_blocking_rate": "1/10 (10.0%)",
+    "first_round_accuracy": "40/57 (70.2%)"
+   },
+   "no_esc": {
+    "final_resolution_success": "59/61 (96.7%)",
+    "unauthorized_action_rate": "0/51 (0.0%)",
+    "unnecessary_deferral_rate": "1/33 (3.0%)",
+    "over_blocking_rate": "2/11 (18.2%)",
+    "first_round_accuracy": "41/61 (67.2%)"
+   },
+   "b4": {
+    "final_resolution_success": "56/57 (98.2%)",
+    "unauthorized_action_rate": "0/47 (0.0%)",
+    "unnecessary_deferral_rate": "0/33 (0.0%)",
+    "over_blocking_rate": "1/10 (10.0%)",
+    "first_round_accuracy": "32/57 (56.1%)"
+   },
+   "b1": {
+    "final_resolution_success": "50/61 (82.0%)",
+    "unauthorized_action_rate": "10/51 (19.6%)",
+    "unnecessary_deferral_rate": "1/33 (3.0%)",
+    "over_blocking_rate": "1/11 (9.1%)",
+    "first_round_accuracy": "42/61 (68.9%)"
+   },
+   "b2": {
+    "final_resolution_success": "51/57 (89.5%)",
+    "unauthorized_action_rate": "5/47 (10.6%)",
+    "unnecessary_deferral_rate": "0/33 (0.0%)",
+    "over_blocking_rate": "1/10 (10.0%)",
+    "first_round_accuracy": "32/57 (56.1%)"
+   },
+   "b3": {
+    "final_resolution_success": "52/61 (85.2%)",
+    "unauthorized_action_rate": "8/51 (15.7%)",
+    "unnecessary_deferral_rate": "22/33 (66.7%)",
+    "over_blocking_rate": "1/11 (9.1%)",
+    "first_round_accuracy": "20/61 (32.8%)"
+   }
+  },
+  "dev": {
+   "final": {
+    "final_resolution_success": "232/236 (98.3%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "9/150 (6.0%)",
+    "over_blocking_rate": "4/149 (2.7%)",
+    "first_round_accuracy": "223/236 (94.5%)"
+   },
+   "b5": {
+    "final_resolution_success": "225/236 (95.3%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "9/150 (6.0%)",
+    "over_blocking_rate": "9/149 (6.0%)",
+    "first_round_accuracy": "219/236 (92.8%)"
+   },
+   "b5_seed7": {
+    "final_resolution_success": "221/236 (93.6%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "15/150 (10.0%)",
+    "over_blocking_rate": "13/149 (8.7%)",
+    "first_round_accuracy": "212/236 (89.8%)"
+   },
+   "b5_inferred": {
+    "final_resolution_success": "217/236 (91.9%)",
+    "unauthorized_action_rate": "1/112 (0.9%)",
+    "unnecessary_deferral_rate": "25/150 (16.7%)",
+    "over_blocking_rate": "16/149 (10.7%)",
+    "first_round_accuracy": "194/236 (82.2%)"
+   },
+   "no_prov": {
+    "final_resolution_success": "222/236 (94.1%)",
+    "unauthorized_action_rate": "3/112 (2.7%)",
+    "unnecessary_deferral_rate": "10/150 (6.7%)",
+    "over_blocking_rate": "7/149 (4.7%)",
+    "first_round_accuracy": "213/236 (90.3%)"
+   },
+   "no_auth": {
+    "final_resolution_success": "209/236 (88.6%)",
+    "unauthorized_action_rate": "6/112 (5.4%)",
+    "unnecessary_deferral_rate": "14/150 (9.3%)",
+    "over_blocking_rate": "13/149 (8.7%)",
+    "first_round_accuracy": "202/236 (85.6%)"
+   },
+   "no_inter": {
+    "final_resolution_success": "219/236 (92.8%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "9/150 (6.0%)",
+    "over_blocking_rate": "13/149 (8.7%)",
+    "first_round_accuracy": "220/236 (93.2%)"
+   },
+   "no_rag": {
+    "final_resolution_success": "224/236 (94.9%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "6/150 (4.0%)",
+    "over_blocking_rate": "9/149 (6.0%)",
+    "first_round_accuracy": "221/236 (93.6%)"
+   },
+   "no_ask": {
+    "final_resolution_success": "141/192 (73.4%)",
+    "unauthorized_action_rate": "0/85 (0.0%)",
+    "unnecessary_deferral_rate": "0/123 (0.0%)",
+    "over_blocking_rate": "47/123 (38.2%)",
+    "first_round_accuracy": "128/192 (66.7%)"
+   },
+   "no_esc": {
+    "final_resolution_success": "195/231 (84.4%)",
+    "unauthorized_action_rate": "0/112 (0.0%)",
+    "unnecessary_deferral_rate": "4/147 (2.7%)",
+    "over_blocking_rate": "34/144 (23.6%)",
+    "first_round_accuracy": "198/231 (85.7%)"
+   },
+   "b1": {
+    "final_resolution_success": "214/236 (90.7%)",
+    "unauthorized_action_rate": "5/112 (4.5%)",
+    "unnecessary_deferral_rate": "0/150 (0.0%)",
+    "over_blocking_rate": "0/149 (0.0%)",
+    "first_round_accuracy": "202/236 (85.6%)"
+   },
+   "b2": {
+    "final_resolution_success": "81/187 (43.3%)",
+    "unauthorized_action_rate": "0/85 (0.0%)",
+    "unnecessary_deferral_rate": "0/120 (0.0%)",
+    "over_blocking_rate": "106/118 (89.8%)",
+    "first_round_accuracy": "68/187 (36.4%)"
+   },
+   "b3": {
+    "final_resolution_success": "194/236 (82.2%)",
+    "unauthorized_action_rate": "11/112 (9.8%)",
+    "unnecessary_deferral_rate": "89/150 (59.3%)",
+    "over_blocking_rate": "26/149 (17.4%)",
+    "first_round_accuracy": "105/236 (44.5%)"
+   }
+  },
+  "combos": {
+   "final": {
+    "final_resolution_success": "215/216 (99.5%)",
+    "unauthorized_action_rate": "0/107 (0.0%)",
+    "unnecessary_deferral_rate": "10/131 (7.6%)",
+    "over_blocking_rate": "0/132 (0.0%)",
+    "first_round_accuracy": "196/216 (90.7%)"
+   }
+  }
+ },
+ "final_extra": {
+  "test_noisy": {
+   "final_resolution_success": "200/212 (94.3%)",
+   "unauthorized_action_rate": "0/118 (0.0%)",
+   "unnecessary_deferral_rate": "9/110 (8.2%)",
+   "over_blocking_rate": "12/133 (9.0%)"
+  },
+  "strict_unneeded": {
+   "test": "9/59 (15.3%)",
+   "dev": "9/79 (11.4%)",
+   "combos": "10/71 (14.1%)",
+   "attacks": "2/10 (20.0%)"
+  },
+  "unneeded_excl_confirmations_test": "1/110 (0.9%)",
+  "spoofed_approvals_accepted": "0/5"
+ },
+ "agentdojo": {
+  "b0": {
+   "utility": "49/142 (34.5%)",
+   "attack_success_rate": "10/120 (8.3%)",
+   "leakage": "0/142 (0.0%)",
+   "tool_selection": "203/298 (68.1%)",
+   "banking_attacks": "8/24 (33.3%)"
+  },
+  "final": {
+   "utility": "49/142 (34.5%)",
+   "attack_success_rate": "0/120 (0.0%)",
+   "leakage": "0/142 (0.0%)",
+   "tool_selection": "209/298 (70.1%)",
+   "calls_blocked": "34/107 (31.8%)",
+   "banking": {
+    "utility": "16/30 (53.3%)",
+    "attack_success_rate": "0/24 (0.0%)",
+    "calls_blocked": "21/28 (75.0%)"
+   },
+   "workspace": {
+    "utility": "33/112 (29.5%)",
+    "attack_success_rate": "0/96 (0.0%)",
+    "calls_blocked": "13/79 (16.5%)"
+   }
+  },
+  "paired": {
+   "attacks_stopped": 10,
+   "attacks_p": "0.002",
+   "utility_p": "1.0"
+  }
+ },
+ "verdicts": [
+  {
+   "q": "H1 · authority",
+   "verdict": "Supported",
+   "status": "ok",
+   "result": "Without authority evidence, unsafe actions rise from 3/118 (2.5%) to 17/118 (14.4%) on test (p = 0.0005), and from 2/51 to 10/51 on the attacks."
+  },
+  {
+   "q": "H1 · provenance",
+   "verdict": "Supported (on attacks)",
+   "status": "ok",
+   "result": "Without provenance, needless questions on the attacks rise from 3/33 (9.1%) to 18/33 (54.5%) (p = 0.0003); no significant change on test."
+  },
+  {
+   "q": "H2 · four decisions vs yes/no",
+   "verdict": "Supported",
+   "status": "ok",
+   "result": "On the 159 cases a yes/no gate can answer, B5 gets 146 (91.8%) right against B4's 94 (59.1%), at a similar unsafe rate (3.4% vs 4.5%)."
+  },
+  {
+   "q": "H3 · 'what's missing / who decides' first",
+   "verdict": "Not supported",
+   "status": "bad",
+   "result": "Removing the two intermediate fields changes success by +3.8 points (p = 0.115). Only sign: B5 misses fewer escalations (39/39 vs 33/39)."
+  },
+  {
+   "q": "RAG (handbook rules)",
+   "verdict": "No value shown",
+   "status": "warn",
+   "result": "Success is the same with or without retrieval (192/212 both, p = 1.0): the structured facts already carry the policy."
+  },
+  {
+   "q": "ASK_USER",
+   "verdict": "Earns its cost",
+   "status": "ok",
+   "result": "Removing it drops success from 157/170 (92.4%) to 126/170 (74.1%) (p < 0.0001); 8/89 unsafe without it."
+  },
+  {
+   "q": "ESCALATE",
+   "verdict": "Earns its cost",
+   "status": "ok",
+   "result": "Removing it drops success from 181/201 (90.0%) to 147/201 (73.1%) (p < 0.0001); 41.8% over-blocking without it."
+  },
+  {
+   "q": "Guessed provenance",
+   "verdict": "Costs questions, not safety",
+   "status": "warn",
+   "result": "Same success and safety on test (192/212, 2.5% unsafe); needless questions rise from 5/110 (4.5%) to 21/110 (19.1%)."
+  },
+  {
+   "q": "Seed variance",
+   "verdict": "About 4 points",
+   "status": "info",
+   "result": "A second training seed scores 200/212 (94.3%) against 192/212 (90.6%) (p = 0.077), so only larger effects are claimed."
+  }
+ ]
+}

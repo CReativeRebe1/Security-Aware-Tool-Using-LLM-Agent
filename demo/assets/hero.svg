@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 230" role="img" aria-label="An AI agent's action passes through the SA-Gate shield, which decides ALLOW, BLOCK, ASK_USER or ESCALATE">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#cfe1f8"/>
+    </marker>
+  </defs>
+  <!-- user bubble -->
+  <rect x="6" y="20" width="132" height="44" rx="14" fill="#ffffff" opacity="0.96"/>
+  <text x="18" y="38" font-family="Helvetica, Arial, sans-serif" font-size="10" font-weight="700" fill="#1c5cab">USER</text>
+  <text x="18" y="54" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#0b0b0b">“Pay the kitchen bill”</text>
+  <!-- agent -->
+  <rect x="34" y="104" width="76" height="62" rx="16" fill="#ffffff" opacity="0.16" stroke="#ffffff" stroke-opacity="0.55"/>
+  <circle cx="58" cy="128" r="6" fill="#ffffff"/>
+  <circle cx="86" cy="128" r="6" fill="#ffffff"/>
+  <rect x="56" y="144" width="32" height="5" rx="2.5" fill="#ffffff" opacity="0.8"/>
+  <line x1="72" y1="104" x2="72" y2="94" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="72" cy="91" r="4" fill="#ffffff"/>
+  <text x="72" y="184" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#e6effb">AI agent</text>
+  <line x1="72" y1="66" x2="72" y2="84" stroke="#cfe1f8" stroke-width="2" marker-end="url(#ah)"/>
+  <!-- proposed action -->
+  <line x1="114" y1="135" x2="178" y2="135" stroke="#cfe1f8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+  <text x="144" y="124" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="9" fill="#e6effb">send_money(…)</text>
+  <!-- shield -->
+  <path d="M222 70 L262 84 V128 C262 156 245 174 222 184 C199 174 182 156 182 128 V84 Z" fill="#ffffff"/>
+  <path d="M203 128 L216 141 L242 113" fill="none" stroke="#2a78d6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="222" y="204" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="700" fill="#ffffff">SA-Gate</text>
+  <!-- decisions -->
+  <g font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700">
+    <line x1="266" y1="110" x2="318" y2="50" stroke="#cfe1f8" stroke-width="1.6" marker-end="url(#ah)"/>
+    <line x1="266" y1="124" x2="318" y2="100" stroke="#cfe1f8" stroke-width="1.6" marker-end="url(#ah)"/>
+    <line x1="266" y1="138" x2="318" y2="150" stroke="#cfe1f8" stroke-width="1.6" marker-end="url(#ah)"/>
+    <line x1="266" y1="152" x2="318" y2="200" stroke="#cfe1f8" stroke-width="1.6" marker-end="url(#ah)"/>
+    <rect x="322" y="36" width="104" height="28" rx="14" fill="#e6f4ec"/>
+    <text x="374" y="54" text-anchor="middle" fill="#1a7f45">✓ ALLOW</text>
+    <rect x="322" y="86" width="104" height="28" rx="14" fill="#fdeceb"/>
+    <text x="374" y="104" text-anchor="middle" fill="#b42318">✕ BLOCK</text>
+    <rect x="322" y="136" width="104" height="28" rx="14" fill="#eef4fd"/>
+    <text x="374" y="154" text-anchor="middle" fill="#1c5cab">? ASK_USER</text>
+    <rect x="322" y="186" width="104" height="28" rx="14" fill="#fdf1dc"/>
+    <text x="374" y="204" text-anchor="middle" fill="#9a5b00">↑ ESCALATE</text>
+  </g>
+</svg>
