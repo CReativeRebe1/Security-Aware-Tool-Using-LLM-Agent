@@ -1,0 +1,116 @@
+/* SA-Gate demo · "Aurora Glass" light theme.
+   Active when the visitor picks Light in the menu (⋮ → Light, or System on a light device): a helper in
+   streamlit_app.py reads Streamlit's active theme and sets data-sg-theme="light" on the page.
+   Frosted white glass over a soft aurora (indigo, sky, a little violet and rose), the same indigo brand as the dark
+   theme, darker ink for every meaning colour so text stays readable on white. */
+html[data-sg-theme="light"] {
+  --sg-bg: #eef2fb; --sg-bg2: #f5f7fd; --sg-solid: #ffffff;
+  --sg-glass: rgba(255, 255, 255, .58); --sg-glass2: rgba(255, 255, 255, .78);
+  --sg-line: rgba(30, 41, 90, .10); --sg-line2: rgba(30, 41, 90, .18);
+  --sg-ink: #1e293b; --sg-ink-hi: #0b1020; --sg-ink2: #475569; --sg-ink3: #64748b;
+  --sg-brand: #6366f1; --sg-brand-deep: #4f46e5; --sg-brand-hi: #4f46e5; --sg-brand-pale: #3730a3;
+  --sg-brand-soft: rgba(99, 102, 241, .10); --sg-brand-line: rgba(99, 102, 241, .32);
+  --sg-ok: #047857; --sg-ok-dot: #10b981; --sg-ok-soft: rgba(16, 185, 129, .10); --sg-ok-line: rgba(16, 185, 129, .34);
+  --sg-warn: #b45309; --sg-warn-dot: #f59e0b; --sg-warn-soft: rgba(245, 158, 11, .12); --sg-warn-line: rgba(245, 158, 11, .38);
+  --sg-bad: #b91c1c; --sg-bad-dot: #ef4444; --sg-bad-soft: rgba(239, 68, 68, .09); --sg-bad-line: rgba(239, 68, 68, .32);
+  --sg-ask: #0369a1; --sg-ask-dot: #0ea5e9; --sg-ask-soft: rgba(14, 165, 233, .10); --sg-ask-line: rgba(14, 165, 233, .34);
+  --sg-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 18px 44px -22px rgba(30, 41, 90, .28);
+  --sg-glow: 0 0 0 1px rgba(99, 102, 241, .22), 0 16px 40px -18px rgba(79, 70, 229, .45);
+  --gl-blur: blur(16px) saturate(170%);
+  --gl-edge: rgba(255, 255, 255, .85);
+}
+
+/* ---------------------------------------------------------------- the aurora canvas */
+html[data-sg-theme="light"] .stApp { background:
+  radial-gradient(760px 560px at 8% -6%, rgba(129, 140, 248, .52), transparent 62%),
+  radial-gradient(720px 520px at 96% 4%, rgba(56, 189, 248, .38), transparent 60%),
+  radial-gradient(680px 560px at 88% 96%, rgba(244, 114, 182, .26), transparent 62%),
+  radial-gradient(520px 420px at 55% 55%, rgba(129, 140, 248, .14), transparent 65%),
+  radial-gradient(700px 560px at 4% 92%, rgba(167, 139, 250, .32), transparent 62%),
+  linear-gradient(180deg, #f3f5fc 0%, #eef2fb 100%) !important; background-attachment: fixed !important; }
+html[data-sg-theme="light"] code { color: #4338ca; }
+
+/* ---------------------------------------------------------------- frosted glass on every panel */
+html[data-sg-theme="light"] :is(.sg-card, .sg-dtile, .sg-member, .sg-bars-panel, .sg-numbers, .sg-table-wrap, .sg-layer,
+  .sg-game-score .s, .sg-duel, [class*="st-key-glass"], [data-testid="stExpander"] details, [data-testid="stGraphVizChart"]) {
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur); border-color: var(--gl-edge) !important;
+  box-shadow: var(--sg-shadow); }
+html[data-sg-theme="light"] .sg-card.ok { border-color: var(--sg-ok-line) !important; background: linear-gradient(180deg, rgba(209, 250, 229, .75), var(--sg-glass) 70%); }
+html[data-sg-theme="light"] .sg-card.warn { border-color: var(--sg-warn-line) !important; background: linear-gradient(180deg, rgba(254, 243, 199, .8), var(--sg-glass) 70%); }
+html[data-sg-theme="light"] .sg-card.bad { border-color: var(--sg-bad-line) !important; background: linear-gradient(180deg, rgba(254, 226, 226, .8), var(--sg-glass) 70%); }
+html[data-sg-theme="light"] :is(.sg-card.info, .sg-card.feature) { border-color: var(--sg-brand-line) !important;
+  background: linear-gradient(180deg, rgba(224, 231, 255, .8), var(--sg-glass) 70%); }
+html[data-sg-theme="light"] .sg-grid > .sg-card:hover { background: var(--sg-glass2); }
+
+/* the top bar stays dark navy in both themes (like GitHub's light mode): logo and menu stay crisp */
+html[data-sg-theme="light"] [data-testid="stHeader"] { background: rgba(11, 18, 32, .94) !important; }
+
+/* ---------------------------------------------------------------- home banner */
+html[data-sg-theme="light"] .sg-hero { background:
+    radial-gradient(640px 400px at 86% 18%, rgba(129, 140, 248, .30), transparent 62%),
+    radial-gradient(420px 300px at 8% 110%, rgba(56, 189, 248, .18), transparent 62%), rgba(255, 255, 255, .5);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur); border-color: var(--gl-edge); box-shadow: var(--sg-shadow); }
+html[data-sg-theme="light"] .sg-hero::before { opacity: .35;
+  background-image: linear-gradient(rgba(79, 70, 229, .08) 1px, transparent 1px), linear-gradient(90deg, rgba(79, 70, 229, .08) 1px, transparent 1px); }
+html[data-sg-theme="light"] .sg-hero h1 { color: #0b1020; }
+html[data-sg-theme="light"] .sg-hero p { color: #475569; }
+html[data-sg-theme="light"] .sg-hero .sg-eyebrow { color: #3730a3; background: rgba(255, 255, 255, .7); border-color: var(--gl-edge);
+  box-shadow: 0 4px 14px -8px rgba(30, 41, 90, .3); }
+html[data-sg-theme="light"] .sg-wordmark { background: linear-gradient(100deg, #1e1b4b 15%, #4f46e5 55%, #0284c7 95%);
+  -webkit-background-clip: text; background-clip: text; }
+html[data-sg-theme="light"] .sg-grad { background: linear-gradient(90deg, #4f46e5 0%, #0284c7 100%); -webkit-background-clip: text; background-clip: text; }
+html[data-sg-theme="light"] .sg-made-txt b { color: #0b1020; }
+html[data-sg-theme="light"] .sg-avs .sg-av { border-color: #ffffff; }
+html[data-sg-theme="light"] .sg-emblem .ring { border-color: rgba(79, 70, 229, .26); }
+html[data-sg-theme="light"] .sg-emblem .r2 { border-color: rgba(79, 70, 229, .14); }
+html[data-sg-theme="light"] .sg-emblem .r3 { border-color: rgba(2, 132, 199, .28); }
+html[data-sg-theme="light"] .sg-emblem .core { background: radial-gradient(circle, rgba(99, 102, 241, .28), rgba(99, 102, 241, 0) 70%); }
+html[data-sg-theme="light"] .sg-emblem .dec { background: rgba(255, 255, 255, .75); box-shadow: 0 8px 20px -12px rgba(30, 41, 90, .4); }
+
+/* ---------------------------------------------------------------- page headers, sections, text */
+html[data-sg-theme="light"] .sg-page-hero p, html[data-sg-theme="light"] .sg-lead { color: #475569; }
+html[data-sg-theme="light"] .sg-page-hero::before { background: radial-gradient(closest-side, rgba(129, 140, 248, .28), transparent); }
+html[data-sg-theme="light"] .sg-numbered .n { -webkit-text-stroke-color: rgba(79, 70, 229, .45); }
+html[data-sg-theme="light"] .sg-numbered { border-top-color: rgba(30, 41, 90, .12); }
+html[data-sg-theme="light"] .sg-numbered .row { border-bottom-color: rgba(30, 41, 90, .12); }
+html[data-sg-theme="light"] .sg-num b { background: linear-gradient(180deg, #1e1b4b, #4f46e5); -webkit-background-clip: text; background-clip: text; }
+html[data-sg-theme="light"] .sg-num:last-child b { background: linear-gradient(180deg, #059669, #047857); -webkit-background-clip: text; background-clip: text; }
+html[data-sg-theme="light"] .sg-numbers { background: linear-gradient(90deg, rgba(255, 255, 255, .7), rgba(255, 255, 255, .5)); }
+html[data-sg-theme="light"] :is(.sg-vs .bad .big, .sg-duel .before .big) { color: #dc2626; }
+html[data-sg-theme="light"] :is(.sg-vs .ok .big, .sg-duel .after .big) { color: #059669; }
+html[data-sg-theme="light"] .sg-duel .before { background: radial-gradient(420px 220px at 0% 0%, rgba(239, 68, 68, .12), transparent 70%), rgba(255, 255, 255, .55); }
+html[data-sg-theme="light"] .sg-duel .after { background: radial-gradient(420px 220px at 100% 0%, rgba(16, 185, 129, .14), transparent 70%), rgba(255, 255, 255, .62); }
+html[data-sg-theme="light"] :is(.sg-duel .vs, .sg-vs .arrow) { background: #ffffff; }
+html[data-sg-theme="light"] .sg-steps .st i { background: #ffffff; }
+html[data-sg-theme="light"] .sg-bars-panel .target span { color: #047857; }
+
+/* ---------------------------------------------------------------- small pieces with fixed light-on-dark colours */
+html[data-sg-theme="light"] :is(.sg-tag, .sg-card li, .sg-step .ico, .sg-reply) { color: #334155; }
+html[data-sg-theme="light"] .sg-tag { background: rgba(255, 255, 255, .7); }
+html[data-sg-theme="light"] .sg-step .ico { background: rgba(255, 255, 255, .75); }
+html[data-sg-theme="light"] .sg-code { background: rgba(255, 255, 255, .72); color: #0f172a; }
+html[data-sg-theme="light"] .sg-quote { color: #0f172a; }
+html[data-sg-theme="light"] .sg-quote.plain { background: rgba(255, 255, 255, .6); }
+html[data-sg-theme="light"] .sg-table tr:hover td { background: rgba(99, 102, 241, .04); }
+html[data-sg-theme="light"] .sg-table th { background: rgba(255, 255, 255, .45); }
+html[data-sg-theme="light"] .sg-callout { color: #1e293b; }
+html[data-sg-theme="light"] .sg-callout b { color: #0b1020; }
+html[data-sg-theme="light"] .sg-rule { background: rgba(255, 255, 255, .7); }
+html[data-sg-theme="light"] .sg-bar .track { background: rgba(30, 41, 90, .08); }
+
+/* ---------------------------------------------------------------- Streamlit widgets */
+html[data-sg-theme="light"] [data-testid="stBaseButton-secondary"] { background: rgba(255, 255, 255, .7) !important; border-color: var(--gl-edge) !important;
+  color: #1e293b !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 6px 18px -12px rgba(30, 41, 90, .45); }
+html[data-sg-theme="light"] [data-testid="stBaseButton-secondary"]:hover { border-color: #818cf8 !important; color: #3730a3 !important; background: rgba(255, 255, 255, .95) !important; }
+html[data-sg-theme="light"] :is(button[data-variant="pills"], button[data-variant="segmented_control"]) { background: rgba(255, 255, 255, .65) !important;
+  border-color: var(--gl-edge) !important; color: #334155 !important; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html[data-sg-theme="light"] :is(button[data-variant="pills"], button[data-variant="segmented_control"]):hover { color: #0b1020 !important; border-color: #818cf8 !important; }
+html[data-sg-theme="light"] :is(button[data-variant="pills"], button[data-variant="segmented_control"])[aria-checked="true"] {
+  background: rgba(224, 231, 255, .9) !important; border-color: #818cf8 !important; color: #3730a3 !important; }
+html[data-sg-theme="light"] [data-testid="stTab"]:hover { color: #0b1020; background: rgba(99, 102, 241, .06); }
+html[data-sg-theme="light"] [data-testid="stProgressBarTrack"] { background: rgba(30, 41, 90, .08) !important; }
+html[data-sg-theme="light"] [data-testid="stAlertContainer"] { background: rgba(224, 231, 255, .75) !important; }
+html[data-sg-theme="light"] [data-testid="stDataFrame"] { box-shadow: var(--sg-shadow); border-color: var(--gl-edge); }
+
+/* charts and diagrams drawn twice (one per theme): show the matching one */
+html[data-sg-theme="light"] [class*="st-key-dark_only"], html:not([data-sg-theme="light"]) [class*="st-key-light_only"] { display: none !important; }
